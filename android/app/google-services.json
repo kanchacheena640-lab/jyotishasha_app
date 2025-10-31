@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "657916208451",
+    "project_id": "jyotishasha-app-10gob6",
+    "storage_bucket": "jyotishasha-app-10gob6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:657916208451:android:7f9db9bf1f3f7e2b4b7bf6",
+        "android_client_info": {
+          "package_name": "com.example.jyotishasha_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "657916208451-vf5res744jglt8r8bheubc5a41scsd9l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFpFzFZ49NiPU8CSGl-JTVvfNVTIev8Pk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "657916208451-vf5res744jglt8r8bheubc5a41scsd9l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "657916208451-ovd3cj4nn1dn23fkvuh51dg212kacntq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mycompany.jyotishashaapp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:657916208451:android:23fc4c555c474ea34b7bf6",
+        "android_client_info": {
+          "package_name": "com.mycompany.jyotishashaapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "657916208451-a72gdon2noqakpgpsieb367bcp7mut10.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mycompany.jyotishashaapp",
+            "certificate_hash": "9bbb3186b2189ef16d8f272bdab59362c395cbb4"
+          }
+        },
+        {
+          "client_id": "657916208451-vf5res744jglt8r8bheubc5a41scsd9l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFpFzFZ49NiPU8CSGl-JTVvfNVTIev8Pk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "657916208451-vf5res744jglt8r8bheubc5a41scsd9l.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "657916208451-ovd3cj4nn1dn23fkvuh51dg212kacntq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.mycompany.jyotishashaapp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
