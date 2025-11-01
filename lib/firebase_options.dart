@@ -73,4 +73,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'jyotishasha-app-10gob6.firebasestorage.app',
     measurementId: 'G-JTBS46MR2S',
   );
+
 }

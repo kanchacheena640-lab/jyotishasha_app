@@ -1,6 +1,6 @@
 name: jyotishasha_app
 description: "Jyotishasha Astrology App"
-publish_to: 'none'
+publish_to: 'none' # app not published on pub.dev
 version: 1.0.0+1
 
 environment:
@@ -9,17 +9,25 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  google_sign_in: ^6.2.1
-  http: ^1.2.2
 
+  # 🌐 HTTP Requests
+  http: ^1.2.2
 
   # 🔥 Firebase Core + Auth + Firestore
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.0
   cloud_firestore: ^5.4.3
 
-  # Icons for iOS-style UI
+  # 🔑 Google & Facebook Sign-In
+  google_sign_in: ^6.2.1
+  flutter_facebook_auth: ^6.1.1
+
+  # 🗓️ Date & Time Formatting
+  intl: ^0.19.0
+
+  # 💎 UI & Icons
   cupertino_icons: ^1.0.8
+  google_fonts: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -28,3 +36,8 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # 📦 Assets
+  assets:
+    - assets/icons/google.png
+    - assets/icons/facebook.png
