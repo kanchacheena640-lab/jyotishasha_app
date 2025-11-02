@@ -22,7 +22,7 @@ class JyotishashaApp extends StatelessWidget {
       title: 'Jyotishasha',
       theme: AppTheme.lightTheme, // 🎨 Global theme
       initialRoute: AppRoutes.splash, // 🚪 Start from Splash Page
-      routes: AppRoutes.routes, // 🗺️ Routing map
+      routes: appRoutes,
     );
   }
 }

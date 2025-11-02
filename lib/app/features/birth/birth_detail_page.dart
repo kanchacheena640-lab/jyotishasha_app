@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:timezone/timezone.dart' as tz;
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
 
 class BirthDetailPage extends StatefulWidget {
@@ -11,102 +17,217 @@ class BirthDetailPage extends StatefulWidget {
 
 class _BirthDetailPageState extends State<BirthDetailPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _nameController = TextEditingController();
-  DateTime? _selectedDate;
 
-  /// Function to pick birth date
+  final _nameController = TextEditingController();
+  final _dobController = TextEditingController();
+  final _placeController = TextEditingController();
+
+  double? _lat;
+  double? _lng;
+  DateTime? selectedDate;
+  TimeOfDay? selectedTime;
+
+  // 📅 Pick Date
   Future<void> _pickDate() async {
-    final DateTime? picked = await showDatePicker(
+    final now = DateTime.now();
+    final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime(2000, 1, 1),
+      initialDate: now,
       firstDate: DateTime(1950),
-      lastDate: DateTime.now(),
+      lastDate: now,
     );
-
-    if (picked != null && picked != _selectedDate) {
+    if (picked != null) {
       setState(() {
-        _selectedDate = picked;
+        selectedDate = picked;
+        _dobController.text = DateFormat('dd MMM yyyy').format(picked);
       });
     }
   }
 
-  /// Function to proceed to next screen
-  void _proceed() {
-    if (_formKey.currentState!.validate() && _selectedDate != null) {
+  // ⏰ Pick Time
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        selectedTime = picked;
+      });
+    }
+  }
+
+  // 💾 Save Details
+  Future<void> _saveDetails() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (selectedTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select Time of Birth')),
+      );
+      return;
+    }
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      final db = FirebaseFirestore.instance;
+      final location = tz.getLocation('Asia/Kolkata');
+      final tzName = location.name;
+      final tzOffsetMinutes = location.currentTimeZone.offset ~/ 60000;
+
+      await db.collection('users').doc(user.uid).set({
+        'name': _nameController.text.trim(),
+        'dob': _dobController.text.trim(),
+        'tob':
+            '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}',
+        'birthPlace': _placeController.text.trim(),
+        'lat': _lat,
+        'lng': _lng,
+        'tzName': tzName,
+        'tzOffsetMinutes': tzOffsetMinutes,
+        'hasBirthDetails': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Please fill all details")));
+    } catch (e) {
+      debugPrint("⚠️ Firestore save error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save details. Please try again.'),
+          ),
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final apiKey = dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+    debugPrint("🔍 Loaded Google API Key: $apiKey");
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Enter Birth Details"),
+        title: const Text('Enter Birth Details'),
         backgroundColor: Colors.deepPurple,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text("Full Name", style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  hintText: "Enter your full name",
-                  border: OutlineInputBorder(),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                // 👤 Full Name
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Full Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) => value == null || value.trim().isEmpty
+                      ? 'Enter name'
+                      : null,
                 ),
-                validator: (value) =>
-                    value == null || value.isEmpty ? "Name is required" : null,
-              ),
-              const SizedBox(height: 20),
+                const SizedBox(height: 16),
 
-              Text("Date of Birth", style: theme.textTheme.titleMedium),
-              const SizedBox(height: 8),
-              InkWell(
-                onTap: _pickDate,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 12,
+                // 📅 Date of Birth
+                TextFormField(
+                  controller: _dobController,
+                  readOnly: true,
+                  onTap: _pickDate,
+                  decoration: const InputDecoration(
+                    labelText: 'Date of Birth',
+                    border: OutlineInputBorder(),
+                    suffixIcon: Icon(Icons.calendar_today),
                   ),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    _selectedDate != null
-                        ? DateFormat('dd MMM yyyy').format(_selectedDate!)
-                        : "Tap to select date",
+                  validator: (value) =>
+                      value == null || value.isEmpty ? 'Select DOB' : null,
+                ),
+                const SizedBox(height: 16),
+
+                // ⏰ Time of Birth
+                ListTile(
+                  title: Text(
+                    selectedTime == null
+                        ? 'Select Time of Birth'
+                        : 'Time of Birth: ${selectedTime!.format(context)}',
                     style: const TextStyle(fontSize: 16),
                   ),
+                  trailing: const Icon(Icons.access_time),
+                  onTap: _pickTime,
                 ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _proceed,
+                const SizedBox(height: 8),
+
+                // 📍 Place of Birth
+                GooglePlaceAutoCompleteTextField(
+                  textEditingController: _placeController,
+                  googleAPIKey: apiKey,
+                  inputDecoration: const InputDecoration(
+                    labelText: 'Place of Birth',
+                    border: OutlineInputBorder(),
+                  ),
+                  debounceTime: 400,
+                  countries: const ["in"],
+                  isLatLngRequired: true,
+                  getPlaceDetailWithLatLng: (Prediction prediction) {
+                    try {
+                      final double? lat = prediction.lat != null
+                          ? double.tryParse(prediction.lat!)
+                          : null;
+                      final double? lng = prediction.lng != null
+                          ? double.tryParse(prediction.lng!)
+                          : null;
+                      setState(() {
+                        _lat = lat;
+                        _lng = lng;
+                      });
+                    } catch (e) {
+                      debugPrint("⚠️ LatLng parsing error: $e");
+                    }
+                  },
+                  itemClick: (Prediction prediction) {
+                    _placeController.text = prediction.description ?? '';
+                    _placeController.selection = TextSelection.fromPosition(
+                      TextPosition(offset: _placeController.text.length),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+
+                // Validation hint
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '* All fields are required',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Continue Button
+                ElevatedButton.icon(
+                  onPressed: _saveDetails,
+                  icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.deepPurple,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
-                  child: const Text(
-                    "Continue",
-                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  label: const Text(
+                    'Continue',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

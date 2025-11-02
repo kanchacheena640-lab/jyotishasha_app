@@ -10,7 +10,7 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # 🌐 HTTP Requests
+  # 🌐 HTTP Requests (latest)
   http: ^1.2.2
 
   # 🔥 Firebase Core + Auth + Firestore
@@ -22,12 +22,22 @@ dependencies:
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^6.1.1
 
+  # 📍 Google Places Autocomplete
+  google_places_flutter: ^2.1.1
+
   # 🗓️ Date & Time Formatting
   intl: ^0.19.0
 
   # 💎 UI & Icons
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.2
+
+  # ⚙️ Environment Variables (.env)
+  flutter_dotenv: ^5.1.0
+  timezone: ^0.10.1
+
+dependency_overrides:
+  http: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -41,3 +51,4 @@ flutter:
   assets:
     - assets/icons/google.png
     - assets/icons/facebook.png
+    - .env

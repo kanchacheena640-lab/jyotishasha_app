@@ -29,7 +29,8 @@ class _LoginPageState extends State<LoginPage> {
 
       // If user successfully logged in
       if (_authService.currentUser != null && mounted) {
-        Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, AppRoutes.birthDetail);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Login cancelled or failed')),
