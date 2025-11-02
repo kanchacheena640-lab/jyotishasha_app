@@ -4,17 +4,20 @@ import 'package:jyotishasha_app/app/features/auth/login_page.dart';
 import 'package:jyotishasha_app/app/features/birth/birth_detail_page.dart';
 import 'package:jyotishasha_app/app/features/dashboard/pages/dashboard_page.dart';
 import 'package:jyotishasha_app/app/features/tools/pages/tools_page.dart';
-import 'package:jyotishasha_app/app/features/reports/pages/reports_page.dart';
 import 'package:jyotishasha_app/app/features/reports/pages/my_reports_page.dart';
 import 'package:jyotishasha_app/app/features/reports/pages/report_viewer_page.dart';
+import 'package:jyotishasha_app/app/features/reports/pages/reports_page.dart';
+import 'package:jyotishasha_app/app/features/horoscope/pages/daily_horoscope_page.dart';
 
 class AppRoutes {
   static const splash = '/';
   static const login = '/login';
   static const birthDetail = '/birth-detail';
   static const dashboard = '/dashboard';
+  static const horoscope = '/horoscope';
   static const tools = '/tools';
   static const reports = '/reports';
+  static const profile = '/profile';
   static const myReports = '/my-reports';
   static const reportViewer = '/report-viewer';
 }

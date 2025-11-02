@@ -39,7 +39,7 @@ dependencies:
   flutter_dotenv: ^5.1.0
   timezone: ^0.10.1
 
-  syncfusion_flutter_pdfviewer: ^26.1.39
+  syncfusion_flutter_pdfviewer: ^27.1.55
   share_plus: ^10.0.2
   permission_handler: ^11.3.1
   path_provider: ^2.1.3

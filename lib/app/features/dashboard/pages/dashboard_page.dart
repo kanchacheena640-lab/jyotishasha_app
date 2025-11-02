@@ -57,11 +57,23 @@ class _DashboardPageState extends State<DashboardPage> {
   void _onItemTapped(int index) {
     setState(() => _selectedIndex = index);
 
-    if (index == 2) {
-      // Kundali tab
-      Navigator.pushNamed(context, AppRoutes.tools);
+    switch (index) {
+      case 0:
+        Navigator.pushNamed(context, AppRoutes.dashboard);
+        break;
+      case 1:
+        Navigator.pushNamed(context, AppRoutes.horoscope);
+        break;
+      case 2:
+        Navigator.pushNamed(context, AppRoutes.tools);
+        break;
+      case 3:
+        Navigator.pushNamed(context, AppRoutes.reports);
+        break;
+      case 4:
+        Navigator.pushNamed(context, AppRoutes.profile);
+        break;
     }
-    // You can extend for other tabs later (Dashboard, Horoscope, etc.)
   }
 
   @override

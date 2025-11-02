@@ -1,3 +1,5 @@
+// lib/app/features/reports/models/report_model.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ReportModel {
@@ -14,24 +16,22 @@ class ReportModel {
     required this.title,
     required this.language,
     required this.pdfUrl,
-    required this.purchasedAt,
     this.localPath,
+    required this.purchasedAt,
     this.expiresAt,
   });
 
-  factory ReportModel.fromMap(Map<String, dynamic> data, String id) {
+  factory ReportModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
     return ReportModel(
-      id: id,
+      id: doc.id,
       title: data['title'] ?? 'Unknown Report',
       language: data['language'] ?? 'English',
       pdfUrl: data['pdfUrl'] ?? '',
       localPath: data['localPath'],
-      purchasedAt: (data['purchasedAt'] is Timestamp)
-          ? (data['purchasedAt'] as Timestamp).toDate()
-          : DateTime.now(),
-      expiresAt: (data['expiresAt'] is Timestamp)
-          ? (data['expiresAt'] as Timestamp).toDate()
-          : null,
+      purchasedAt:
+          (data['purchasedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      expiresAt: (data['expiresAt'] as Timestamp?)?.toDate(),
     );
   }
 
