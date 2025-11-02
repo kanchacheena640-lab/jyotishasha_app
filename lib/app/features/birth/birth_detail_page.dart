@@ -59,6 +59,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
 
   // 💾 Save Details
   Future<void> _saveDetails() async {
+    print("🔥 Current user UID: ${FirebaseAuth.instance.currentUser?.uid}");
     if (!_formKey.currentState!.validate()) return;
 
     if (selectedTime == null) {
@@ -69,13 +70,31 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
     }
 
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+
+    // 🔐 1) Hard guard: user must be logged in
+    if (user == null) {
+      debugPrint("⚠️ User not logged in (FirebaseAuth.currentUser == null)");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User not logged in. Please re-login.')),
+        );
+      }
+      return;
+    }
 
     try {
       final db = FirebaseFirestore.instance;
       final location = tz.getLocation('Asia/Kolkata');
       final tzName = location.name;
       final tzOffsetMinutes = location.currentTimeZone.offset ~/ 60000;
+
+      // 🟣 2) Pre-write log (to confirm we reached Firestore write)
+      debugPrint(
+        "🟣 Trying Firestore write for uid=${user.uid} "
+        "name=${_nameController.text.trim()} "
+        "place=${_placeController.text.trim()} "
+        "lat=$_lat lng=$_lng tz=$tzName offsetMin=$tzOffsetMinutes",
+      );
 
       await db.collection('users').doc(user.uid).set({
         'name': _nameController.text.trim(),
@@ -91,10 +110,13 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
+      debugPrint("✅ Firestore write success for uid=${user.uid}");
+
       if (!mounted) return;
       Navigator.pushReplacementNamed(context, AppRoutes.dashboard);
     } catch (e) {
-      debugPrint("⚠️ Firestore save error: $e");
+      // ❌ 3) Exact error log (permissions / network / schema)
+      debugPrint("❌ Firestore save failed: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
