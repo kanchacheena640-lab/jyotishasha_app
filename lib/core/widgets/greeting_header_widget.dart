@@ -5,12 +5,16 @@ class GreetingHeaderWidget extends StatelessWidget {
   final String userName;
   final String zodiacSign;
   final String greetingEmoji;
+  final String sunriseTime;
+  final String sunsetTime;
 
   const GreetingHeaderWidget({
     super.key,
     required this.userName,
     required this.zodiacSign,
     this.greetingEmoji = '🌞',
+    this.sunriseTime = "06:27 AM",
+    this.sunsetTime = "05:43 PM",
   });
 
   @override
@@ -27,7 +31,6 @@ class GreetingHeaderWidget extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF6D28D9), Color(0xFF9333EA)],
@@ -42,59 +45,89 @@ class GreetingHeaderWidget extends StatelessWidget {
           BoxShadow(color: Colors.black26, offset: Offset(0, 3), blurRadius: 6),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "$greeting, $userName $greetingEmoji",
-            style: GoogleFonts.playfairDisplay(
-              textStyle: const TextStyle(
-                fontSize: 22,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 🌄 Greeting line
+            Text(
+              "$greeting, $userName $greetingEmoji",
+              style: GoogleFonts.playfairDisplay(
+                textStyle: const TextStyle(
+                  fontSize: 22,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Text(
-                "Your stars say it’s a beautiful day",
-                style: GoogleFonts.montserrat(
-                  textStyle: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white70,
+            const SizedBox(height: 6),
+
+            Row(
+              children: [
+                Text(
+                  "Your stars say it’s a beautiful day",
+                  style: GoogleFonts.montserrat(
+                    textStyle: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      zodiacSign,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 13,
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 16),
+                      const SizedBox(width: 4),
+                      Text(
+                        zodiacSign,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+
+            const SizedBox(height: 10),
+
+            // 🌞 Sunrise & Sunset Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "🌞 Sunrise: $sunriseTime",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  "🌇 Sunset: $sunsetTime",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

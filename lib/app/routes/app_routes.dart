@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // 🌅 Entry Screens
@@ -15,27 +16,42 @@ import '../../features/profile/profile_page.dart';
 import '../../features/subscription/subscription_page.dart';
 
 // ⚠️ Utility
-import '../../features/error/error_page.dart';
+// optional: if not created yet, comment it
+// import '../../features/error/error_page.dart';
 
 final GoRouter appRouter = GoRouter(
+  debugLogDiagnostics: true,
   initialLocation: '/splash',
+
+  // ✅ Fallback for unknown routes
+  errorBuilder: (context, state) => Scaffold(
+    body: Center(
+      child: Text(
+        '404 — Page Not Found',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    ),
+  ),
+
   routes: [
+    // Root redirect
+    GoRoute(path: '/', redirect: (_, __) => '/splash'),
+
+    // Entry flow
     GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
     GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
     GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
     GoRoute(path: '/birth', builder: (_, __) => const BirthDetailPage()),
+
+    // Main sections
     GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
     GoRoute(path: '/astrology', builder: (_, __) => const AstrologyPage()),
     GoRoute(path: '/reports', builder: (_, __) => const ReportsPage()),
-
-    // ❌ Removed ToolResultPage from here (dynamic params — navigated via form)
-    // ✅ ToolResultPage is opened via Navigator.push in ToolDetailPage
     GoRoute(path: '/asknow', builder: (_, __) => const AskNowChatPage()),
     GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
     GoRoute(
       path: '/subscription',
       builder: (_, __) => const SubscriptionPage(),
     ),
-    GoRoute(path: '/error', builder: (_, __) => const ErrorPage()),
   ],
 );

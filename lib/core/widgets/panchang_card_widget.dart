@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:go_router/go_router.dart'; // ✅ Added for routing
 
 class PanchangCardWidget extends StatelessWidget {
   final String tithi;
@@ -49,11 +48,8 @@ class PanchangCardWidget extends StatelessWidget {
           _buildRow("Sunrise", sunrise),
           _buildRow("Sunset", sunset),
           const SizedBox(height: 12),
-
-          // 🔹 View Full Button
           GestureDetector(
-            onTap:
-                onViewFull ?? () => context.go('/panchang'), // ✅ fallback route
+            onTap: onViewFull,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [

@@ -1,34 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:jyotishasha_app/app/app.dart'; // ✅ single entry app widget
 
-// 🔹 Direct import for test
-import 'features/dashboard/dashboard_page.dart';
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // Auth / Firestore / FCM
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Jyotishasha',
-      theme: ThemeData(
-        useMaterial3: false,
-        primaryColor: const Color(0xFF7C3AED),
-        colorScheme: ColorScheme.fromSwatch().copyWith(
-          primary: const Color(0xFF7C3AED),
-          secondary: const Color(0xFFFBBF24),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF8F6FB),
-        textTheme: GoogleFonts.montserratTextTheme(),
-      ),
-
-      // ⚡ Test dashboard directly
-      home: const DashboardPage(),
-    );
-  }
+  runApp(const JyotishashaApp()); // ✅ clean entry point
 }

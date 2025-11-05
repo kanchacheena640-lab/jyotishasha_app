@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
-// 🔹 Import actual pages
+// 🔹 Import actual feature pages
 import '../astrology/astrology_page.dart';
 import '../reports/reports_page.dart';
 import '../profile/profile_page.dart';
+import 'dashboard_home_section.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -15,72 +17,86 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
 
-  // ✅ Real pages list (Panchang removed)
+  // ✅ Organized page list (Home → Astrology → Reports → AskNow → Profile)
   final List<Widget> _pages = const [
-    _DashboardHomePlaceholder(), // Dashboard home
-    AstrologyPage(), // Astrology tools tab
-    ReportsPage(), // Reports tab
-    _AskNowPlaceholder(), // Ask Now
-    ProfilePage(), // Profile tab
+    DashboardHomeSection(),
+    AstrologyPage(),
+    ReportsPage(),
+    _AskNowPlaceholder(),
+    ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F6FB),
+      backgroundColor: theme.scaffoldBackgroundColor,
+
+      // 🔹 Page content
       body: _pages[_currentIndex],
+
+      // 🔹 Bottom Navigation Bar (Theme-based)
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
-        selectedItemColor: Colors.deepPurple,
-        unselectedItemColor: Colors.grey,
+
+        // ✅ Colors now from theme
+        selectedItemColor: theme.colorScheme.primary,
+        unselectedItemColor: AppColors.textPrimary.withValues(alpha: 0.5),
+        backgroundColor: AppColors.surface,
         type: BottomNavigationBarType.fixed,
+
+        selectedLabelStyle: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w400,
+        ),
+
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.star), label: "Astrology"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.description),
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: "Home",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.star_border),
+            activeIcon: Icon(Icons.star),
+            label: "Astrology",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.description_outlined),
+            activeIcon: Icon(Icons.description),
             label: "Reports",
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.chat), label: "Ask Now"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat),
+            label: "Ask Now",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: "Profile",
+          ),
         ],
       ),
     );
   }
 }
 
-// 🔸 temporary placeholder for Dashboard
-class _DashboardHomePlaceholder extends StatelessWidget {
-  const _DashboardHomePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        "🏠 Dashboard Home (Cards will load here soon)",
-        style: TextStyle(
-          fontSize: 20,
-          color: Colors.deepPurple,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-}
-
-// 🔸 temporary placeholder for AskNow
+// 🔸 Temporary AskNow Placeholder (kept minimal and themed)
 class _AskNowPlaceholder extends StatelessWidget {
   const _AskNowPlaceholder();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Text(
         "💬 Ask Now Chat Coming Soon",
-        style: TextStyle(
-          fontSize: 20,
-          color: Colors.deepPurple,
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: Theme.of(context).colorScheme.primary,
           fontWeight: FontWeight.bold,
         ),
       ),

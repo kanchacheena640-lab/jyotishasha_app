@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class HoroscopeCardWidget extends StatelessWidget {
-  final String title; // e.g. "Today" or "Tomorrow"
-  final String summary; // short horoscope text
+  final String title; // e.g. "Today", "Tomorrow", "Weekly"
+  final String summary;
   final String luckyColor;
   final String luckyNumber;
-  final VoidCallback? onTap; // optional action for "View Full"
+  final VoidCallback? onTap;
 
   const HoroscopeCardWidget({
     super.key,
@@ -22,8 +22,8 @@ class HoroscopeCardWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 180,
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        width: double.infinity, // ✅ full width of screen
+        margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
@@ -42,7 +42,9 @@ class HoroscopeCardWidget extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // ✅ expand only as needed
           children: [
+            // 🔹 Title
             Text(
               title,
               style: GoogleFonts.playfairDisplay(
@@ -54,21 +56,22 @@ class HoroscopeCardWidget extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            Expanded(
-              child: Text(
-                summary,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.montserrat(
-                  textStyle: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.white70,
-                    height: 1.4,
-                  ),
+
+            // 🔹 Summary text (auto-height, no scroll)
+            Text(
+              summary,
+              style: GoogleFonts.montserrat(
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  color: Colors.white70,
+                  height: 1.4,
                 ),
               ),
             ),
+
             const SizedBox(height: 12),
+
+            // 🔹 Tags Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

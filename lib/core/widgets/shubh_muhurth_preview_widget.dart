@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:go_router/go_router.dart'; // ✅ Added for routing
 
 class ShubhMuhurthPreviewWidget extends StatelessWidget {
   final List<Map<String, String>> muhurthList;
@@ -11,6 +10,15 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
     required this.muhurthList,
     this.onSeeMore,
   });
+
+  String _getEmoji(String event) {
+    event = event.toLowerCase();
+    if (event.contains('marriage')) return '💍';
+    if (event.contains('griha')) return '🏠';
+    if (event.contains('vehicle')) return '🚗';
+    if (event.contains('naam') || event.contains('naming')) return '👶';
+    return '🌸';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +42,7 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: onSeeMore ?? () => context.go('/muhurth'), // ✅ fallback
+                onTap: onSeeMore,
                 child: Text(
                   "See More →",
                   style: GoogleFonts.montserrat(
@@ -52,23 +60,24 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
 
           // 🔹 Horizontal Cards
           SizedBox(
-            height: 120,
+            height: 130,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: muhurthList.length,
               itemBuilder: (context, index) {
                 final item = muhurthList[index];
+                final emoji = _getEmoji(item['event'] ?? '');
                 return Container(
-                  width: 160,
+                  width: 170,
                   margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFFEEBD0), Color(0xFFFDE68A)],
+                      colors: [Color(0xFFFFF4DA), Color(0xFFFFE8B3)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
@@ -81,30 +90,31 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        item['date'] ?? '',
+                        "$emoji  ${item['date'] ?? ''}",
                         style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                           color: Color(0xFF4B0082),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         item['event'] ?? '',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                           color: Colors.black87,
                         ),
                       ),
                       const Spacer(),
                       Row(
                         children: [
-                          const Icon(Icons.star, size: 14, color: Colors.amber),
+                          const Icon(Icons.star, size: 15, color: Colors.amber),
                           const SizedBox(width: 4),
                           Text(
                             "${item['score'] ?? ''}/10",
                             style: const TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               color: Colors.black54,
                             ),
                           ),
