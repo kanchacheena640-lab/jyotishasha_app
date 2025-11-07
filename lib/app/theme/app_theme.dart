@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
 /// 🌈 Global Jyotishasha Brand Colors
 class AppColors {

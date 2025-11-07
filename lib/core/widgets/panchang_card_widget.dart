@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:jyotishasha_app/features/panchang/panchang_page.dart'; // 👈 import the page
 
 class PanchangCardWidget extends StatelessWidget {
   final String tithi;
   final String nakshatra;
   final String sunrise;
   final String sunset;
-  final VoidCallback? onViewFull;
 
   const PanchangCardWidget({
     super.key,
@@ -14,7 +14,6 @@ class PanchangCardWidget extends StatelessWidget {
     required this.nakshatra,
     required this.sunrise,
     required this.sunset,
-    this.onViewFull,
   });
 
   @override
@@ -48,22 +47,48 @@ class PanchangCardWidget extends StatelessWidget {
           _buildRow("Sunrise", sunrise),
           _buildRow("Sunset", sunset),
           const SizedBox(height: 12),
+
+          // 👇 CTA Button (navigation to PanchangPage)
           GestureDetector(
-            onTap: onViewFull,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PanchangPage()),
+              );
+            },
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Text(
                   "View Full Panchang →",
                   style: GoogleFonts.montserrat(
                     textStyle: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF7E22CE),
-                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF4B0082),
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ),
         ],

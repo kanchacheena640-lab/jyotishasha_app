@@ -4,8 +4,15 @@ import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
 import 'package:jyotishasha_app/core/widgets/horoscope_card_widget.dart';
 import 'package:jyotishasha_app/core/widgets/shubh_muhurth_preview_widget.dart';
+import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
+import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
+import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
+import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
+import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
+import 'package:jyotishasha_app/features/kundali/kundali_form_page.dart';
+import 'package:jyotishasha_app/features/tools/tool_result_page.dart';
 
-/// 🌟 Dashboard Home (Theme-based, Light & Professional)
+/// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
   const DashboardHomeSection({super.key});
 
@@ -21,7 +28,6 @@ class DashboardHomeSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🟣 Greeting Header
               const GreetingHeaderWidget(
                 userName: "Suvi",
                 zodiacSign: "♑ Capricorn",
@@ -30,51 +36,45 @@ class DashboardHomeSection extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // 🪔 Panchang Card
               _buildPanchangCard(context),
               const SizedBox(height: 24),
 
-              // 🌙 Horoscope Section
               _buildHoroscopeSection(context),
               const SizedBox(height: 28),
 
-              // 🌸 Shubh Muhurth Section (clean and unified)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: ShubhMuhurthPreviewWidget(
                   muhurthList: [
-                    {
-                      "date": "Nov 5",
-                      "event": "🏠 Griha Pravesh",
-                      "score": "9",
-                    },
-                    {"date": "Nov 8", "event": "💍 Marriage", "score": "8"},
+                    {"date": "Nov 5", "event": "Griha Pravesh", "score": "9"},
+                    {"date": "Nov 8", "event": "Marriage", "score": "8"},
                     {
                       "date": "Nov 12",
                       "event": "🚗 Vehicle Purchase",
                       "score": "8",
                     },
-                    {"date": "Nov 15", "event": "👶 Naamkaran", "score": "7"},
+                    {"date": "Nov 15", "event": "Naamkaran", "score": "7"},
                   ],
                   onSeeMore: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Full Muhurth Coming Soon")),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const MuhurthPage()),
                     );
                   },
                 ),
               ),
               const SizedBox(height: 28),
 
-              // 🔮 Free Kundali Banner
               _buildFreeKundaliBanner(context),
               const SizedBox(height: 32),
 
-              // 🧭 Tools Section
               _buildAstrologyToolsSection(context),
               const SizedBox(height: 32),
 
-              // 📰 Blog Section
               _buildBlogSection(context),
+              const SizedBox(height: 24),
+
+              AppFooterFeedbackWidget(),
             ],
           ),
         ),
@@ -82,19 +82,16 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🕉️ Panchang Card
+  // 🕉️ Panchang Card ----------------------------------------------------------
   Widget _buildPanchangCard(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,24 +107,43 @@ class DashboardHomeSection extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             "Today is Dwitiya Tithi and Nakshatra is Rohini. "
-            "Auspicious time: 9:00 AM – 1:00 PM, avoid: 2:00 PM – 4:00 PM.",
+            "Auspicious time 9:00 AM – 1:00 PM • Avoid 2:00 PM – 4:00 PM.",
             style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PanchangPage()),
+                );
+              },
+              child: Text(
+                "View Full Panchang →",
+                style: GoogleFonts.montserrat(
+                  fontSize: 13.5,
+                  color: Colors.blueAccent,
+                  fontWeight: FontWeight.w600,
+                  decoration: TextDecoration.underline,
+                ),
+              ),
+            ),
           ),
         ],
       ),
     );
   }
 
-  // 🌙 Horoscope Section
+  // 🌙 Horoscope Section -------------------------------------------------------
   Widget _buildHoroscopeSection(BuildContext context) {
     final theme = Theme.of(context);
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Today card
           const HoroscopeCardWidget(
             title: "Today",
             summary:
@@ -135,27 +151,20 @@ class DashboardHomeSection extends StatelessWidget {
             luckyColor: "Lavender",
             luckyNumber: "7",
           ),
-
           const SizedBox(height: 12),
-
-          // 👉 Buttons row: Tomorrow + Weekly
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: navigate to /horoscope?type=tomorrow (later)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Tomorrow horoscope coming soon"),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HoroscopePage()),
+                  ),
                   icon: const Icon(Icons.calendar_today),
                   label: const Text("Tomorrow"),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withOpacity(.3),
                     ),
                     foregroundColor: theme.colorScheme.primary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -168,19 +177,15 @@ class DashboardHomeSection extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    // TODO: navigate to /horoscope?type=weekly (later)
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Weekly horoscope coming soon"),
-                      ),
-                    );
-                  },
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HoroscopePage()),
+                  ),
                   icon: const Icon(Icons.view_week),
                   label: const Text("Weekly"),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
-                      color: theme.colorScheme.primary.withOpacity(0.3),
+                      color: theme.colorScheme.primary.withOpacity(.3),
                     ),
                     foregroundColor: theme.colorScheme.primary,
                     padding: const EdgeInsets.symmetric(vertical: 12),
@@ -197,7 +202,7 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🔮 Free Kundali Banner
+  // 🔮 Free Kundali Banner -----------------------------------------------------
   Widget _buildFreeKundaliBanner(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
@@ -206,9 +211,7 @@ class DashboardHomeSection extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: AppColors.purpleGradient,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(2, 3)),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,19 +232,81 @@ class DashboardHomeSection extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
+              // For Me → Static Demo
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.person),
-                  label: const Text("For Me"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    final kundaliData = {
+                      "profile": {
+                        "name": "Suvi Vish",
+                        "dob": "1997-08-14",
+                        "tob": "10:15",
+                        "place": "Lucknow, India",
+                      },
+                      "lagna_sign": "Libra",
+                      "rashi": "Aquarius",
+                      "lagna_trait":
+                          "You are balanced, creative and diplomatic in relationships.",
+                      "dasha_summary": {
+                        "current_block": {
+                          "mahadasha": "Venus",
+                          "antardasha": "Mercury",
+                          "period": "2023–2026",
+                        },
+                      },
+                      "gemstone_suggestion": {
+                        "gemstone": "Diamond",
+                        "paragraph":
+                            "Diamond enhances Venus energy, bringing harmony and beauty.",
+                      },
+                      "yogas": {
+                        "Gajakesari": {"is_active": true, "strength": "Strong"},
+                      },
+                    };
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            KundaliDetailPage(kundaliData: kundaliData),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.person_outline),
+                  label: const Text(
+                    "For Me",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
+              // For Others → Form
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.group),
-                  label: const Text("For Others"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const KundaliFormPage()),
+                  ),
+                  icon: const Icon(Icons.group_outlined),
+                  label: const Text(
+                    "For Others",
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ],
@@ -251,93 +316,135 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🧭 Astrology Tools Section
+  // 🧭 Astrology Tools Section -------------------------------------------------
   Widget _buildAstrologyToolsSection(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(2, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Astrology Tools",
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.primary,
+
+    // Map tool titles to their backend IDs
+    final Map<String, String> toolMap = {
+      "Free Kundali": "full-kundali",
+      "Lagna Finder": "lagna_finder",
+      "Rashi Finder": "rashi_finder",
+      "Love Match": "love-match",
+      "Rajyog Check": "rajya_sambandh_rajyog",
+      "Health Insight": "health_insight",
+    };
+
+    // Default sample form data (later replace with user input/profile)
+    final Map<String, dynamic> defaultFormData = {
+      "name": "Ravi",
+      "dob": "1985-03-31",
+      "tob": "19:45",
+      "latitude": 26.8467,
+      "longitude": 80.9462,
+      "language": "hi",
+    };
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Astrology Tools",
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Explore free astrology tools for daily insights and calculations.",
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          GridView.count(
-            crossAxisCount: 3,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1,
-            children: [
-              _toolCard(context, Icons.self_improvement, "Free Kundali"),
-              _toolCard(context, Icons.wb_sunny_outlined, "Lagna Finder"),
-              _toolCard(context, Icons.star_outline, "Rashi Finder"),
-              _toolCard(context, Icons.favorite_outline, "Love Match"),
-              _toolCard(context, Icons.auto_graph, "Rajyog Check"),
-              _toolCard(context, Icons.health_and_safety, "Health Insight"),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.apps),
-              label: const Text("More Tools"),
+            const SizedBox(height: 8),
+            Text(
+              "Explore free astrology tools for daily insights and calculations.",
+              style: theme.textTheme.bodyMedium,
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            // 🔮 Tools Grid
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1,
+              children: toolMap.entries.map((entry) {
+                return _toolCard(context, _getIcon(entry.key), entry.key, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ToolResultPage(
+                        toolId:
+                            entry.value, // 🔮 Backend key (e.g. "lagna_finder")
+                        formData:
+                            defaultFormData, // 🪔 Birth details / user data
+                      ),
+                    ),
+                  );
+                });
+              }).toList(),
+            ),
+
+            const SizedBox(height: 12),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("More tools coming soon...")),
+                ),
+                icon: const Icon(Icons.apps),
+                label: const Text("More Tools"),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // 🧩 Tool Card
-  Widget _toolCard(BuildContext context, IconData icon, String title) {
+  // 🪔 Tool Card Widget
+  Widget _toolCard(
+    BuildContext context,
+    IconData icon,
+    String title,
+    VoidCallback onTap,
+  ) {
     final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: () => ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("$title Coming Soon"))),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(14),
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF3E8FF), Color(0xFFEDE9FE)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: const [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 3,
-              offset: Offset(2, 2),
+              blurRadius: 6,
+              offset: Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 28, color: theme.colorScheme.primary),
+            Icon(icon, color: Colors.deepPurple, size: 28),
             const SizedBox(height: 6),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
+              style: theme.textTheme.bodySmall!.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -347,7 +454,27 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 📰 Blog Section
+  // 🌟 Helper: Icon based on Tool
+  IconData _getIcon(String title) {
+    switch (title) {
+      case "Free Kundali":
+        return Icons.self_improvement;
+      case "Lagna Finder":
+        return Icons.wb_sunny_outlined;
+      case "Rashi Finder":
+        return Icons.star_outline;
+      case "Love Match":
+        return Icons.favorite_outline;
+      case "Rajyog Check":
+        return Icons.auto_graph;
+      case "Health Insight":
+        return Icons.health_and_safety;
+      default:
+        return Icons.api;
+    }
+  }
+
+  // 📰 Blog Section ------------------------------------------------------------
   Widget _buildBlogSection(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
@@ -408,7 +535,7 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🧩 Blog Card
+  // 🧩 Blog Card ---------------------------------------------------------------
   Widget _blogCard(
     BuildContext context,
     String title,
@@ -422,18 +549,13 @@ class DashboardHomeSection extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: AppColors.purpleGradient,
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(2, 3)),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: Image.network(
               imageUrl,
               height: 100,

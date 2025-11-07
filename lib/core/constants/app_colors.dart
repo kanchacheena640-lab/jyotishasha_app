@@ -35,4 +35,11 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  // 🔮 Purple → Gold gradient (for CTA / footer / highlights)
+  static const LinearGradient gradientPurpleGold = LinearGradient(
+    colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 }
