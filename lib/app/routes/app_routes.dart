@@ -10,10 +10,11 @@ import '../../features/birth/birth_detail_page.dart';
 // 🏠 Main Sections
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/astrology/astrology_page.dart';
-import '../../features/reports/reports_page.dart';
+import '../../features/reports/pages/report_catalog_page.dart';
 import '../../features/asknow/asknow_chat_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/subscription/subscription_page.dart';
+import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 
 // ⚠️ Utility
 // optional: if not created yet, comment it
@@ -46,12 +47,17 @@ final GoRouter appRouter = GoRouter(
     // Main sections
     GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
     GoRoute(path: '/astrology', builder: (_, __) => const AstrologyPage()),
-    GoRoute(path: '/reports', builder: (_, __) => const ReportsPage()),
+    GoRoute(path: '/reports', builder: (_, __) => const ReportCatalogPage()),
     GoRoute(path: '/asknow', builder: (_, __) => const AskNowChatPage()),
     GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
     GoRoute(
       path: '/subscription',
       builder: (_, __) => const SubscriptionPage(),
+    ),
+    GoRoute(
+      path: '/darshan',
+      name: 'darshan',
+      builder: (context, state) => const DarshanPage(),
     ),
   ],
 );

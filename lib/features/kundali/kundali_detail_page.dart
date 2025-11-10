@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
-import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 
 /// 🪔 Kundali Dashboard (Mother Page)
 /// - Shows all sections as beautiful cards

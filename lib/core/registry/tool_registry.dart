@@ -17,7 +17,7 @@ class ToolRegistry {
         "gemstone-suggestion": (data) => GemstoneSuggestionWidget(data),
         "mangal-dosh": (data) => MangalDoshWidget(kundaliData: data),
         "kaalsarp-dosh": (data) => KaalsarpDoshWidget(kundaliData: data),
-        "sadhesati": (data) => SadeSatiWidget(kundaliData: data),
+        "sadhesati-calculator": (data) => SadhesatiWidget(data: data),
 
         // yahan baaki tools plug karte jana:
         // "mangal-dosh": (data) => MangalDoshWidget(data: data),

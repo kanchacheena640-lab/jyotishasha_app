@@ -22,62 +22,60 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 🌈 Jyotishasha Gradient for Heading Text
+    const jyotishashaGradient = LinearGradient(
+      colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 🔹 Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Upcoming Shubh Muhurth",
-                style: GoogleFonts.playfairDisplay(
-                  textStyle: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF4B0082),
-                  ),
+          // 🔹 Centered Gradient Heading
+          ShaderMask(
+            shaderCallback: (bounds) => jyotishashaGradient.createShader(
+              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+            ),
+            child: Text(
+              "Upcoming Shubh Muhurth",
+              textAlign: TextAlign.center,
+              style: GoogleFonts.playfairDisplay(
+                textStyle: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white, // placeholder for gradient
                 ),
               ),
-              GestureDetector(
-                onTap: onSeeMore,
-                child: Text(
-                  "See More →",
-                  style: GoogleFonts.montserrat(
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF7E22CE),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 12),
 
-          // 🔹 Horizontal Cards
+          const SizedBox(height: 16),
+
+          // 🔹 Horizontal Cards (smaller boxes)
           SizedBox(
-            height: 130,
+            height: 110, // reduced height
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: muhurthList.length,
               itemBuilder: (context, index) {
                 final item = muhurthList[index];
                 final emoji = _getEmoji(item['event'] ?? '');
+
                 return Container(
-                  width: 170,
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.all(14),
+                  width: 145, // reduced width
+                  margin: const EdgeInsets.only(right: 10),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
+                    // 🌸 Lavender–bluish gradient like greeting section
                     gradient: const LinearGradient(
-                      colors: [Color(0xFFFFF4DA), Color(0xFFFFE8B3)],
+                      colors: [Color(0xFFEDE7FF), Color(0xFFD6CCFF)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(18),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: const [
                       BoxShadow(
                         color: Colors.black12,
@@ -92,30 +90,32 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                       Text(
                         "$emoji  ${item['date'] ?? ''}",
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF4B0082),
+                          color: Color(0xFF3A0CA3),
                         ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         item['event'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                          color: Color(0xFF240046),
                         ),
                       ),
                       const Spacer(),
                       Row(
                         children: [
-                          const Icon(Icons.star, size: 15, color: Colors.amber),
+                          const Icon(Icons.star, size: 14, color: Colors.amber),
                           const SizedBox(width: 4),
                           Text(
                             "${item['score'] ?? ''}/10",
                             style: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.black54,
+                              fontSize: 12,
+                              color: Color(0xFF3C096C),
                             ),
                           ),
                         ],
@@ -124,6 +124,23 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                   ),
                 );
               },
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // 🔹 "See More" below cards, slightly bigger font
+          GestureDetector(
+            onTap: onSeeMore,
+            child: Text(
+              "See More →",
+              style: GoogleFonts.montserrat(
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF5A189A),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

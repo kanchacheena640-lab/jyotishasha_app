@@ -1,169 +1,237 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 
-class SadeSatiWidget extends StatelessWidget {
-  final Map<String, dynamic>? kundaliData;
+class SadhesatiWidget extends StatelessWidget {
+  String formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return "";
+    try {
+      final parsed = DateTime.parse(dateStr);
+      return DateFormat('dd-MM-yyyy').format(parsed);
+    } catch (e) {
+      return dateStr;
+    }
+  }
 
-  const SadeSatiWidget({super.key, required this.kundaliData});
+  final Map<String, dynamic> data;
+
+  const SadhesatiWidget({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
-    // 🔍 Null & structure check
-    if (kundaliData == null ||
-        kundaliData!["yogas"] == null ||
-        kundaliData!["yogas"]["sadhesati"] == null) {
-      return const SizedBox.shrink();
-    }
+    // ✅ Handle nested "yogas" and "sadhesati" paths safely
+    final sadeData = (data["yogas"]?["sadhesati"]) ?? data["sadhesati"] ?? data;
 
-    // 🪔 Extract data safely
-    final data = kundaliData!["yogas"]["sadhesati"] as Map<String, dynamic>;
-    final explanation = data["explanation"]?.toString() ?? "";
-    final shortDescription = data["short_description"]?.toString() ?? "";
-    final status = data["status"]?.toString() ?? "Inactive";
-    final moonRashi = data["moon_rashi"]?.toString() ?? "";
-    final saturnRashi = data["saturn_rashi"]?.toString() ?? "";
+    final explanation = sadeData["explanation"]?.toString() ?? "";
+    final moonRashi = sadeData["moon_rashi"]?.toString() ?? "";
+    final saturnRashi = sadeData["saturn_rashi"]?.toString() ?? "";
+    final status = sadeData["status"]?.toString() ?? "";
+    final shortDesc = sadeData["short_description"]?.toString() ?? "";
 
-    final reportParagraphsList = data["report_paragraphs"];
-    final reportParagraphs = (reportParagraphsList is List)
-        ? reportParagraphsList.map((e) => e.toString()).join("\n\n")
-        : "";
+    final paragraphs = (sadeData["report_paragraphs"] is List)
+        ? List<String>.from(sadeData["report_paragraphs"])
+        : <String>[];
 
-    final summary = (data["summary_block"] is Map)
-        ? data["summary_block"] as Map<String, dynamic>
-        : {};
+    final summary = sadeData["summary_block"] ?? {};
+    final phaseDates = sadeData["phase_dates"] ?? {};
 
     return Container(
-      margin: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 3),
-          ),
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
         ],
       ),
-
-      // 🧩 Main layout
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🌕 Heading
           Text(
-            "Sade Sati Analysis",
+            "Sade Sati Report",
             style: GoogleFonts.playfairDisplay(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              textStyle: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
             ),
           ),
-          const SizedBox(height: 10),
-
-          // 🌙 Status line
-          Text(
-            "Status: $status",
-            style: GoogleFonts.montserrat(
-              fontSize: 14,
-              color: Colors.deepPurple.shade700,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-
-          Text(
-            "Moon Sign: $moonRashi | Saturn Sign: $saturnRashi",
-            style: GoogleFonts.montserrat(
-              fontSize: 13,
-              color: Colors.grey.shade700,
-            ),
-          ),
-
           const SizedBox(height: 12),
 
-          // 📜 Explanation
+          if (shortDesc.isNotEmpty)
+            Text(
+              shortDesc,
+              style: GoogleFonts.montserrat(
+                fontSize: 15,
+                color: Colors.black87,
+                height: 1.5,
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
           if (explanation.isNotEmpty)
             Text(
               explanation,
               style: GoogleFonts.montserrat(
-                fontSize: 14,
-                height: 1.6,
+                fontSize: 15,
                 color: Colors.black87,
+                height: 1.5,
               ),
             ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // 🔹 Report Paragraphs
-          if (reportParagraphs.isNotEmpty)
-            Text(
-              reportParagraphs,
-              style: GoogleFonts.montserrat(
-                fontSize: 14,
-                height: 1.6,
-                color: Colors.black87,
+          Text(
+            "Moon Rashi: $moonRashi",
+            style: GoogleFonts.montserrat(
+              fontSize: 15,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            "Saturn Rashi: $saturnRashi",
+            style: GoogleFonts.montserrat(
+              fontSize: 15,
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            "Status: $status",
+            style: GoogleFonts.montserrat(
+              fontSize: 15,
+              color: status.toLowerCase() == "active"
+                  ? Colors.green
+                  : Colors.redAccent,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          if (paragraphs.isNotEmpty)
+            ...paragraphs.map(
+              (para) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  para,
+                  style: GoogleFonts.montserrat(
+                    fontSize: 15,
+                    color: Colors.black87,
+                    height: 1.5,
+                  ),
+                ),
               ),
             ),
 
-          const SizedBox(height: 14),
+          const SizedBox(height: 20),
 
-          // 📘 Summary Block
-          if (summary.isNotEmpty)
+          if (phaseDates.isNotEmpty)
             Container(
-              width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.deepPurple.shade50, Colors.purple.shade50],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: Colors.purple.shade50,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    summary["heading"]?.toString() ?? "Sade Sati Summary",
+                    "Phase Dates",
                     style: GoogleFonts.playfairDisplay(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.deepPurple,
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  if (summary["points"] is List)
-                    ...List<String>.from(summary["points"])
-                        .map(
-                          (p) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Text(
-                              "• $p",
-                              style: GoogleFonts.montserrat(
-                                fontSize: 14,
-                                height: 1.6,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  const SizedBox(height: 8),
+                  ...phaseDates.entries.map((entry) {
+                    final key = entry.key
+                        .toString()
+                        .replaceAll("_", " ")
+                        .toUpperCase();
+                    final val = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(
+                        "$key: ${formatDate(val["start"])} → ${formatDate(val["end"])}",
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ],
               ),
             ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 20),
 
-          // ✨ Short Description
-          if (shortDescription.isNotEmpty)
-            Text(
-              "🪄 $shortDescription",
-              style: GoogleFonts.montserrat(
-                fontSize: 13,
-                fontStyle: FontStyle.italic,
-                color: Colors.deepPurple,
+          if (summary.isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.purple.shade50, Colors.deepPurple.shade50],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 6,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    summary["heading"] ?? "Summary",
+                    style: GoogleFonts.playfairDisplay(
+                      textStyle: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...List<String>.from(summary["points"] ?? []).map(
+                    (point) => Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "• ",
+                            style: TextStyle(fontSize: 16, height: 1.4),
+                          ),
+                          Expanded(
+                            child: Text(
+                              point,
+                              style: GoogleFonts.montserrat(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

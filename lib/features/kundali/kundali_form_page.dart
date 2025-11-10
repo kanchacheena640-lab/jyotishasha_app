@@ -116,8 +116,9 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
                     lastDate: DateTime.now(),
                     initialDate: DateTime(2000),
                   );
-                  if (d != null)
+                  if (d != null) {
                     dobCtrl.text = d.toIso8601String().split('T').first;
+                  }
                 },
                 validator: (v) => v!.isEmpty ? "Required" : null,
               ),
@@ -164,8 +165,9 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
                         ),
                       ),
                       onPressed: () {
-                        if (_formKey.currentState!.validate())
+                        if (_formKey.currentState!.validate()) {
                           _generateKundali();
+                        }
                       },
                       icon: const Icon(Icons.auto_fix_high),
                       label: const Text(

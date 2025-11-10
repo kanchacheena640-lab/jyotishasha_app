@@ -19,90 +19,128 @@ class HoroscopeCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    Color? colorDot;
+    try {
+      // 🟣 Try to parse known color names (basic set)
+      final colorMap = {
+        'red': Colors.red,
+        'blue': Colors.blue,
+        'green': Colors.green,
+        'yellow': Colors.yellow,
+        'pink': Colors.pink,
+        'purple': Colors.purple,
+        'orange': Colors.orange,
+        'white': Colors.white,
+        'black': Colors.black,
+        'brown': Colors.brown,
+        'grey': Colors.grey,
+        'gray': Colors.grey,
+        'gold': const Color(0xFFFFD700),
+        'silver': const Color(0xFFC0C0C0),
+      };
+      colorDot = colorMap[luckyColor.toLowerCase().trim()];
+    } catch (_) {
+      colorDot = Colors.purpleAccent;
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: double.infinity, // ✅ full width of screen
+        width: double.infinity,
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF7E22CE), Color(0xFF9333EA)],
+            colors: [Color(0xFFFFF5F8), Color(0xFFFCEFF9)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: const [
             BoxShadow(
-              color: Colors.black26,
+              color: Colors.black12,
               blurRadius: 6,
-              offset: Offset(2, 3),
+              offset: Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, // ✅ expand only as needed
           children: [
-            // 🔹 Title
-            Text(
-              title,
-              style: GoogleFonts.playfairDisplay(
-                textStyle: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-
-            // 🔹 Summary text (auto-height, no scroll)
-            Text(
-              summary,
-              style: GoogleFonts.montserrat(
-                textStyle: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white70,
-                  height: 1.4,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // 🔹 Tags Row
+            // 🌟 Title — e.g. "Today’s Horoscope"
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildTag("Color", luckyColor),
-                _buildTag("Number", luckyNumber),
+                Text(
+                  "$title’s Horoscope",
+                  style: GoogleFonts.playfairDisplay(
+                    textStyle: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF5A189A),
+                    ),
+                  ),
+                ),
+                const Icon(Icons.auto_awesome, color: Color(0xFF5A189A)),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // 📝 Summary text
+            Text(
+              summary,
+              style: GoogleFonts.montserrat(
+                textStyle: TextStyle(
+                  fontSize: 14,
+                  height: 1.5,
+                  color: Colors.grey[800],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 14),
+
+            // 🎨 Simple Lucky info text
+            Row(
+              children: [
+                // 🟢 Lucky Color
+                if (colorDot != null)
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: colorDot,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black26, width: 0.5),
+                    ),
+                  ),
+                const SizedBox(width: 6),
+                Text(
+                  "Lucky Color: $luckyColor",
+                  style: GoogleFonts.montserrat(
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF5A189A),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Text(
+                  "Lucky Number: $luckyNumber",
+                  style: GoogleFonts.montserrat(
+                    textStyle: const TextStyle(
+                      fontSize: 13.5,
+                      color: Color(0xFF5A189A),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTag(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 11, color: Colors.white60),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 13,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

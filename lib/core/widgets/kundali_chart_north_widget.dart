@@ -71,7 +71,7 @@ class KundaliChartNorthWidget extends StatelessWidget {
     };
 
     // Text shift logic same as TS: minor offsets per house
-    Offset _shiftForHouse(int house) {
+    Offset shiftForHouse(int house) {
       if ([1, 2, 12].contains(house)) return const Offset(0, -28);
       if ([3, 4, 5].contains(house)) return const Offset(-30, 0);
       if ([6, 7, 8].contains(house)) return const Offset(0, 30);
@@ -104,7 +104,7 @@ class KundaliChartNorthWidget extends StatelessWidget {
                   final pos = scale(basePos);
                   final rashi = rashis[house - 1];
                   final hp = byHouse[house] ?? [];
-                  final shift = _shiftForHouse(house);
+                  final shift = shiftForHouse(house);
                   final shifted = scale(
                     Offset(basePos.dx + shift.dx, basePos.dy + shift.dy),
                   );
@@ -139,7 +139,7 @@ class KundaliChartNorthWidget extends StatelessWidget {
                         ),
                     ],
                   );
-                }).toList(),
+                }),
               ],
             );
           },
@@ -214,9 +214,11 @@ class KundaliChartNorthWidget extends StatelessWidget {
   }
 
   List<int> _getRashisByHouse(int lagnaRashi) {
+    // 🔄 North Indian charts go anti-clockwise
     final out = <int>[];
     for (int i = 0; i < 12; i++) {
-      out.add(((lagnaRashi - 1 + i) % 12) + 1);
+      // move backwards instead of forward
+      out.add(((lagnaRashi - 1 - i + 12) % 12) + 1);
     }
     return out;
   }

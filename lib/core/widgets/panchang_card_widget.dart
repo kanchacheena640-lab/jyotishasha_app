@@ -1,125 +1,190 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jyotishasha_app/features/panchang/panchang_page.dart'; // 👈 import the page
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
+import 'package:jyotishasha_app/core/utils/panchang_event_markup.dart';
 
+/// 🕉️ Smart Panchang Card Widget (Auto-fetches + Suggests Vrat)
 class PanchangCardWidget extends StatelessWidget {
-  final String tithi;
-  final String nakshatra;
-  final String sunrise;
-  final String sunset;
-
-  const PanchangCardWidget({
-    super.key,
-    required this.tithi,
-    required this.nakshatra,
-    required this.sunrise,
-    required this.sunset,
-  });
+  const PanchangCardWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
-        ],
+    return FutureBuilder<http.Response>(
+      future: http.post(
+        Uri.parse("https://jyotishasha-backend.onrender.com/api/panchang"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "latitude": 26.8467,
+          "longitude": 80.9462,
+          "date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
+        }),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Today’s Panchang",
-            style: GoogleFonts.playfairDisplay(
-              textStyle: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF4B0082),
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          _buildRow("Tithi", tithi),
-          _buildRow("Nakshatra", nakshatra),
-          _buildRow("Sunrise", sunrise),
-          _buildRow("Sunset", sunset),
-          const SizedBox(height: 12),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _loadingCard();
+        }
 
-          // 👇 CTA Button (navigation to PanchangPage)
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const PanchangPage()),
-              );
-            },
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+        if (!snapshot.hasData || snapshot.data!.statusCode != 200) {
+          return _errorCard();
+        }
+
+        final data = jsonDecode(snapshot.data!.body);
+        final selected = data["selected_date"];
+
+        final tithi = selected?["tithi"]?["name"] ?? "--";
+        final paksha = selected?["tithi"]?["paksha"] ?? "--";
+        final nakshatra = selected?["nakshatra"]?["name"] ?? "--";
+        final month = selected?["month_name"] ?? "--";
+        final weekday = selected?["weekday"] ?? "--";
+        final sunrise = selected?["sunrise"] ?? "--:--";
+        final sunset = selected?["sunset"] ?? "--:--";
+        final rahu = selected?["rahu_kaal"];
+        final rahuStart = rahu?["start"] ?? "--:--";
+        final rahuEnd = rahu?["end"] ?? "--:--";
+
+        // 🧭 Generate summary + vrat text using markup logic
+        final summary = PanchangEventMarkup.buildSummaryLine(data);
+        final vratLine = PanchangEventMarkup.buildVratSuggestion(data);
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFF3E8FF), Color(0xFFEDE9FE)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "🕉️ Today’s Panchang",
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple,
                 ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 10),
+
+              // 🗓️ Summary line
+              Text(
+                summary.isNotEmpty
+                    ? summary
+                    : "Today is $tithi ($paksha Paksha), Nakshatra $nakshatra. Month: $month.",
+                style: GoogleFonts.montserrat(
+                  fontSize: 14.5,
+                  height: 1.5,
+                  color: Colors.black87,
                 ),
-                child: Text(
-                  "View Full Panchang →",
+              ),
+              const SizedBox(height: 6),
+
+              // 🙏 Vrat / Event suggestion
+              if (vratLine.isNotEmpty)
+                Text(
+                  vratLine,
                   style: GoogleFonts.montserrat(
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF4B0082),
+                    fontSize: 14.5,
+                    color: Colors.deepPurple,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+              const SizedBox(height: 10),
+              Divider(color: Colors.grey.shade300),
+              const SizedBox(height: 6),
+
+              // ☀️ Times row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _infoTile("🌅 Sunrise", sunrise),
+                  _infoTile("🌇 Sunset", sunset),
+                  _infoTile("☸ Rahu Kaal", "$rahuStart–$rahuEnd"),
+                ],
+              ),
+
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const PanchangPage()),
+                  ),
+                  child: Text(
+                    "View Full Panchang →",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 13.5,
+                      color: Colors.blueAccent,
                       fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
                     ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.black54,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.black87,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+  // ⏳ Loading state
+  Widget _loadingCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  // ⚠️ Error fallback
+  Widget _errorCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
+      ),
+      child: const Text("⚠️ Unable to fetch Panchang data."),
+    );
+  }
+
+  // 🪔 Small info tile
+  Widget _infoTile(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey[700]),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: GoogleFonts.montserrat(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            color: Colors.deepPurple,
+          ),
+        ),
+      ],
     );
   }
 }

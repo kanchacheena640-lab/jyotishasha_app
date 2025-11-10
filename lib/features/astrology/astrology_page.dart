@@ -24,6 +24,10 @@ class AstrologyPage extends StatelessWidget {
         {"name": "Mangal Dosh", "icon": Icons.whatshot_outlined},
         {"name": "Kaalsarp Dosh", "icon": Icons.coronavirus_outlined},
         {"name": "Sadhesati Calculator", "icon": Icons.timelapse_outlined},
+        {"name": "Pitra Dosh", "icon": Icons.family_restroom_outlined},
+        {"name": "Nadi Dosh", "icon": Icons.favorite_outline},
+        {"name": "Grahan Dosh", "icon": Icons.dark_mode_outlined},
+        {"name": "Guru Chandal Dosh", "icon": Icons.waves_outlined},
       ],
       "👑 Yog Tools": [
         {"name": "Parashari Rajyog", "icon": Icons.auto_graph_outlined},
@@ -37,6 +41,10 @@ class AstrologyPage extends StatelessWidget {
         {"name": "Dhan Yog", "icon": Icons.currency_rupee_outlined},
         {"name": "Vipreet Rajyog", "icon": Icons.change_circle_outlined},
         {"name": "Lakshmi Yog", "icon": Icons.spa_outlined},
+        {"name": "Budh Aditya Yog", "icon": Icons.lightbulb_outline},
+        {"name": "Adhi Rajyog", "icon": Icons.bar_chart_outlined},
+        {"name": "Kendra Trikon Rajyog", "icon": Icons.insights_outlined},
+        {"name": "Raja Sambandha Yog", "icon": Icons.group_outlined},
       ],
       "💼 Life Path Tools": [
         {"name": "Career Path", "icon": Icons.work_outline_outlined},
@@ -60,7 +68,6 @@ class AstrologyPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🪔 Free Birth Chart
             _buildFreeBirthChartCard(context, theme),
             const SizedBox(height: 20),
 
@@ -72,13 +79,15 @@ class AstrologyPage extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   Text(
                     category,
                     style: GoogleFonts.playfairDisplay(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                      color: category.contains("Dosha")
+                          ? Colors.redAccent
+                          : Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -104,14 +113,14 @@ class AstrologyPage extends StatelessWidget {
                   ),
                 ],
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
     );
   }
 
-  /// 🪔 Free Birth Chart Highlight (with API call)
+  /// 🪔 Free Birth Chart Section
   Widget _buildFreeBirthChartCard(BuildContext context, ThemeData theme) {
     return Container(
       width: double.infinity,
@@ -150,8 +159,6 @@ class AstrologyPage extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 14),
-
-          // ✅ Live Kundali API call
           ElevatedButton.icon(
             onPressed: () async {
               final provider = Provider.of<KundaliProvider>(
@@ -173,7 +180,7 @@ class AstrologyPage extends StatelessWidget {
                 pob: "Lucknow, India",
               );
 
-              if (context.mounted) Navigator.pop(context); // remove loader
+              if (context.mounted) Navigator.pop(context);
 
               if (kundaliData != null) {
                 Navigator.push(
@@ -181,7 +188,7 @@ class AstrologyPage extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (_) => ToolResultPage(
                       toolId: "free-kundali",
-                      formData: kundaliData, // 🎯 live kundali json
+                      formData: kundaliData,
                     ),
                   ),
                 );
@@ -207,60 +214,96 @@ class AstrologyPage extends StatelessWidget {
     );
   }
 
-  /// 🌟 Tool Card Widget
+  /// 🌟 Tool Card
   Widget _buildToolCard(BuildContext context, IconData icon, String name) {
+    // 🕓 Tools not yet launched
+    final comingSoonTools = [
+      "Pitra Dosh",
+      "Nadi Dosh",
+      "Grahan Dosh",
+      "Guru Chandal Dosh",
+    ];
+
+    final isComingSoon = comingSoonTools.contains(name);
+
     return GestureDetector(
       onTap: () {
+        if (isComingSoon) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("Coming Soon!")));
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => ToolResultPage(
               toolId: name.toLowerCase().replaceAll(' ', '-'),
               formData: {
-                "name": "Rohit Sharma",
-                "dob": "15-08-1995",
-                "tob": "10:30 AM",
-                "pob": "Mumbai, India",
+                "name": "Ravi Om Joshi",
+                "dob": "31-03-1985",
+                "tob": "07:45 PM",
+                "pob": "Lucknow, India",
               },
             ),
           ),
         );
       },
-      child: Container(
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFFF3E5F5), Color(0xFFEDE7F6)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.deepPurple.withOpacity(0.1),
-              blurRadius: 6,
-              offset: const Offset(2, 3),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF3E5F5), Color(0xFFEDE7F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.deepPurple.withOpacity(0.1),
+                  blurRadius: 6,
+                  offset: const Offset(2, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 34, color: Colors.deepPurple),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, size: 34, color: Colors.deepPurple),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 🔖 "Coming Soon" label overlay
+          if (isComingSoon)
+            Positioned(
+              bottom: 6,
               child: Text(
-                name,
-                textAlign: TextAlign.center,
+                "Coming Soon",
                 style: GoogleFonts.montserrat(
-                  fontSize: 13,
+                  fontSize: 11,
                   fontWeight: FontWeight.w600,
-                  color: Colors.black87,
+                  color: Colors.redAccent,
                 ),
               ),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:jyotishasha_app/core/models/kundali_model.dart';
 
 class KundaliProvider extends ChangeNotifier {
   KundaliModel? kundali;
+  Map<String, dynamic>? kundaliData; // 🌕 Full Kundali JSON cache
   bool isLoading = false;
   String? errorMessage;
 
@@ -24,21 +25,28 @@ class KundaliProvider extends ChangeNotifier {
         'https://jyotishasha-backend.onrender.com/api/full-kundali-modern',
       );
 
+      final payload = {
+        "name": name,
+        "dob": dob, // ✅ dd-MM-yyyy format
+        "tob": tob,
+        "place_name": pob,
+        "lat": 26.8467, // 🧭 Default Lucknow (for testing)
+        "lng": 80.9462,
+        "timezone": "+05:30",
+        "language": "en",
+        "ayanamsa": "Lahiri",
+      };
+
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "name": name,
-          "dob": dob, // ✅ always dd-mm-yyyy format
-          "tob": tob,
-          "pob": pob,
-        }),
+        body: jsonEncode(payload),
       );
 
       if (response.statusCode == 200) {
         kundali = KundaliModel.fromRawJson(response.body);
-        final decoded = jsonDecode(response.body) as Map<String, dynamic>;
-        return decoded; // ✅ return data to AstrologyPage
+        kundaliData = jsonDecode(response.body) as Map<String, dynamic>;
+        return kundaliData;
       } else {
         errorMessage = "Failed (Status ${response.statusCode})";
         return null;
@@ -52,9 +60,25 @@ class KundaliProvider extends ChangeNotifier {
     }
   }
 
-  /// 🔁 Clear Kundali (optional)
+  /// 🧩 Build consistent payload (useful for reusing in tools)
+  Map<String, dynamic> buildKundaliPayload(Map<String, dynamic> source) {
+    return {
+      "name": source["name"] ?? "",
+      "dob": source["dob"] ?? "",
+      "tob": source["tob"] ?? "",
+      "place_name": source["place_name"] ?? source["pob"] ?? "",
+      "lat": source["lat"] ?? 26.8467,
+      "lng": source["lng"] ?? 80.9462,
+      "timezone": source["timezone"] ?? "+05:30",
+      "language": source["language"] ?? "en",
+      "ayanamsa": source["ayanamsa"] ?? "Lahiri",
+    };
+  }
+
+  /// 🔁 Clear stored Kundali
   void clearKundali() {
     kundali = null;
+    kundaliData = null;
     errorMessage = null;
     notifyListeners();
   }

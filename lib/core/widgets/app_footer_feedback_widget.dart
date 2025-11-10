@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
 class AppFooterFeedbackWidget extends StatelessWidget {
   final TextEditingController _controller = TextEditingController();
@@ -9,6 +8,13 @@ class AppFooterFeedbackWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // 🌈 Jyotishasha gradient (saffron → purple)
+    const jyotishashaGradient = LinearGradient(
+      colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+    );
 
     return Container(
       width: double.infinity,
@@ -37,35 +43,43 @@ class AppFooterFeedbackWidget extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
-          // 🚀 Send Button (centered)
-          SizedBox(
-            width: 140,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Thanks for your feedback!")),
-                );
-                _controller.clear();
-              },
-              icon: const Icon(Icons.send_rounded, size: 16),
-              label: const Text("Send"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          // ✨ Gradient "Send" text button (See More style)
+          GestureDetector(
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Thanks for your feedback!")),
+              );
+              _controller.clear();
+            },
+            child: ShaderMask(
+              shaderCallback: (bounds) => jyotishashaGradient.createShader(
+                Rect.fromLTWH(0, 0, bounds.width, bounds.height),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(
+                    Icons.send_rounded,
+                    size: 22, // 🔹 slightly bigger icon
+                    color: Colors.white, // placeholder for gradient
+                  ),
+                  SizedBox(width: 6),
+                  Text(
+                    "Send",
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white, // needed for gradient
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
 
           // ⚖️ Copyright & Links
           Text(

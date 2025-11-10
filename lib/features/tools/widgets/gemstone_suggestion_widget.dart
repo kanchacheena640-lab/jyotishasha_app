@@ -90,7 +90,7 @@ class GemstoneSuggestionWidget extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        ...sections.map((s) => _ctaCard(context, s)).toList(),
+        ...sections.map((s) => _ctaCard(context, s)),
       ],
     );
   }

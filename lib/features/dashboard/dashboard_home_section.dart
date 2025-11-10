@@ -11,6 +11,8 @@ import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_form_page.dart';
 import 'package:jyotishasha_app/features/tools/tool_result_page.dart';
+import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
+import 'package:go_router/go_router.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -28,16 +30,61 @@ class DashboardHomeSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const GreetingHeaderWidget(
-                userName: "Suvi",
-                zodiacSign: "♑ Capricorn",
-                sunriseTime: "06:27 AM",
-                sunsetTime: "05:43 PM",
-              ),
+              const GreetingHeaderWidget(),
               const SizedBox(height: 16),
 
-              _buildPanchangCard(context),
+              // 🌞 Darshan Button (Gradient Background + Full Width)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: GestureDetector(
+                  onTap: () {
+                    context.push('/darshan');
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.deepPurple.withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.self_improvement_outlined,
+                          size: 22,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          "Today's Lord : Darshan & Mantra",
+                          style: GoogleFonts.playfairDisplay(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 24),
+
+              const PanchangCardWidget(),
+              const SizedBox(height: 16),
 
               _buildHoroscopeSection(context),
               const SizedBox(height: 28),
@@ -322,9 +369,9 @@ class DashboardHomeSection extends StatelessWidget {
 
     // Map tool titles to their backend IDs
     final Map<String, String> toolMap = {
-      "Free Kundali": "full-kundali",
       "Lagna Finder": "lagna_finder",
       "Rashi Finder": "rashi_finder",
+      "Gemstone Suggestion": "gemstone_suggestion",
       "Love Match": "love-match",
       "Rajyog Check": "rajya_sambandh_rajyog",
       "Health Insight": "health_insight",
@@ -354,7 +401,7 @@ class DashboardHomeSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Astrology Tools",
+              "Astrology Studio",
               style: GoogleFonts.playfairDisplay(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -363,7 +410,7 @@ class DashboardHomeSection extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              "Explore free astrology tools for daily insights and calculations.",
+              "You don’t need an astrologer — understand your own Kundali like a pro.",
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 16),

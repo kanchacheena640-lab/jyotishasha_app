@@ -36,7 +36,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
     final dob = (widget.formData["dob"] ?? "").toString();
     final tob = (widget.formData["tob"] ?? "").toString();
     final pob = (widget.formData["pob"] ?? "").toString();
-    return "tool_cache_${widget.toolId}_${name}_${dob}_${tob}_${pob}";
+    return "tool_cache_${widget.toolId}_${name}_${dob}_${tob}_$pob";
   }
 
   @override
