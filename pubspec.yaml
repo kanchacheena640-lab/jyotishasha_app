@@ -9,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.3.0
 
   # 🌐 HTTP Requests (latest)
   http: ^1.2.2
@@ -21,10 +20,11 @@ dependencies:
 
   # 🔑 Google & Facebook Sign-In
   google_sign_in: ^6.2.1
-  flutter_facebook_auth: ^6.1.1
+  flutter_facebook_auth: ^7.1.1
 
-  # 📍 Google Places Autocomplete
+  # 📍 Google Places Autocomplete (Fixed version)
   google_places_flutter: ^2.1.1
+  
 
   # 🗓️ Date & Time Formatting
   intl: ^0.19.0
@@ -40,13 +40,19 @@ dependencies:
   flutter_dotenv: ^5.1.0
   timezone: ^0.10.1
   provider: ^6.0.5
+  geocoding: ^3.0.0
 
+  # 📄 File & Sharing
   syncfusion_flutter_pdfviewer: ^27.1.55
   share_plus: ^10.0.2
   permission_handler: ^11.3.1
   path_provider: ^2.1.3
+
+  # 🧭 Navigation + Cache
   go_router: ^16.3.0
   shared_preferences: ^2.5.3
+
+  # ✨ UI Effects
   shimmer: ^3.0.0
   audioplayers: ^6.5.1
 

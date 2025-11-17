@@ -60,7 +60,7 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => KundaliDetailPage(kundaliData: kundaliData),
+            builder: (_) => KundaliDetailPage(data: kundaliData),
           ),
         );
       } else {

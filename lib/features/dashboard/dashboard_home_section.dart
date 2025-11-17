@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
@@ -8,11 +9,17 @@ import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
 import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
 import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
-import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
-import 'package:jyotishasha_app/features/kundali/kundali_form_page.dart';
 import 'package:jyotishasha_app/features/tools/tool_result_page.dart';
 import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
 import 'package:go_router/go_router.dart';
+import 'package:jyotishasha_app/features/astrology/astrology_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/widgets/get_anyone_horoscope_card.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -21,6 +28,7 @@ class DashboardHomeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final daily = context.watch<DailyProvider>();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -30,8 +38,23 @@ class DashboardHomeSection extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const GreetingHeaderWidget(),
+              GreetingHeaderWidget(daily: daily),
               const SizedBox(height: 16),
+
+              // 🌟 Divine Energy Heading
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  "Connect with Divine Energy",
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
 
               // 🌞 Darshan Button (Gradient Background + Full Width)
               Padding(
@@ -112,7 +135,7 @@ class DashboardHomeSection extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
-              _buildFreeKundaliBanner(context),
+              const GetAnyoneHoroscopeCard(),
               const SizedBox(height: 32),
 
               _buildAstrologyToolsSection(context),
@@ -186,27 +209,30 @@ class DashboardHomeSection extends StatelessWidget {
   // 🌙 Horoscope Section -------------------------------------------------------
   Widget _buildHoroscopeSection(BuildContext context) {
     final theme = Theme.of(context);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const HoroscopeCardWidget(
-            title: "Today",
-            summary:
-                "The Moon in your sign boosts emotions and intuition. Trust your instincts today.",
-            luckyColor: "Lavender",
-            luckyNumber: "7",
-          ),
+          // ⭐ TODAY Horoscope (Dashboard Summary Card)
+          const HoroscopeCardWidget(title: "Today"),
+
           const SizedBox(height: 12),
+
           Row(
             children: [
+              // ⭐ Tomorrow Button → Opens Tomorrow TAB
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HoroscopePage()),
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HoroscopePage(initialTab: 1),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.calendar_today),
                   label: const Text("Tomorrow"),
                   style: OutlinedButton.styleFrom(
@@ -221,13 +247,20 @@ class DashboardHomeSection extends StatelessWidget {
                   ),
                 ),
               ),
+
               const SizedBox(width: 12),
+
+              // ⭐ Weekly Button → Opens Weekly TAB
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const HoroscopePage()),
-                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const HoroscopePage(initialTab: 2),
+                      ),
+                    );
+                  },
                   icon: const Icon(Icons.view_week),
                   label: const Text("Weekly"),
                   style: OutlinedButton.styleFrom(
@@ -249,210 +282,142 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🔮 Free Kundali Banner -----------------------------------------------------
-  Widget _buildFreeKundaliBanner(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: AppColors.purpleGradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Get Your Free Kundali Now",
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "Personalized birth chart with insights for you and your loved ones.",
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              // For Me → Static Demo
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    final kundaliData = {
-                      "profile": {
-                        "name": "Suvi Vish",
-                        "dob": "1997-08-14",
-                        "tob": "10:15",
-                        "place": "Lucknow, India",
-                      },
-                      "lagna_sign": "Libra",
-                      "rashi": "Aquarius",
-                      "lagna_trait":
-                          "You are balanced, creative and diplomatic in relationships.",
-                      "dasha_summary": {
-                        "current_block": {
-                          "mahadasha": "Venus",
-                          "antardasha": "Mercury",
-                          "period": "2023–2026",
-                        },
-                      },
-                      "gemstone_suggestion": {
-                        "gemstone": "Diamond",
-                        "paragraph":
-                            "Diamond enhances Venus energy, bringing harmony and beauty.",
-                      },
-                      "yogas": {
-                        "Gajakesari": {"is_active": true, "strength": "Strong"},
-                      },
-                    };
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            KundaliDetailPage(kundaliData: kundaliData),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.person_outline),
-                  label: const Text(
-                    "For Me",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // For Others → Form
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const KundaliFormPage()),
-                  ),
-                  icon: const Icon(Icons.group_outlined),
-                  label: const Text(
-                    "For Others",
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   // 🧭 Astrology Tools Section -------------------------------------------------
   Widget _buildAstrologyToolsSection(BuildContext context) {
     final theme = Theme.of(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    // Map tool titles to their backend IDs
-    final Map<String, String> toolMap = {
-      "Lagna Finder": "lagna_finder",
-      "Rashi Finder": "rashi_finder",
-      "Gemstone Suggestion": "gemstone_suggestion",
-      "Love Match": "love-match",
-      "Rajyog Check": "rajya_sambandh_rajyog",
-      "Health Insight": "health_insight",
-    };
+    return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      future: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('profiles')
+          .where('isActive', isEqualTo: true)
+          .limit(1)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    // Default sample form data (later replace with user input/profile)
-    final Map<String, dynamic> defaultFormData = {
-      "name": "Ravi",
-      "dob": "1985-03-31",
-      "tob": "19:45",
-      "latitude": 26.8467,
-      "longitude": 80.9462,
-      "language": "hi",
-    };
+        // 🔹 Default data (fallback)
+        Map<String, dynamic> profileData = {
+          "name": "Guest User",
+          "dob": "1990-01-01",
+          "tob": "10:00",
+          "pob": "Delhi, India",
+          "lat": 28.6139,
+          "lng": 77.2090,
+          "language": "en",
+        };
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "Astrology Studio",
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
-              ),
+        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+          profileData = snapshot.data!.docs.first.data();
+        }
+
+        // 🔹 Tools mapping (backend IDs)
+        final Map<String, String> toolMap = {
+          "Lagna Finder": "lagna_finder",
+          "Rashi Finder": "rashi_finder",
+          "Gemstone Suggestion": "gemstone_suggestion",
+          "Love Match": "love-match",
+          "Rajyog Check": "rajya_sambandh_rajyog",
+          "Health Insight": "health_insight",
+        };
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 6),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              "You don’t need an astrologer — understand your own Kundali like a pro.",
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Astrology Studio",
+                  style: GoogleFonts.playfairDisplay(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "You don’t need an astrologer — understand your own Kundali like a pro.",
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
 
-            // 🔮 Tools Grid
-            GridView.count(
-              crossAxisCount: 3,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1,
-              children: toolMap.entries.map((entry) {
-                return _toolCard(context, _getIcon(entry.key), entry.key, () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ToolResultPage(
-                        toolId:
-                            entry.value, // 🔮 Backend key (e.g. "lagna_finder")
-                        formData:
-                            defaultFormData, // 🪔 Birth details / user data
+                // 🔮 Tools Grid
+                GridView.count(
+                  crossAxisCount: 3,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 1,
+                  children: toolMap.entries.map((entry) {
+                    return _toolCard(
+                      context,
+                      _getIcon(entry.key),
+                      entry.key,
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ToolResultPage(
+                              toolId: entry.value, // Backend key (dynamic)
+                              formData: {
+                                "name": profileData['name'],
+                                "dob": profileData['dob'],
+                                "tob": profileData['tob'],
+                                "pob": profileData['pob'],
+                                "lat": profileData['lat'] ?? 26.8467,
+                                "lng": profileData['lng'] ?? 80.9462,
+                                "language": profileData['language'] ?? "en",
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 12),
+                Center(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AstrologyPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.apps),
+                    label: const Text("More Tools"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7C3AED),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
                       ),
                     ),
-                  );
-                });
-              }).toList(),
-            ),
-
-            const SizedBox(height: 12),
-            Center(
-              child: ElevatedButton.icon(
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("More tools coming soon...")),
+                  ),
                 ),
-                icon: const Icon(Icons.apps),
-                label: const Text("More Tools"),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -521,125 +486,159 @@ class DashboardHomeSection extends StatelessWidget {
     }
   }
 
-  // 📰 Blog Section ------------------------------------------------------------
+  // 📰 Blog Section (Dynamic from WordPress) -------------------------------
   Widget _buildBlogSection(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Astrology Blog Highlights",
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Read the latest updates, tips and celestial insights.",
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 180,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _blogCard(
-                  context,
-                  "Full Moon in Aries — How it Affects You",
-                  "Lunar Insights",
-                  "https://images.unsplash.com/photo-1506744038136-46273834b3fb",
-                ),
-                _blogCard(
-                  context,
-                  "Mercury Retrograde Survival Guide",
-                  "Planetary Tips",
-                  "https://images.unsplash.com/photo-1523983306281-4b570fba04c4",
-                ),
-                _blogCard(
-                  context,
-                  "Top 5 Remedies for Rahu & Ketu",
-                  "Astrology Remedies",
-                  "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e",
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.menu_book_rounded),
-              label: const Text("Explore Blog"),
-            ),
-          ),
-        ],
+
+    return FutureBuilder(
+      future: http.get(
+        Uri.parse(
+          "https://jyotishasha.com/wp-json/wp/v2/posts?_embed&per_page=5",
+        ),
       ),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return const Center(child: Text("Failed to load blog posts"));
+        }
+
+        final response = snapshot.data as http.Response;
+        if (response.statusCode != 200) {
+          return const Center(child: Text("No blog data found"));
+        }
+
+        final List posts = jsonDecode(response.body);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Astrology Blog Highlights",
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Read the latest updates, tips and celestial insights.",
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+
+              SizedBox(
+                height: 200,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: posts.length,
+                  itemBuilder: (context, index) {
+                    final post = posts[index];
+                    final title = post["title"]["rendered"];
+                    final imageUrl =
+                        post["_embedded"]?["wp:featuredmedia"]?[0]?["source_url"] ??
+                        "https://jyotishasha.com/default-thumbnail.jpg";
+                    final tag =
+                        post["_embedded"]?["wp:term"]?[0]?[0]?["name"] ??
+                        "Astrology";
+
+                    return _blogCard(
+                      context,
+                      title,
+                      tag,
+                      imageUrl,
+                      post["link"],
+                    );
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    launchUrl(Uri.parse("https://jyotishasha.com/blog"));
+                  },
+                  icon: const Icon(Icons.menu_book_rounded),
+                  label: const Text("Explore Blog"),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  // 🧩 Blog Card ---------------------------------------------------------------
+  // 🧩 Blog Card -----------------------------------------------------------
   Widget _blogCard(
     BuildContext context,
     String title,
     String tag,
     String imageUrl,
+    String link,
   ) {
     final theme = Theme.of(context);
-    return Container(
-      width: 220,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        gradient: AppColors.purpleGradient,
-        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: Image.network(
-              imageUrl,
-              height: 100,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+    return GestureDetector(
+      onTap: () => launchUrl(Uri.parse(link)),
+      child: Container(
+        width: 220,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: AppColors.purpleGradient,
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+              child: Image.network(
+                imageUrl,
                 height: 100,
-                color: Colors.grey[300],
-                child: const Icon(Icons.image_not_supported, size: 40),
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  height: 100,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image_not_supported, size: 40),
+                ),
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  tag,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white70,
+                  const SizedBox(height: 4),
+                  Text(
+                    tag,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white70,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

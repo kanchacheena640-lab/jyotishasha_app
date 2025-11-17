@@ -5,6 +5,11 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
+
+// 🔑 Your Google API Key (keep in .env ideally)
+const String kGoogleApiKey = "YOUR_GOOGLE_API_KEY";
 
 class PanchangPage extends StatefulWidget {
   const PanchangPage({super.key});
@@ -17,20 +22,31 @@ class _PanchangPageState extends State<PanchangPage> {
   Map<String, dynamic>? panchangData;
   bool isLoading = true;
   String currentLocation = "Lucknow, India";
+  double currentLat = 26.8467;
+  double currentLng = 80.9462;
+
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _fetchPanchang();
+    _fetchPanchang(); // Load Lucknow initially
   }
 
   Future<void> _fetchPanchang() async {
+    await _fetchPanchangWithLocation(currentLat, currentLng);
+  }
+
+  Future<void> _fetchPanchangWithLocation(double lat, double lng) async {
     const url = "https://jyotishasha-backend.onrender.com/api/panchang";
+
     final body = {
-      "latitude": 26.8467,
-      "longitude": 80.9462,
+      "latitude": lat,
+      "longitude": lng,
       "date": DateFormat('yyyy-MM-dd').format(DateTime.now()),
     };
+
+    setState(() => isLoading = true);
 
     try {
       final res = await http.post(
@@ -44,6 +60,8 @@ class _PanchangPageState extends State<PanchangPage> {
         setState(() {
           panchangData = decoded["selected_date"];
           isLoading = false;
+          currentLat = lat;
+          currentLng = lng;
         });
       } else {
         setState(() => isLoading = false);
@@ -52,6 +70,40 @@ class _PanchangPageState extends State<PanchangPage> {
       debugPrint("Panchang fetch error: $e");
       setState(() => isLoading = false);
     }
+  }
+
+  void _openPlacePickerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Change Location"),
+        content: GooglePlaceAutoCompleteTextField(
+          textEditingController: _searchController,
+          googleAPIKey: kGoogleApiKey,
+          debounceTime: 800,
+          countries: const ["in"],
+          isLatLngRequired: true,
+          getPlaceDetailWithLatLng: (Prediction prediction) {
+            final lat = double.tryParse(prediction.lat ?? '') ?? currentLat;
+            final lng = double.tryParse(prediction.lng ?? '') ?? currentLng;
+            setState(() {
+              currentLocation = prediction.description ?? "Selected Place";
+            });
+            Navigator.pop(context);
+            _fetchPanchangWithLocation(lat, lng);
+          },
+          itemClick: (Prediction prediction) {
+            _searchController.text = prediction.description ?? "";
+          },
+          itemBuilder: (context, index, Prediction prediction) {
+            return ListTile(
+              leading: const Icon(Icons.location_on_outlined),
+              title: Text(prediction.description ?? ""),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -123,13 +175,7 @@ class _PanchangPageState extends State<PanchangPage> {
                 ],
               ),
               TextButton.icon(
-                onPressed: () async {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Location picker coming soon 🌏"),
-                    ),
-                  );
-                },
+                onPressed: _openPlacePickerDialog,
                 icon: const Icon(Icons.location_on_outlined, size: 18),
                 label: const Text("Change"),
               ),
@@ -177,11 +223,11 @@ class _PanchangPageState extends State<PanchangPage> {
           const SizedBox(height: 12),
           _dataRow(
             "Tithi",
-            "${d['tithi']?['name']} (${d['tithi']?['paksha'] ?? ''})",
+            "${d['tithi']?['name']} (${d['tithi']?['paksha']})",
           ),
           _dataRow(
             "Nakshatra",
-            "${d['nakshatra']?['name']} (Pada ${d['nakshatra']?['pada'] ?? ''})",
+            "${d['nakshatra']?['name']} (Pada ${d['nakshatra']?['pada']})",
           ),
           _dataRow("Yoga", d['yoga']?['name']),
           _dataRow("Karana", d['karan']?['name']),

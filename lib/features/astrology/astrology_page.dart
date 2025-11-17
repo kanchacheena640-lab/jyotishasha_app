@@ -159,6 +159,8 @@ class AstrologyPage extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 14),
+
+          // 🔹 Personalized Button
           ElevatedButton.icon(
             onPressed: () async {
               final provider = Provider.of<KundaliProvider>(
@@ -166,6 +168,19 @@ class AstrologyPage extends StatelessWidget {
                 listen: false,
               );
 
+              final profile = provider.kundaliData ?? {};
+
+              // 🧩 Step 1: Validate profile data
+              if (profile.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Please complete your birth details first"),
+                  ),
+                );
+                return;
+              }
+
+              // 🧩 Step 2: Show loader
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -173,13 +188,18 @@ class AstrologyPage extends StatelessWidget {
                     const Center(child: CircularProgressIndicator()),
               );
 
-              final kundaliData = await provider.fetchKundali(
-                name: "Ravi Om Joshi",
-                dob: "31-03-1985",
-                tob: "19:45",
-                pob: "Lucknow, India",
+              // 🧩 Step 3: Fetch Kundali with user's saved data
+              final kundaliData = await provider.loadFromManualInput(
+                name: profile["name"] ?? "",
+                dob: profile["dob"] ?? "",
+                tob: profile["tob"] ?? "",
+                pob: profile["pob"] ?? profile["place_name"] ?? "",
+                lat: (profile["lat"] ?? 26.8467).toDouble(),
+                lng: (profile["lng"] ?? 80.9462).toDouble(),
+                language: profile["language"] ?? "en",
               );
 
+              // 🧩 Step 4: Close loader and show result
               if (context.mounted) Navigator.pop(context);
 
               if (kundaliData != null) {

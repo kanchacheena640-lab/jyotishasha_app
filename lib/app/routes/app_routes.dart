@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 
 // 🌅 Entry Screens
 import '../../features/splash/splash_page.dart';
@@ -14,7 +16,6 @@ import '../../features/reports/pages/report_catalog_page.dart';
 import '../../features/asknow/asknow_chat_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/subscription/subscription_page.dart';
-import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 
 // ⚠️ Utility
 // optional: if not created yet, comment it
@@ -23,6 +24,26 @@ import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 final GoRouter appRouter = GoRouter(
   debugLogDiagnostics: true,
   initialLocation: '/splash',
+
+  // 🔐 Redirect based on Firebase Auth state
+  redirect: (context, state) {
+    final user = FirebaseAuth.instance.currentUser;
+    final goingToLogin = state.matchedLocation == '/login';
+    final goingToSplash = state.matchedLocation == '/splash';
+
+    // 1️⃣ If user is not logged in → always go to login (except splash)
+    if (user == null && !goingToLogin && !goingToSplash) {
+      return '/login';
+    }
+
+    // 2️⃣ If user already logged in and trying to open login → go to dashboard
+    if (user != null && goingToLogin) {
+      return '/dashboard';
+    }
+
+    // 3️⃣ Otherwise → continue normally
+    return null;
+  },
 
   // ✅ Fallback for unknown routes
   errorBuilder: (context, state) => Scaffold(
@@ -38,13 +59,13 @@ final GoRouter appRouter = GoRouter(
     // Root redirect
     GoRoute(path: '/', redirect: (_, __) => '/splash'),
 
-    // Entry flow
+    // 🌅 Entry flow
     GoRoute(path: '/splash', builder: (_, __) => const SplashPage()),
     GoRoute(path: '/onboarding', builder: (_, __) => const OnboardingPage()),
     GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
     GoRoute(path: '/birth', builder: (_, __) => const BirthDetailPage()),
 
-    // Main sections
+    // 🏠 Main sections
     GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
     GoRoute(path: '/astrology', builder: (_, __) => const AstrologyPage()),
     GoRoute(path: '/reports', builder: (_, __) => const ReportCatalogPage()),
