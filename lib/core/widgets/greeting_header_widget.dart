@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
-import 'package:jyotishasha_app/core/state/kundali_provider.dart';
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
 
@@ -12,12 +12,13 @@ class GreetingHeaderWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kundali = context.watch<KundaliProvider>();
+    final firebase = context.watch<FirebaseKundaliProvider>();
+    final kundali = firebase.kundaliData ?? {};
     final panchang = context.watch<PanchangProvider>();
+    final dailyProvider = context.watch<DailyProvider>(); // ✅ FIX
 
-    final displayName = kundali.kundaliData?["name"] ?? "Friend";
-
-    final birthRashi = kundali.kundaliData?["rashi"] ?? ""; // Janma Rashi
+    final displayName = kundali["profile"]?["name"] ?? "Friend";
+    final birthRashi = kundali["rashi"] ?? "";
     final zodiacAsset = _zodiacAssetForRashi(birthRashi);
 
     return Container(
@@ -86,7 +87,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                         ),
                       ),
 
-                      if (birthRashi != null) ...[
+                      if (birthRashi.isNotEmpty) ...[
                         const TextSpan(text: "  "),
                         TextSpan(
                           text: "($birthRashi Rashi)",
@@ -116,7 +117,7 @@ class GreetingHeaderWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.deepPurple.shade100, width: 1),
             ),
-            child: daily.isLoading
+            child: dailyProvider.isLoading
                 ? Text(
                     "Loading your personal horoscope for today...",
                     style: GoogleFonts.montserrat(
@@ -128,10 +129,10 @@ class GreetingHeaderWidget extends StatelessWidget {
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (daily.aspectLine != null &&
-                          daily.aspectLine!.trim().isNotEmpty)
+                      if (dailyProvider.aspectLine != null &&
+                          dailyProvider.aspectLine!.trim().isNotEmpty)
                         Text(
-                          daily.aspectLine!,
+                          dailyProvider.aspectLine!,
                           style: GoogleFonts.montserrat(
                             fontSize: 14.5,
                             color: Colors.deepPurple.shade800,
@@ -153,7 +154,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                       const SizedBox(height: 4),
 
                       Text(
-                        daily.remedyLine ?? "—",
+                        dailyProvider.remedyLine ?? "—",
                         style: GoogleFonts.montserrat(
                           fontSize: 14,
                           color: Colors.deepPurple.shade700,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
+import 'package:jyotishasha_app/features/astrology/astrology_tool_detail_page.dart';
 
 // 🌅 Entry Screens
 import '../../features/splash/splash_page.dart';
@@ -79,6 +80,18 @@ final GoRouter appRouter = GoRouter(
       path: '/darshan',
       name: 'darshan',
       builder: (context, state) => const DarshanPage(),
+    ),
+    GoRoute(
+      path: '/astrology/detail',
+      builder: (context, state) {
+        final args = state.extra as Map<String, dynamic>? ?? {};
+
+        return AstrologyToolDetailPage(
+          title: args['title'] ?? 'Detail',
+          data: args['data'],
+          kundaliData: args['kundali'] ?? {},
+        );
+      },
     ),
   ],
 );

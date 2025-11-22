@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/kundali_chart_north_widget.dart';
-import 'kundali_section_detail_page.dart';
+import 'dart:io';
+import 'dart:ui';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:flutter/rendering.dart';
 
 class KundaliDetailPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -15,8 +18,6 @@ class KundaliDetailPage extends StatelessWidget {
     final dasha = Map<String, dynamic>.from(
       data["dasha_summary"]?["current_block"] ?? {},
     );
-
-    // ⭐ FINAL FIX — exact backend path
     final List<dynamic> planets = List<dynamic>.from(
       data["chart_data"]?["planets"] ?? [],
     );
@@ -35,74 +36,16 @@ class KundaliDetailPage extends StatelessWidget {
               antardasha: dasha["antardasha"] ?? "-",
               planets: planets,
             ),
-            const SizedBox(height: 16),
 
-            // GRID CARDS
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _buildGrid(context),
-            ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildGrid(BuildContext context) {
-    final List<_KTile> tiles = [
-      _KTile("🧿", "Lagna Insight", data["lagna_trait"]),
-      _KTile("🌙", "Rashi Traits", data["moon_traits"]),
-      _KTile("☀️", "Planet Overview", data["planet_overview"]),
-      _KTile("🏠", "House Overview", data["houses_overview"]),
-      _KTile("⚡", "Yogas & Doshas", data["yogas"]),
-      _KTile("💎", "Gemstone Suggestion", data["gemstone_suggestion"]),
-      _KTile("🕉️", "Vimshottari Dasha", data["dasha_summary"]),
-      _KTile("📿", "Current Dasha", data["grah_dasha_block"]),
-      _KTile("🛰️", "Transit Analysis", data["transit_analysis"]),
-      _KTile("❤️", "Life Aspects", data["life_aspects"]),
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: tiles.length,
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 14,
-        mainAxisSpacing: 14,
-        childAspectRatio: 1.15,
-      ),
-      itemBuilder: (context, i) {
-        final t = tiles[i];
-        return _DashTile(
-          emoji: t.emoji,
-          title: t.title,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) =>
-                    KundaliSectionDetailPage(title: t.title, data: t.data),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 }
 
-class _KTile {
-  final String emoji;
-  final String title;
-  final dynamic data;
-  _KTile(this.emoji, this.title, this.data);
-}
-
-//
-// ---------------------- HEADER SECTION ----------------------
-//
+// ---------------------------------------------------
 
 class _HeaderSection extends StatelessWidget {
   final Map<String, dynamic> profile;
@@ -113,7 +56,7 @@ class _HeaderSection extends StatelessWidget {
   final String antardasha;
   final List<dynamic> planets;
 
-  const _HeaderSection({
+  _HeaderSection({
     required this.profile,
     required this.location,
     required this.lagna,
@@ -123,7 +66,8 @@ class _HeaderSection extends StatelessWidget {
     required this.planets,
   });
 
-  // Capitalize each word
+  final GlobalKey _shareKey = GlobalKey();
+
   String _cap(String? text) {
     if (text == null || text.isEmpty) return "-";
     return text
@@ -133,7 +77,6 @@ class _HeaderSection extends StatelessWidget {
         .join(" ");
   }
 
-  // Convert yyyy-mm-dd → dd-mm-yyyy
   String _formatDob(String? dob) {
     if (dob == null || dob.isEmpty) return "-";
     if (dob.contains("-")) {
@@ -147,23 +90,10 @@ class _HeaderSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    print("🟦 PROFILE: $profile");
-    print("🟦 PROFILE.pob: ${profile["pob"]}");
-
-    print("🟩 LOCATION: $location");
-    print("🟩 LOCATION.place_name: ${location["place_name"]}");
-
     final String name = _cap(profile["name"]);
     final String dob = _formatDob(profile["dob"]);
     final String tob = profile["tob"] ?? "-";
-
-    // DEBUG BEFORE FINAL RESOLUTION
-    print("🟧 BEFORE RESOLVE → profile.pob: ${profile["pob"]}");
-    print("🟧 BEFORE RESOLVE → location.place_name: ${location["place_name"]}");
-    print("🟧 BEFORE RESOLVE → profile.place_name: ${profile["place_name"]}");
-
     final String pob = profile["pob"] ?? "-";
-    print("📍 DEBUG POB from profile.place_name = $pob");
 
     return Container(
       width: double.infinity,
@@ -179,123 +109,119 @@ class _HeaderSection extends StatelessWidget {
         children: [
           const SizedBox(height: 12),
 
-          // ⭐ One-line typewriter style
-          Text(
-            "Name: $name  |  DOB: $dob  |  TOB: $tob  |",
-            style: GoogleFonts.montserrat(color: Colors.white, fontSize: 13),
-            textAlign: TextAlign.center,
-          ),
-
-          const SizedBox(height: 5),
-
-          // ⭐ BIGGER KUNDALI CHART WITH SPACING
-          Padding(
-            padding: const EdgeInsets.only(top: 10, bottom: 10),
-            child: Container(
-              height: 260,
-              decoration: BoxDecoration(
-                gradient: const RadialGradient(
-                  colors: [
-                    Color(0xFFF5EAFE), // very light divine lavender center glow
-                    Color(0xFF6D28D9), // Jyotishasha purple mid
-                    Color(0xFF4C1D95), // deep cosmic purple edges
-                  ],
-                  stops: [0.15, 0.55, 1.0], // stronger center glow
-                  radius: 1.1,
-                ),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x805B21B6), // purple ambient shadow
-                    blurRadius: 24,
-                    spreadRadius: 6,
-                    offset: Offset(0, 8), // SHADOW DOWN → chart looks raised
+          RepaintBoundary(
+            key: _shareKey,
+            child: Column(
+              children: [
+                Text(
+                  "Name: $name  |  DOB: $dob  |  TOB: $tob  |  POB: $pob",
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white,
+                    fontSize: 13,
                   ),
-                  BoxShadow(
-                    color:
-                        Colors.white30, // top white highlight → EMBOSS effect
-                    blurRadius: 12,
-                    spreadRadius: -2,
-                    offset: Offset(0, -4),
-                  ),
-                ],
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Colors.white24, width: 1.2),
-              ),
-              child: Center(
-                child: KundaliChartNorthWidget(
-                  planets: planets,
-                  lagnaSign: lagna,
-                  size: 240,
+                  textAlign: TextAlign.center,
                 ),
-              ),
+
+                const SizedBox(height: 10),
+
+                Container(
+                  height: 260,
+                  decoration: BoxDecoration(
+                    gradient: const RadialGradient(
+                      colors: [
+                        Color(0xFFF5EAFE),
+                        Color(0xFF6D28D9),
+                        Color(0xFF4C1D95),
+                      ],
+                      stops: [0.15, 0.55, 1.0],
+                      radius: 1.1,
+                    ),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x805B21B6),
+                        blurRadius: 24,
+                        spreadRadius: 6,
+                        offset: Offset(0, 8),
+                      ),
+                      BoxShadow(
+                        color: Colors.white30,
+                        blurRadius: 12,
+                        spreadRadius: -2,
+                        offset: Offset(0, -4),
+                      ),
+                    ],
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white24, width: 1.2),
+                  ),
+                  child: Center(
+                    child: KundaliChartNorthWidget(
+                      planets: planets,
+                      lagnaSign: lagna,
+                      size: 240,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  "Lagna: $lagna  |  Rashi: $rashi  |  Current Dasha: $mahadasha",
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  "✨ Generated by Jyotishasha",
+                  style: GoogleFonts.montserrat(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+
+                const SizedBox(height: 6),
+              ],
             ),
           ),
 
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
 
-          Text(
-            "Lagna: $lagna  |  Rashi: $rashi  |  Current Dasha: $mahadasha",
-            style: GoogleFonts.montserrat(color: Colors.white70, fontSize: 12),
-            textAlign: TextAlign.center,
+          TextButton.icon(
+            onPressed: () => _shareKundali(),
+            icon: const Icon(Icons.share, color: Colors.white),
+            label: const Text(
+              "Share Kundali",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
-
-          const SizedBox(height: 6),
         ],
       ),
     );
   }
-}
 
-//
-// ---------------------- GRID TILE ----------------------
-//
+  Future<void> _shareKundali() async {
+    try {
+      final boundary =
+          _shareKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
-class _DashTile extends StatelessWidget {
-  final String emoji;
-  final String title;
-  final VoidCallback onTap;
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ImageByteFormat.png);
+      final pngBytes = byteData!.buffer.asUint8List();
 
-  const _DashTile({
-    required this.emoji,
-    required this.title,
-    required this.onTap,
-  });
+      final tempDir = await getTemporaryDirectory();
+      final file = File("${tempDir.path}/kundali_share.png");
+      await file.writeAsBytes(pngBytes);
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 6,
-              offset: Offset(2, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 26)),
-            const Spacer(),
-            Text(
-              title,
-              style: GoogleFonts.playfairDisplay(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+      await Share.shareXFiles([
+        XFile(file.path),
+      ], text: "✨ My Kundali generated by Jyotishasha App");
+    } catch (e) {
+      print("❌ Sharing failed: $e");
+    }
   }
 }

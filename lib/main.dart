@@ -8,6 +8,7 @@ import 'package:jyotishasha_app/core/state/kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +19,8 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => KundaliProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => FirebaseKundaliProvider()),
         ChangeNotifierProvider(create: (_) => KundaliProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
