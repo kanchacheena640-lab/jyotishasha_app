@@ -7,7 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
-import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
+import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_result_page.dart';
 
 class ManualKundaliFormPage extends StatefulWidget {
   const ManualKundaliFormPage({super.key});
@@ -146,9 +146,7 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
     // Navigate
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => KundaliDetailPage(data: provider.kundali!),
-      ),
+      MaterialPageRoute(builder: (_) => const ManualKundaliResultPage()),
     );
   }
 

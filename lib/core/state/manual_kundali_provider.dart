@@ -3,22 +3,17 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ManualKundaliProvider with ChangeNotifier {
-  Map<String, dynamic>? kundali; // Manual kundali output
+  Map<String, dynamic>? kundali;
   bool isLoading = false;
   String? error;
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
 
   static const String apiUrl =
       "https://jyotishasha-backend.onrender.com/api/full-kundali-modern";
 
-  /// ---------------------------------------------------------
-  /// 1) Generate Manual Kundali (Always fresh)
-  /// ---------------------------------------------------------
   Future<bool> generateKundali({
     required String name,
-    required String dob, // yyyy-mm-dd
-    required String tob, // HH:MM
+    required String dob,
+    required String tob,
     required String place,
     required double lat,
     required double lng,
@@ -45,6 +40,16 @@ class ManualKundaliProvider with ChangeNotifier {
 
       if (res.statusCode == 200) {
         kundali = jsonDecode(res.body);
+
+        // ⭐ INSERT PROFILE NODE (REQUIRED FOR UI)
+        kundali!["profile"] = {
+          "name": name,
+          "dob": dob,
+          "tob": tob,
+          "pob": place,
+          "place": place,
+        };
+
         isLoading = false;
         notifyListeners();
         return true;
@@ -60,9 +65,6 @@ class ManualKundaliProvider with ChangeNotifier {
     return false;
   }
 
-  /// ---------------------------------------------------------
-  /// 2) Reset (Clear manual chart)
-  /// ---------------------------------------------------------
   void reset() {
     kundali = null;
     error = null;
