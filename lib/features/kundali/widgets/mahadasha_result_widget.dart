@@ -298,7 +298,7 @@ class MahadashaResultWidget extends StatelessWidget {
             end: end,
             isCurrent: isCurrent,
           );
-        }).toList(),
+        }),
       ],
     );
   }

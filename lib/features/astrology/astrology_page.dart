@@ -1,3 +1,5 @@
+// lib/features/astrology/astrology_page.dart
+
 import 'dart:io';
 import 'dart:ui';
 
@@ -12,16 +14,72 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
 
 class AstrologyPage extends StatefulWidget {
-  const AstrologyPage({super.key});
+  final String? selectedSection;
+  const AstrologyPage({super.key, this.selectedSection});
 
   @override
   State<AstrologyPage> createState() => _AstrologyPageState();
 }
 
 class _AstrologyPageState extends State<AstrologyPage> {
+  final ScrollController _scrollController = ScrollController();
   final GlobalKey _shareKey = GlobalKey();
 
-  /// ⭐ SHARE SCREENSHOT FUNCTION
+  // ⭐ Anchor Keys for each section
+  final profileKey = GlobalKey();
+  final planetsKey = GlobalKey();
+  final bhavaKey = GlobalKey();
+  final dashaKey = GlobalKey();
+  final lifeKey = GlobalKey();
+  final yogKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.selectedSection != null) {
+      Future.delayed(const Duration(milliseconds: 400), () {
+        _scrollToSection(widget.selectedSection!);
+      });
+    }
+  }
+
+  /// ⭐ KEY-BASED SCROLL
+  void _scrollToSection(String section) {
+    BuildContext? targetContext;
+
+    switch (section) {
+      case "profile":
+        targetContext = profileKey.currentContext;
+        break;
+      case "planets":
+        targetContext = planetsKey.currentContext;
+        break;
+      case "bhava":
+        targetContext = bhavaKey.currentContext;
+        break;
+      case "dasha":
+        targetContext = dashaKey.currentContext;
+        break;
+      case "life":
+        targetContext = lifeKey.currentContext;
+        break;
+      case "yog":
+        targetContext = yogKey.currentContext;
+        break;
+    }
+
+    if (targetContext != null) {
+      Scrollable.ensureVisible(
+        targetContext,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOut,
+        alignment: 0.1,
+      );
+    }
+  }
+
+  /// ⭐ Share Screenshot Function
   Future<void> _shareAstrologyProfile() async {
     try {
       RenderRepaintBoundary boundary =
@@ -54,7 +112,7 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
       appBar: AppBar(
         title: const Text(
-          "Astrology Tools",
+          "Your Insights",
           style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black),
         ),
         elevation: 0,
@@ -63,13 +121,14 @@ class _AstrologyPageState extends State<AstrologyPage> {
       ),
 
       body: SingleChildScrollView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ⭐ SHAREABLE PROFILE SUMMARY CARD
+            /// ⭐ PROFILE CARD (ANCHOR)
             RepaintBoundary(
-              key: _shareKey,
+              key: profileKey,
               child: AstrologyProfileCard(kundali: kundali),
             ),
 
@@ -97,8 +156,11 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
             const SizedBox(height: 14),
 
-            /// ⭐ Tools Section
-            AstrologyToolSection(kundali: kundali),
+            /// ⭐ TOOL SECTION WITH AUTO-CENTERING TABS
+            AstrologyToolSection(
+              kundali: kundali,
+              initialSection: widget.selectedSection,
+            ),
           ],
         ),
       ),

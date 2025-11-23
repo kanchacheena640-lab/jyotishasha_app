@@ -10,16 +10,14 @@ import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
 import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
 import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
-import 'package:jyotishasha_app/features/tools/tool_result_page.dart';
 import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
 import 'package:go_router/go_router.dart';
-import 'package:jyotishasha_app/features/astrology/astrology_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -41,62 +39,83 @@ class DashboardHomeSection extends StatelessWidget {
               GreetingHeaderWidget(daily: daily),
               const SizedBox(height: 16),
 
-              // 🌟 Divine Energy Heading
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  "Connect with Divine Energy",
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.primary,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-
-              // 🌞 Darshan Button (Gradient Background + Full Width)
+              // 🌞 Darshan Button (Premium Minimal Divine Style)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GestureDetector(
-                  onTap: () {
-                    context.push('/darshan');
-                  },
+                  onTap: () => context.push('/darshan'),
                   child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                      horizontal: 20,
+                    ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
+                        colors: [Color(0xFF7C3AED), Color(0xFFA855F7)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.deepPurple.withOpacity(0.25),
-                          blurRadius: 8,
+                          color: Colors.deepPurple.withOpacity(0.22),
+                          blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(
-                          Icons.self_improvement_outlined,
-                          size: 22,
-                          color: Colors.white,
+                        // LEFT TEXT
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Today's Day Lord",
+                              style: GoogleFonts.playfairDisplay(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                                letterSpacing: 0.4,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              "Darshan with Mantra",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 16,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        Text(
-                          "Today's Lord : Darshan & Mantra",
-                          style: GoogleFonts.playfairDisplay(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.3,
+
+                        // RIGHT OM BUTTON
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.22),
+                            border: Border.all(
+                              color: Colors.white30,
+                              width: 1.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.15),
+                                blurRadius: 6,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            "ॐ",
+                            style: GoogleFonts.playfairDisplay(
+                              color: Colors.white,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
@@ -104,13 +123,13 @@ class DashboardHomeSection extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-
-              const PanchangCardWidget(),
               const SizedBox(height: 16),
 
+              const PanchangCardWidget(),
+              const SizedBox(height: 12),
+
               _buildHoroscopeSection(context),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -133,7 +152,7 @@ class DashboardHomeSection extends StatelessWidget {
                   },
                 ),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
 
               // 🔮 Manual Kundali CTA
               Padding(
@@ -149,7 +168,7 @@ class DashboardHomeSection extends StatelessWidget {
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      vertical: 18,
+                      vertical: 16,
                       horizontal: 20,
                     ),
                     decoration: BoxDecoration(
@@ -189,8 +208,9 @@ class DashboardHomeSection extends StatelessWidget {
                             Text(
                               "Enter name, date & birthplace",
                               style: GoogleFonts.montserrat(
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: FontWeight.w400,
+                                letterSpacing: 0.2,
                                 color: Colors.white70,
                               ),
                             ),
@@ -215,10 +235,32 @@ class DashboardHomeSection extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: 22),
 
-              _buildAstrologyToolsSection(context),
-              const SizedBox(height: 32),
+              // 🔭 Astrology Studio + Heading
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Explore Your Chart",
+                      style: GoogleFonts.playfairDisplay(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    AstrologyStudioWidget(
+                      kundali:
+                          context.read<FirebaseKundaliProvider>().kundaliData ??
+                          {},
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
 
               _buildBlogSection(context),
               const SizedBox(height: 24),
@@ -231,7 +273,7 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🕉️ Panchang Card ----------------------------------------------------------
+  // 🕉️ Panchang Card (old helper - unused currently) -------------------------
   Widget _buildPanchangCard(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
@@ -312,14 +354,15 @@ class DashboardHomeSection extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.calendar_today),
+                  icon: const Icon(Icons.calendar_today, size: 20),
                   label: const Text("Tomorrow"),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: theme.colorScheme.primary.withOpacity(.3),
+                      width: 1.3,
                     ),
                     foregroundColor: theme.colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -340,14 +383,15 @@ class DashboardHomeSection extends StatelessWidget {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.view_week),
+                  icon: const Icon(Icons.view_week, size: 20),
                   label: const Text("Weekly"),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: theme.colorScheme.primary.withOpacity(.3),
+                      width: 1.3,
                     ),
                     foregroundColor: theme.colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -358,145 +402,6 @@ class DashboardHomeSection extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-
-  // 🧭 Astrology Tools Section -------------------------------------------------
-  Widget _buildAstrologyToolsSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-
-    return FutureBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      future: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('profiles')
-          .where('isActive', isEqualTo: true)
-          .limit(1)
-          .get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        // 🔹 Default data (fallback)
-        Map<String, dynamic> profileData = {
-          "name": "Guest User",
-          "dob": "1990-01-01",
-          "tob": "10:00",
-          "pob": "Delhi, India",
-          "lat": 28.6139,
-          "lng": 77.2090,
-          "language": "en",
-        };
-
-        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          profileData = snapshot.data!.docs.first.data();
-        }
-
-        // 🔹 Tools mapping (backend IDs)
-        final Map<String, String> toolMap = {
-          "Lagna Finder": "lagna_finder",
-          "Rashi Finder": "rashi_finder",
-          "Gemstone Suggestion": "gemstone_suggestion",
-          "Love Match": "love-match",
-          "Rajyog Check": "rajya_sambandh_rajyog",
-          "Health Insight": "health_insight",
-        };
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Astrology Studio",
-                  style: GoogleFonts.playfairDisplay(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "You don’t need an astrologer — understand your own Kundali like a pro.",
-                  style: theme.textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 16),
-
-                // 🔮 Tools Grid
-                GridView.count(
-                  crossAxisCount: 3,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 1,
-                  children: toolMap.entries.map((entry) {
-                    return _toolCard(
-                      context,
-                      _getIcon(entry.key),
-                      entry.key,
-                      () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ToolResultPage(
-                              toolId: entry.value, // Backend key (dynamic)
-                              formData: {
-                                "name": profileData['name'],
-                                "dob": profileData['dob'],
-                                "tob": profileData['tob'],
-                                "pob": profileData['pob'],
-                                "lat": profileData['lat'] ?? 26.8467,
-                                "lng": profileData['lng'] ?? 80.9462,
-                                "language": profileData['language'] ?? "en",
-                              },
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  }).toList(),
-                ),
-
-                const SizedBox(height: 12),
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AstrologyPage(),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.apps),
-                    label: const Text("More Tools"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -607,7 +512,7 @@ class DashboardHomeSection extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 "Read the latest updates, tips and celestial insights.",
-                style: theme.textTheme.bodyMedium,
+                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 16),
 
@@ -703,6 +608,7 @@ class DashboardHomeSection extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.white,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
