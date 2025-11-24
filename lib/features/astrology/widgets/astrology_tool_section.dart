@@ -3,6 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/data/astrology_meta.dart';
 
 class AstrologyToolSection extends StatefulWidget {
@@ -19,9 +22,9 @@ class AstrologyToolSection extends StatefulWidget {
   State<AstrologyToolSection> createState() => _AstrologyToolSectionState();
 }
 
-/// ============================================================================
-/// 🔥 TOOL RESOLVER
-/// ============================================================================
+//
+// 🔥 TOOL DATA RESOLVER
+//
 dynamic _resolveToolData(String id, Map k) {
   if (id == "rashi") {
     final mt = k["moon_traits"] ?? {};
@@ -69,6 +72,7 @@ dynamic _resolveToolData(String id, Map k) {
   if (id == "current_dasha") {
     return k["dasha_summary"]?["current_block"];
   }
+
   if (id == "timeline") return k["dasha_summary"];
 
   if (id.startsWith("life_")) {
@@ -90,9 +94,9 @@ dynamic _resolveToolData(String id, Map k) {
   return null;
 }
 
-/// ============================================================================
-/// MAIN UI
-/// ============================================================================
+//
+// MAIN UI
+//
 class _AstrologyToolSectionState extends State<AstrologyToolSection> {
   int _selected = 0;
 
@@ -143,7 +147,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     });
   }
 
-  /// ⭐ Auto-center selected chip
+  /// Auto-scroll selected category chip
   void _scrollToSelectedChip() {
     try {
       final ctx = _chipKeys[_selected].currentContext;
@@ -151,14 +155,14 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
         Scrollable.ensureVisible(
           ctx,
           duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
           alignment: 0.5,
+          curve: Curves.easeOut,
         );
       }
     } catch (_) {}
   }
 
-  /// Mini card
+  /// Single tool card
   Widget _toolCard({
     required String name,
     required String id,
@@ -166,12 +170,12 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
   }) {
     return InkWell(
       onTap: () {
-        final k = widget.kundali;
-        var data = _resolveToolData(id, k);
+        final firebase = context.read<FirebaseKundaliProvider>();
+        final current = firebase.kundaliData ?? {};
 
-        // Fix Mahadasha title
+        var data = _resolveToolData(id, current);
+
         String title = name;
-
         if (id == "current_dasha" && data != null) {
           title = "${data["mahadasha"]} Mahadasha";
         } else if (id == "timeline") {
@@ -180,7 +184,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
 
         context.push(
           "/astrology/detail",
-          extra: {"title": title, "id": id, "data": data, "kundali": k},
+          extra: {"title": title, "id": id, "data": data, "kundali": current},
         );
       },
       child: Container(
@@ -217,7 +221,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     );
   }
 
-  /// Grid
+  /// Grid builder
   Widget _buildGrid(List<Map<String, dynamic>> data) {
     return GridView.builder(
       shrinkWrap: true,
@@ -238,7 +242,9 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
 
   @override
   Widget build(BuildContext context) {
-    final k = widget.kundali;
+    // ⭐ LIVE KUNDALI FROM PROVIDER (MOST IMPORTANT FIX)
+    final firebase = context.watch<FirebaseKundaliProvider>();
+    final k = firebase.kundaliData ?? {};
 
     final pages = [
       AstrologyMeta.profileTools(),
@@ -254,7 +260,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
       children: [
         const SizedBox(height: 12),
 
-        /// ⭐ CATEGORY CHIPS WITH AUTO CENTER
+        // ⭐ CATEGORY CHIPS
         SizedBox(
           height: 45,
           child: ListView.separated(

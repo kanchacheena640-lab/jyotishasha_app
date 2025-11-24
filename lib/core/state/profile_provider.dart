@@ -1,94 +1,110 @@
+// lib/core/state/profile_provider.dart
+
 import 'package:flutter/material.dart';
-import 'package:jyotishasha_app/services/user_bootstrap_service.dart';
-import 'package:jyotishasha_app/services/personalized_horoscope_service.dart';
+import 'package:jyotishasha_app/services/profile_service.dart';
 
 class ProfileProvider extends ChangeNotifier {
-  // ---------- USER PROFILE ----------
-  String? uid;
-  String? name;
-  String? lagna;
-  String? moonSign;
-  String? nakshatra;
-  String activeProfileId = "default";
+  final ProfileService _service = ProfileService();
 
-  bool isBootstrapping = false;
-  bool isLoadingHoroscope = false;
+  Map<String, dynamic>? activeProfile;
+  List<Map<String, dynamic>> otherProfiles = [];
 
-  // ---------- HOROSCOPE CACHE ----------
-  Map<String, dynamic>? today;
-  Map<String, dynamic>? tomorrow;
-  Map<String, dynamic>? weekly;
+  bool isLoading = false;
+  bool isSwitching = false;
 
-  // ---------- BOOTSTRAP FROM BACKEND ----------
-  Future<void> bootstrapProfile(Map<String, dynamic> payload) async {
+  /// ⭐ NEW → Track Active Profile ID
+  String? activeProfileId;
+
+  /// ⭐ Getter for EditPage (easy access)
+  String? get activeId => activeProfileId;
+
+  // ---------------------------------------------------
+  // LOAD ALL PROFILES
+  // ---------------------------------------------------
+  Future<void> loadProfiles() async {
+    isLoading = true;
+    notifyListeners();
+
+    final list = await _service.getProfiles();
+
+    if (list.isEmpty) {
+      activeProfile = null;
+      otherProfiles = [];
+      activeProfileId = null;
+    } else {
+      // active profile
+      activeProfile = list.firstWhere(
+        (p) => p["isActive"] == true,
+        orElse: () => {},
+      );
+
+      // ⭐ FIX → Save active ID
+      activeProfileId = activeProfile?["id"];
+
+      // other profiles
+      otherProfiles = list.where((p) => p["isActive"] != true).toList();
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------
+  // ADD NEW PROFILE
+  // ---------------------------------------------------
+  Future<String?> addProfile(Map<String, dynamic> data) async {
+    final id = await _service.addProfile(data);
+    await loadProfiles();
+    return id;
+  }
+
+  // ---------------------------------------------------
+  // UPDATE PROFILE
+  // ---------------------------------------------------
+  Future<bool> updateProfile(String id, Map<String, dynamic> data) async {
+    final ok = await _service.updateProfile(id, data);
+    await loadProfiles();
+    return ok;
+  }
+
+  // ---------------------------------------------------
+  // DELETE PROFILE
+  // ---------------------------------------------------
+  Future<bool> deleteProfile(String id) async {
+    final ok = await _service.deleteProfile(id);
+    await loadProfiles();
+    return ok;
+  }
+
+  // ---------------------------------------------------
+  // SET ACTIVE PROFILE
+  // ---------------------------------------------------
+  Future<void> setActiveProfile(String id) async {
+    await _service.setActiveProfile(id);
+    await loadProfiles();
+  }
+
+  // ---------------------------------------------------
+  // SWITCH ACTIVE PROFILE (with loader)
+  // ---------------------------------------------------
+  Future<void> setActive(String profileId) async {
     try {
-      isBootstrapping = true;
+      isSwitching = true;
       notifyListeners();
 
-      final data = await UserBootstrapService().syncProfile(payload);
-
-      uid = payload["uid"];
-      name = data["name"];
-      lagna = data["lagna"];
-      moonSign = data["moon_sign"];
-      nakshatra = data["nakshatra"];
-      activeProfileId = data["profileId"] ?? "default";
-
-      notifyListeners();
-    } catch (e) {
-      print("Bootstrap Error: $e");
-      rethrow;
+      await _service.setActiveProfile(profileId);
+      await loadProfiles();
     } finally {
-      isBootstrapping = false;
+      isSwitching = false;
       notifyListeners();
     }
   }
 
-  // ---------- DAILY HOROSCOPE ----------
-  Future<void> loadDaily() async {
-    try {
-      isLoadingHoroscope = true;
-      notifyListeners();
-
-      final result = await PersonalizedHoroscopeService().fetchDaily(
-        activeProfileId,
-      );
-
-      today = result;
-      notifyListeners();
-    } catch (e) {
-      print("Daily Horoscope Error: $e");
-    } finally {
-      isLoadingHoroscope = false;
-      notifyListeners();
-    }
-  }
-
-  // ---------- TOMORROW HOROSCOPE ----------
-  Future<void> loadTomorrow() async {
-    try {
-      final result = await PersonalizedHoroscopeService().fetchTomorrow(
-        activeProfileId,
-      );
-
-      tomorrow = result;
-      notifyListeners();
-    } catch (e) {
-      print("Tomorrow Horoscope Error: $e");
-    }
-  }
-
-  // ---------- WEEKLY HOROSCOPE ----------
-  Future<void> loadWeekly() async {
-    try {
-      final result = await PersonalizedHoroscopeService().fetchWeekly(
-        activeProfileId,
-      );
-
-      weekly = result;
-      notifyListeners();
-    } catch (e) {
-      print("Weekly Horoscope Error: $e");
-    }
+  // ---------------------------------------------------
+  // REMOVE PROFILE
+  // ---------------------------------------------------
+  Future<void> removeProfile(String id) async {
+    await _service.deleteProfile(id);
+    await loadProfiles();
   }
 }

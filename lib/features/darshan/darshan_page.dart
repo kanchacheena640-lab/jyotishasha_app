@@ -147,16 +147,48 @@ class _DarshanPageState extends State<DarshanPage>
           ),
 
           // 🔔 Text info section
-          const Column(
-            children: [
-              Icon(Icons.play_circle_fill, size: 48, color: Colors.deepOrange),
-              SizedBox(height: 6),
-              Text(
-                "Chanting Today’s Mantra",
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-              ),
-              SizedBox(height: 20),
-            ],
+          Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 6),
+              ],
+              border: Border.all(color: Colors.deepOrange, width: 1.2),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 🔱 Mini mantra icon
+                const Icon(
+                  Icons.auto_awesome,
+                  color: Colors.deepOrange,
+                  size: 22,
+                ),
+
+                const SizedBox(width: 10),
+
+                // 🔊 Animated mantra text
+                AnimatedBuilder(
+                  animation: _scaleAnim,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: 1 + (_scaleAnim.value - 1) * 0.4,
+                      child: const Text(
+                        "Mantra is Playing...",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.deepOrange,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
 
           // 📺 Silent ad section

@@ -7,6 +7,7 @@ import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 // 🔑 Your Google API Key (keep in .env ideally)
 const String kGoogleApiKey = "YOUR_GOOGLE_API_KEY";
@@ -77,30 +78,41 @@ class _PanchangPageState extends State<PanchangPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Change Location"),
-        content: GooglePlaceAutoCompleteTextField(
-          textEditingController: _searchController,
-          googleAPIKey: kGoogleApiKey,
-          debounceTime: 800,
-          countries: const ["in"],
-          isLatLngRequired: true,
-          getPlaceDetailWithLatLng: (Prediction prediction) {
-            final lat = double.tryParse(prediction.lat ?? '') ?? currentLat;
-            final lng = double.tryParse(prediction.lng ?? '') ?? currentLng;
-            setState(() {
-              currentLocation = prediction.description ?? "Selected Place";
-            });
-            Navigator.pop(context);
-            _fetchPanchangWithLocation(lat, lng);
-          },
-          itemClick: (Prediction prediction) {
-            _searchController.text = prediction.description ?? "";
-          },
-          itemBuilder: (context, index, Prediction prediction) {
-            return ListTile(
-              leading: const Icon(Icons.location_on_outlined),
-              title: Text(prediction.description ?? ""),
-            );
-          },
+        content: KeyboardDismissOnTap(
+          child: SizedBox(
+            width: double.maxFinite,
+            child: GooglePlaceAutoCompleteTextField(
+              textEditingController: _searchController,
+              googleAPIKey: kGoogleApiKey,
+              debounceTime: 800,
+              countries: const ["in"],
+              isLatLngRequired: true,
+
+              getPlaceDetailWithLatLng: (Prediction prediction) {
+                final lat = double.tryParse(prediction.lat ?? '') ?? currentLat;
+                final lng = double.tryParse(prediction.lng ?? '') ?? currentLng;
+
+                setState(() {
+                  currentLocation = prediction.description ?? "Selected Place";
+                });
+
+                Navigator.pop(context);
+                _fetchPanchangWithLocation(lat, lng);
+              },
+
+              itemClick: (Prediction prediction) {
+                _searchController.text = prediction.description ?? "";
+                FocusScope.of(context).unfocus(); // hide keyboard
+              },
+
+              itemBuilder: (context, index, Prediction prediction) {
+                return ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: Text(prediction.description ?? ""),
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

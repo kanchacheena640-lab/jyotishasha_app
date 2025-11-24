@@ -1,3 +1,5 @@
+// lib/core/state/firebase_kundali_provider.dart
+
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,6 +11,32 @@ class FirebaseKundaliProvider extends ChangeNotifier {
   Map<String, dynamic>? profileData; // firebase profile data
   bool isLoading = false;
   String? errorMessage;
+
+  /// 🔧 DOB FORMAT FIXER
+  /// - If "1985-01-14" → keep as is
+  /// - If "14-01-1985" → convert to "1985-01-14"
+  String _fixDob(dynamic rawDob) {
+    if (rawDob == null) return "";
+
+    final dob = rawDob.toString().trim();
+    print("🧩 Raw DOB from Firestore: $dob");
+
+    final isoRegex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+    if (isoRegex.hasMatch(dob)) {
+      print("✅ DOB looks ISO already → $dob");
+      return dob; // already correct
+    }
+
+    final parts = dob.split("-");
+    if (parts.length == 3) {
+      final fixed = "${parts[2]}-${parts[1]}-${parts[0]}";
+      print("🔁 DOB converted → $fixed");
+      return fixed;
+    }
+
+    print("⚠️ DOB format unknown, sending as-is");
+    return dob;
+  }
 
   /// 🔥 MAIN FUNCTION → Firebase Profile + Backend Kundali
   Future<void> loadFromFirebaseProfile() async {
@@ -22,10 +50,8 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       notifyListeners();
 
       final user = FirebaseAuth.instance.currentUser;
-      print("👤 Firebase User: ${user?.uid}");
-
       if (user == null) {
-        print("❌ NO USER LOGGED IN");
+        print("❌ User not logged in");
         errorMessage = "User not logged in";
         kundaliData = null;
         isLoading = false;
@@ -33,23 +59,41 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         return;
       }
 
-      // =============================
-      // 1️⃣ GET PROFILE FROM FIRESTORE
-      // =============================
-      print("📄 Fetching profile document…");
+      // -------------------------------------------
+      // 🔥 STEP 1 — LOAD ACTIVE PROFILE ID
+      // -------------------------------------------
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get();
 
-      final doc = await FirebaseFirestore.instance
+      final activeId = userDoc.data()?["activeProfileId"];
+      print("🟣 ACTIVE PROFILE ID = $activeId");
+
+      if (activeId == null) {
+        print("❌ No active profile selected");
+        errorMessage = "No active profile selected";
+        kundaliData = null;
+        isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // -------------------------------------------
+      // 🔥 STEP 2 — LOAD ACTIVE PROFILE DATA
+      // -------------------------------------------
+      final profileDoc = await FirebaseFirestore.instance
           .collection("users")
           .doc(user.uid)
           .collection("profiles")
-          .doc("default")
+          .doc(activeId)
           .get();
 
-      print("📄 Document exists? ${doc.exists}");
-      print("📄 Raw Firebase Profile: ${doc.data()}");
+      print("📄 Profile Exists? ${profileDoc.exists}");
+      print("📄 Profile Data: ${profileDoc.data()}");
 
-      if (!doc.exists) {
-        print("❌ PROFILE NOT FOUND IN FIRESTORE");
+      if (!profileDoc.exists) {
+        print("❌ Profile not found");
         errorMessage = "Profile not found";
         kundaliData = null;
         isLoading = false;
@@ -57,26 +101,18 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         return;
       }
 
-      profileData = doc.data();
+      profileData = profileDoc.data();
 
       final name = profileData?["name"];
-      final dob = profileData?["dob"];
+      final rawDob = profileData?["dob"];
+      final fixedDob = _fixDob(rawDob);
       final tob = profileData?["tob"];
       final pob = profileData?["pob"];
       final lat = profileData?["lat"];
       final lng = profileData?["lng"];
 
-      print("🟣 Extracted Profile:");
-      print("   • name: $name");
-      print("   • dob: $dob");
-      print("   • tob: $tob");
-      print("   • pob: $pob");
-      print("   • lat: $lat");
-      print("   • lng: $lng");
-
-      // profile incomplete
-      if (name == null || dob == null || tob == null || pob == null) {
-        print("❌ PROFILE INCOMPLETE — stopping");
+      if (name == null || fixedDob.isEmpty || tob == null || pob == null) {
+        print("❌ Incomplete profile → name/dob/tob/pob missing");
         errorMessage = "Incomplete profile";
         kundaliData = null;
         isLoading = false;
@@ -84,26 +120,32 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         return;
       }
 
-      // =============================
-      // 2️⃣ CALL BACKEND KUNDALI API
-      // =============================
+      // -------------------------------------------
+      // 🔥 STEP 3 — CALL BACKEND KUNDALI API
+      // -------------------------------------------
       final url = Uri.parse(
         "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
       );
 
       final payload = {
         "name": name,
-        "dob": dob,
+        "dob": fixedDob, // ✅ ALWAYS YYYY-MM-DD
         "tob": tob,
         "place_name": pob,
         "lat": lat,
         "lng": lng,
         "timezone": profileData?["timezone"] ?? "+05:30",
         "ayanamsa": profileData?["ayanamsa"] ?? "Lahiri",
-        "language": profileData?["language"] ?? "en",
+        "language":
+            (profileData?["language"] ?? "en")
+                .toString()
+                .toLowerCase()
+                .startsWith("e")
+            ? "en"
+            : "hi",
       };
 
-      print("🌐 Sending API Payload:");
+      print("🌐 Sending Payload to backend:");
       print(jsonEncode(payload));
 
       final response = await http.post(
@@ -112,37 +154,35 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         body: jsonEncode(payload),
       );
 
-      print("🌐 Backend Status Code: ${response.statusCode}");
+      print("🌐 Status Code: ${response.statusCode}");
 
       if (response.statusCode != 200) {
-        print("❌ BACKEND ERROR");
-        print("Response body: ${response.body}");
+        print("❌ Backend error → ${response.body}");
         errorMessage = "Backend error: ${response.statusCode}";
         kundaliData = null;
       } else {
         kundaliData = jsonDecode(response.body);
-        print("✅ BACKEND KUNDALI LOADED SUCCESSFULLY");
-        print("🟢 Kundali Keys: ${kundaliData?.keys}");
+        print("✅ Kundali Loaded Successfully");
+        if (kDebugMode) {
+          print("🟢 Kundali keys: ${kundaliData?.keys}");
+        }
       }
     } catch (e) {
-      print("❌ EXCEPTION: $e");
+      print("❌ Exception: $e");
       errorMessage = e.toString();
       kundaliData = null;
     }
 
-    print("🎯 FINAL kundaliData: ${kundaliData != null ? "Loaded" : "NULL"}");
-    print("--------------------------------------------------");
-
     isLoading = false;
     notifyListeners();
+    print("🎯 FINAL kundaliData: ${kundaliData != null ? "Loaded" : "NULL"}");
+    print("--------------------------------------------------");
   }
 
-  /// 🔄 Refresh Kundali
   Future<void> refresh() async {
     await loadFromFirebaseProfile();
   }
 
-  /// ❌ Logout Clear
   void clear() {
     kundaliData = null;
     profileData = null;

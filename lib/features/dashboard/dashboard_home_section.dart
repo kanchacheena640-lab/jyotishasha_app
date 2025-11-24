@@ -18,6 +18,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -265,7 +266,7 @@ class DashboardHomeSection extends StatelessWidget {
               _buildBlogSection(context),
               const SizedBox(height: 24),
 
-              AppFooterFeedbackWidget(),
+              KeyboardDismissOnTap(child: AppFooterFeedbackWidget()),
             ],
           ),
         ),

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 class MuhurthPage extends StatefulWidget {
   const MuhurthPage({super.key});
@@ -76,119 +77,121 @@ class _MuhurthPageState extends State<MuhurthPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        centerTitle: true,
-        title: Text(
-          "🕉️ Shubh Muhurth",
-          style: GoogleFonts.playfairDisplay(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+    return KeyboardDismissOnTap(
+      child: Scaffold(
+        backgroundColor: theme.scaffoldBackgroundColor,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          centerTitle: true,
+          title: Text(
+            "🕉️ Shubh Muhurth",
+            style: GoogleFonts.playfairDisplay(
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 🌍 Location and Change Button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "📍 $cityName",
-                  style: GoogleFonts.montserrat(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 🌍 Location and Change Button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "📍 $cityName",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () async {
+                      // TODO: integrate PlaceAutocomplete
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Location picker coming soon"),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.location_on_outlined, size: 18),
+                    label: const Text("Change"),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              Text(
+                "Select Occasion",
+                style: GoogleFonts.montserrat(
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: selectedActivity,
+                    isExpanded: true,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    onChanged: (val) {
+                      setState(() => selectedActivity = val!);
+                      _fetchMuhurth();
+                    },
+                    items: activities.map((a) {
+                      final title = a
+                          .replaceAll("_", " ")
+                          .replaceAllMapped(
+                            RegExp(r'(^|\s)([a-z])'),
+                            (m) => m.group(0)!.toUpperCase(),
+                          );
+                      return DropdownMenuItem(
+                        value: a,
+                        child: Text(
+                          title,
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: () async {
-                    // TODO: integrate PlaceAutocomplete
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Location picker coming soon"),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.location_on_outlined, size: 18),
-                  label: const Text("Change"),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-
-            Text(
-              "Select Occasion",
-              style: GoogleFonts.montserrat(
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
               ),
-            ),
-            const SizedBox(height: 8),
+              const SizedBox(height: 16),
 
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: selectedActivity,
-                  isExpanded: true,
-                  icon: const Icon(Icons.arrow_drop_down),
-                  onChanged: (val) {
-                    setState(() => selectedActivity = val!);
-                    _fetchMuhurth();
-                  },
-                  items: activities.map((a) {
-                    final title = a
-                        .replaceAll("_", " ")
-                        .replaceAllMapped(
-                          RegExp(r'(^|\s)([a-z])'),
-                          (m) => m.group(0)!.toUpperCase(),
-                        );
-                    return DropdownMenuItem(
-                      value: a,
-                      child: Text(
-                        title,
-                        style: GoogleFonts.montserrat(
-                          color: AppColors.textPrimary,
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : muhurthResults.isEmpty
+                    ? Center(
+                        child: Text(
+                          "No Shubh Muhurth found 😔",
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
+                      )
+                    : ListView.builder(
+                        itemCount: muhurthResults.length,
+                        itemBuilder: (context, index) {
+                          final item = muhurthResults[index];
+                          return _buildMuhurthCard(item);
+                        },
                       ),
-                    );
-                  }).toList(),
-                ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : muhurthResults.isEmpty
-                  ? Center(
-                      child: Text(
-                        "No Shubh Muhurth found 😔",
-                        style: GoogleFonts.montserrat(
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: muhurthResults.length,
-                      itemBuilder: (context, index) {
-                        final item = muhurthResults[index];
-                        return _buildMuhurthCard(item);
-                      },
-                    ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

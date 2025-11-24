@@ -1,4 +1,5 @@
 // lib/features/dashboard/dashboard_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
 
 // Pages
 import '../astrology/astrology_page.dart';
@@ -31,34 +33,63 @@ class _DashboardPageState extends State<DashboardPage> {
   void initState() {
     super.initState();
     _initFlow();
+
+    // NEW LISTENER — when active profile changes
+    Future.microtask(() {
+      final profileProvider = context.read<ProfileProvider>();
+      profileProvider.addListener(() async {
+        if (!mounted) return;
+
+        print("🔄 Profile switched → Reloading Dashboard...");
+
+        final firebaseKundali = context.read<FirebaseKundaliProvider>();
+        await firebaseKundali.loadFromFirebaseProfile();
+
+        final kd = firebaseKundali.kundaliData;
+        if (kd == null) return;
+
+        final lang = (kd['language'] ?? "en").substring(0, 2);
+        final lagna = kd['lagna_sign'] ?? '';
+        final lat = kd['location']?['lat'] ?? 26.8467;
+        final lng = kd['location']?['lng'] ?? 80.9462;
+
+        // DAILY
+        context.read<DailyProvider>().fetchDaily(
+          lagna: lagna,
+          lat: lat,
+          lon: lng,
+          lang: lang,
+        );
+
+        // PANCHANG
+        context.read<PanchangProvider>().fetchPanchang(
+          date: DateTime.now(),
+          lat: lat,
+          lng: lng,
+        );
+      });
+    });
   }
 
+  // ----------------------
+  // INITIAL BOOT FLOW
+  // ----------------------
   Future<void> _initFlow() async {
     try {
       print("🟣 Dashboard init START");
 
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        print("❌ NO USER in Firebase");
-        return;
-      }
+      if (user == null) return;
 
-      // 🔵 Load kundali from Firestore active profile → backend
       final firebaseKundali = context.read<FirebaseKundaliProvider>();
-      print("🟣 Loading Kundali from Firebase...");
+      print("🟣 Loading Kundali...");
       await firebaseKundali.loadFromFirebaseProfile();
 
       final kd = firebaseKundali.kundaliData;
-      if (kd == null) {
-        print("❌ Kundali NULL after load");
-        return;
-      }
+      if (kd == null) return;
 
       print("✅ Kundali Loaded");
 
-      // -----------------------------
-      // DAILY HOROSCOPE
-      // -----------------------------
       final daily = context.read<DailyProvider>();
 
       final lang = (kd['language'] ?? "en").substring(0, 2);
@@ -66,14 +97,10 @@ class _DashboardPageState extends State<DashboardPage> {
       final lat = kd['location']?['lat'] ?? 26.8467;
       final lng = kd['location']?['lng'] ?? 80.9462;
 
-      print("🟣 Fetching Daily → lagna=$lagna lang=$lang lat=$lat lng=$lng");
+      print("🟣 Fetching Daily Horoscope...");
       await daily.fetchDaily(lagna: lagna, lat: lat, lon: lng, lang: lang);
 
-      // -----------------------------
-      // PANCHANG
-      // -----------------------------
       final panchang = context.read<PanchangProvider>();
-
       print("🟣 Fetching Panchang...");
       await panchang.fetchPanchang(date: DateTime.now(), lat: lat, lng: lng);
 
@@ -91,9 +118,9 @@ class _DashboardPageState extends State<DashboardPage> {
     ProfilePage(),
   ];
 
-  // -------------------------------------------------------------
-  // DOUBLE-TAP BACK EXIT HANDLER
-  // -------------------------------------------------------------
+  // -----------------------------
+  // DOUBLE BACK EXIT HANDLER
+  // -----------------------------
   Future<void> _handleBackPress() async {
     final now = DateTime.now();
 
@@ -118,9 +145,6 @@ class _DashboardPageState extends State<DashboardPage> {
     SystemNavigator.pop();
   }
 
-  // -------------------------------------------------------------
-  // UI
-  // -------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -144,12 +168,6 @@ class _DashboardPageState extends State<DashboardPage> {
           unselectedItemColor: AppColors.textPrimary.withOpacity(0.5),
           backgroundColor: AppColors.surface,
           type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.w400,
-          ),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),
@@ -183,13 +201,13 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+// ⭐ ASK NOW ICON WITH FREE TAG
 class _AskNowIcon extends StatelessWidget {
   const _AskNowIcon();
 
   @override
   Widget build(BuildContext context) {
     return Stack(
-      clipBehavior: Clip.none,
       children: [
         const Icon(Icons.chat_bubble_outline),
         Positioned(

@@ -10,6 +10,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 class BirthDetailPage extends StatefulWidget {
   const BirthDetailPage({super.key});
@@ -163,194 +164,201 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
-      backgroundColor: AppColors.surface,
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        title: Text(
-          "Enter Birth Details",
-          style: GoogleFonts.montserrat(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        child: Container(
-          width: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFFFFF5F8), Color(0xFFFCEFF9), Color(0xFFFEEFF5)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+    return KeyboardDismissOnTap(
+      child: Scaffold(
+        backgroundColor: AppColors.surface,
+        appBar: AppBar(
+          backgroundColor: AppColors.primary,
+          title: Text(
+            "Enter Birth Details",
+            style: GoogleFonts.montserrat(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 20),
-                Text(
-                  "Tell us about yourself 🌞",
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.montserrat(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Name
-                _buildTextField(
-                  controller: nameCtrl,
-                  label: "Full Name",
-                  icon: Icons.person_outline,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? "Please enter your name" : null,
-                ),
-
-                // DOB
-                _buildTextField(
-                  controller: dobCtrl,
-                  label: "Date of Birth (DD-MM-YYYY)",
-                  icon: Icons.cake_outlined,
-                  readOnly: true,
-                  onTap: _pickDate,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? "Please enter your DOB" : null,
-                ),
-
-                // TOB
-                _buildTextField(
-                  controller: tobCtrl,
-                  label: "Time of Birth (HH:MM)",
-                  icon: Icons.access_time,
-                  readOnly: true,
-                  onTap: _pickTime,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? "Please enter your TOB" : null,
-                ),
-
-                // POB
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: GooglePlaceAutoCompleteTextField(
-                    textEditingController: pobCtrl,
-                    googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                    inputDecoration: const InputDecoration(
-                      labelText: "Place of Birth",
-                      prefixIcon: Icon(
-                        Icons.location_on_outlined,
-                        color: AppColors.primary,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
+          centerTitle: true,
+        ),
+        body: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Container(
+            width: double.infinity,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Color(0xFFFFF5F8),
+                  Color(0xFFFCEFF9),
+                  Color(0xFFFEEFF5),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 20),
+                  Text(
+                    "Tell us about yourself 🌞",
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
                     ),
-                    debounceTime: 400,
-                    countries: const ["in"],
-                    isLatLngRequired: true,
-                    getPlaceDetailWithLatLng: (Prediction prediction) async {
-                      if (prediction.lat != null && prediction.lng != null) {
-                        latitude = double.tryParse(prediction.lat!);
-                        longitude = double.tryParse(prediction.lng!);
-                      } else {
-                        final locations = await locationFromAddress(
-                          prediction.description!,
-                        );
-                        if (locations.isNotEmpty) {
-                          latitude = locations.first.latitude;
-                          longitude = locations.first.longitude;
-                        }
-                      }
-                    },
-                    itemClick: (Prediction prediction) {
-                      pobCtrl.text = prediction.description ?? "";
-                      FocusScope.of(context).unfocus();
-                    },
-                    itemBuilder: (context, index, Prediction prediction) {
-                      return ListTile(
-                        leading: const Icon(
-                          Icons.location_on,
+                  ),
+                  const SizedBox(height: 30),
+
+                  // Name
+                  _buildTextField(
+                    controller: nameCtrl,
+                    label: "Full Name",
+                    icon: Icons.person_outline,
+                    validator: (v) => v == null || v.isEmpty
+                        ? "Please enter your name"
+                        : null,
+                  ),
+
+                  // DOB
+                  _buildTextField(
+                    controller: dobCtrl,
+                    label: "Date of Birth (DD-MM-YYYY)",
+                    icon: Icons.cake_outlined,
+                    readOnly: true,
+                    onTap: _pickDate,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? "Please enter your DOB" : null,
+                  ),
+
+                  // TOB
+                  _buildTextField(
+                    controller: tobCtrl,
+                    label: "Time of Birth (HH:MM)",
+                    icon: Icons.access_time,
+                    readOnly: true,
+                    onTap: _pickTime,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? "Please enter your TOB" : null,
+                  ),
+
+                  // POB
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black12.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: GooglePlaceAutoCompleteTextField(
+                      textEditingController: pobCtrl,
+                      googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
+                      inputDecoration: const InputDecoration(
+                        labelText: "Place of Birth",
+                        prefixIcon: Icon(
+                          Icons.location_on_outlined,
                           color: AppColors.primary,
                         ),
-                        title: Text(prediction.description ?? ""),
-                      );
-                    },
-                  ),
-                ),
-
-                // Language dropdown
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.primary.withOpacity(0.3),
-                    ),
-                  ),
-                  child: DropdownButtonFormField<String>(
-                    initialValue: selectedLang,
-                    decoration: const InputDecoration(
-                      labelText: "Preferred Language",
-                      border: InputBorder.none,
-                      prefixIcon: Icon(Icons.language),
-                    ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'English',
-                        child: Text("English"),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       ),
-                      DropdownMenuItem(value: 'Hindi', child: Text("Hindi")),
-                    ],
-                    onChanged: (val) => setState(() => selectedLang = val!),
-                  ),
-                ),
-
-                const SizedBox(height: 40),
-
-                // Continue Button
-                ElevatedButton(
-                  onPressed: _isSaving ? null : _saveDetails,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      debounceTime: 400,
+                      countries: const ["in"],
+                      isLatLngRequired: true,
+                      getPlaceDetailWithLatLng: (Prediction prediction) async {
+                        if (prediction.lat != null && prediction.lng != null) {
+                          latitude = double.tryParse(prediction.lat!);
+                          longitude = double.tryParse(prediction.lng!);
+                        } else {
+                          final locations = await locationFromAddress(
+                            prediction.description!,
+                          );
+                          if (locations.isNotEmpty) {
+                            latitude = locations.first.latitude;
+                            longitude = locations.first.longitude;
+                          }
+                        }
+                      },
+                      itemClick: (Prediction prediction) {
+                        pobCtrl.text = prediction.description ?? "";
+                        FocusScope.of(context).unfocus();
+                      },
+                      itemBuilder: (context, index, Prediction prediction) {
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.location_on,
+                            color: AppColors.primary,
+                          ),
+                          title: Text(prediction.description ?? ""),
+                        );
+                      },
                     ),
                   ),
-                  child: _isSaving
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : Text(
-                          "Continue",
-                          style: GoogleFonts.montserrat(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
+
+                  // Language dropdown
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.primary.withOpacity(0.3),
+                      ),
+                    ),
+                    child: DropdownButtonFormField<String>(
+                      initialValue: selectedLang,
+                      decoration: const InputDecoration(
+                        labelText: "Preferred Language",
+                        border: InputBorder.none,
+                        prefixIcon: Icon(Icons.language),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'English',
+                          child: Text("English"),
                         ),
-                ),
-                const SizedBox(height: 20),
-              ],
+                        DropdownMenuItem(value: 'Hindi', child: Text("Hindi")),
+                      ],
+                      onChanged: (val) => setState(() => selectedLang = val!),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // Continue Button
+                  ElevatedButton(
+                    onPressed: _isSaving ? null : _saveDetails,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                    ),
+                    child: _isSaving
+                        ? const CircularProgressIndicator(color: Colors.white)
+                        : Text(
+                            "Continue",
+                            style: GoogleFonts.montserrat(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

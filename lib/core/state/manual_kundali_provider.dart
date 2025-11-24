@@ -17,6 +17,7 @@ class ManualKundaliProvider with ChangeNotifier {
     required String place,
     required double lat,
     required double lng,
+    String language = "en",
   }) async {
     isLoading = true;
     error = null;
@@ -30,6 +31,7 @@ class ManualKundaliProvider with ChangeNotifier {
         "place": place,
         "lat": lat,
         "lng": lng,
+        "language": language,
       };
 
       final res = await http.post(

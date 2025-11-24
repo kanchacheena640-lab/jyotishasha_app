@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 /// 👥 Form to generate Kundali for others
 class KundaliFormPage extends StatefulWidget {
@@ -79,106 +80,117 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Enter Birth Details"),
-        backgroundColor: AppColors.primary,
-        centerTitle: true,
-        elevation: 2,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: nameCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Full Name",
-                  prefixIcon: Icon(Icons.person_outline),
+    return KeyboardDismissOnTap(
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: const Text("Enter Birth Details"),
+          backgroundColor: AppColors.primary,
+          centerTitle: true,
+          elevation: 2,
+        ),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Form(
+            key: _formKey,
+            child: ListView(
+              children: [
+                TextFormField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Full Name",
+                    prefixIcon: Icon(Icons.person_outline),
+                  ),
+                  validator: (v) => v!.isEmpty ? "Required" : null,
                 ),
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: dobCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: "Date of Birth",
-                  prefixIcon: Icon(Icons.calendar_month_outlined),
-                ),
-                onTap: () async {
-                  final d = await showDatePicker(
-                    context: context,
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime.now(),
-                    initialDate: DateTime(2000),
-                  );
-                  if (d != null) {
-                    dobCtrl.text = d.toIso8601String().split('T').first;
-                  }
-                },
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: tobCtrl,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: "Time of Birth",
-                  prefixIcon: Icon(Icons.access_time_outlined),
-                ),
-                onTap: () async {
-                  final t = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (t != null) {
-                    tobCtrl.text =
-                        "${t.hour}:${t.minute.toString().padLeft(2, '0')}";
-                  }
-                },
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: pobCtrl,
-                decoration: const InputDecoration(
-                  labelText: "Place of Birth",
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                ),
-                validator: (v) => v!.isEmpty ? "Required" : null,
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                // DOB Picker
+                TextFormField(
+                  controller: dobCtrl,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: "Date of Birth",
+                    prefixIcon: Icon(Icons.calendar_month_outlined),
+                  ),
+                  onTap: () async {
+                    final d = await showDatePicker(
+                      context: context,
+                      firstDate: DateTime(1900),
+                      lastDate: DateTime.now(),
+                      initialDate: DateTime(2000),
+                    );
+                    if (d != null) {
+                      dobCtrl.text = d.toIso8601String().split('T').first;
+                    }
+                  },
+                  validator: (v) => v!.isEmpty ? "Required" : null,
+                ),
+
+                const SizedBox(height: 16),
+
+                // TOB Picker
+                TextFormField(
+                  controller: tobCtrl,
+                  readOnly: true,
+                  decoration: const InputDecoration(
+                    labelText: "Time of Birth",
+                    prefixIcon: Icon(Icons.access_time_outlined),
+                  ),
+                  onTap: () async {
+                    final t = await showTimePicker(
+                      context: context,
+                      initialTime: TimeOfDay.now(),
+                    );
+                    if (t != null) {
+                      tobCtrl.text =
+                          "${t.hour}:${t.minute.toString().padLeft(2, '0')}";
+                    }
+                  },
+                  validator: (v) => v!.isEmpty ? "Required" : null,
+                ),
+
+                const SizedBox(height: 16),
+
+                // POB
+                TextFormField(
+                  controller: pobCtrl,
+                  decoration: const InputDecoration(
+                    labelText: "Place of Birth",
+                    prefixIcon: Icon(Icons.location_on_outlined),
+                  ),
+                  validator: (v) => v!.isEmpty ? "Required" : null,
+                ),
+
+                const SizedBox(height: 24),
+
+                isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: () {
+                          if (_formKey.currentState!.validate()) {
+                            _generateKundali();
+                          }
+                        },
+                        icon: const Icon(Icons.auto_fix_high),
+                        label: const Text(
+                          "Generate Kundali",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          _generateKundali();
-                        }
-                      },
-                      icon: const Icon(Icons.auto_fix_high),
-                      label: const Text(
-                        "Generate Kundali",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

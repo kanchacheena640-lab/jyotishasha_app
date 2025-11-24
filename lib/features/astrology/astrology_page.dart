@@ -105,11 +105,26 @@ class _AstrologyPageState extends State<AstrologyPage> {
   @override
   Widget build(BuildContext context) {
     final firebase = context.watch<FirebaseKundaliProvider>();
-    final kundali = firebase.kundaliData ?? {};
+
+    if (firebase.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (firebase.kundaliData == null) {
+      return const Scaffold(
+        body: Center(
+          child: Text(
+            "Unable to load astrology data",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+
+    final kundali = firebase.kundaliData!;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F3FF),
-
       appBar: AppBar(
         title: const Text(
           "Your Insights",
@@ -119,14 +134,13 @@ class _AstrologyPageState extends State<AstrologyPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
       ),
-
       body: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ⭐ PROFILE CARD (ANCHOR)
+            /// ⭐ PROFILE CARD
             RepaintBoundary(
               key: profileKey,
               child: AstrologyProfileCard(kundali: kundali),
@@ -134,7 +148,7 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
             const SizedBox(height: 20),
 
-            /// ⭐ Share Button
+            /// ⭐ SHARE BUTTON
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
@@ -156,7 +170,7 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
             const SizedBox(height: 14),
 
-            /// ⭐ TOOL SECTION WITH AUTO-CENTERING TABS
+            /// ⭐ SECTIONS
             AstrologyToolSection(
               kundali: kundali,
               initialSection: widget.selectedSection,
