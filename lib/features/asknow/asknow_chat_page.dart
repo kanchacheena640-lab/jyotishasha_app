@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jyotishasha_app/data/asknow_questions.dart';
+import 'package:provider/provider.dart';
+
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
+import 'package:jyotishasha_app/core/state/asknow_provider.dart'; // ← IMPORTANT
 
 class AskNowChatPage extends StatefulWidget {
   const AskNowChatPage({super.key});
@@ -12,6 +15,7 @@ class AskNowChatPage extends StatefulWidget {
 class _AskNowChatPageState extends State<AskNowChatPage> {
   final TextEditingController _questionController = TextEditingController();
 
+  // Topic list
   String selectedSubject = 'Career';
   final List<String> subjects = [
     'Love',
@@ -27,45 +31,68 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     'Family',
   ];
 
-  final preQuestions = askNowQuestions;
+  // Chat window list
   final List<Map<String, String>> chatMessages = [];
 
-  void _sendQuestion() {
-    if (_questionController.text.trim().isEmpty) return;
+  // -----------------------------------------------------------
+  // SEND QUESTION → Provider → Backend → Ad Delay → Chat Insert
+  // -----------------------------------------------------------
 
+  Future<void> _sendQuestion() async {
+    final question = _questionController.text.trim();
+    if (question.isEmpty) return;
+
+    final profile =
+        context.read<FirebaseKundaliProvider>().kundaliData?["profile"] ?? {};
+
+    print("🟣 UI DEBUG: QUESTION BEING SENT = $question");
+    print("🟣 UI DEBUG: PROFILE FROM PROVIDER = $profile");
+
+    final provider = context.read<AskNowProvider>();
+
+    // 1) Add user message
     setState(() {
-      chatMessages.add({
-        'sender': 'user',
-        'text': _questionController.text.trim(),
-      });
+      chatMessages.add({"sender": "user", "text": question});
       _questionController.clear();
     });
 
-    // Dummy bot reply (backend integration next step)
-    Future.delayed(const Duration(seconds: 1), () {
-      setState(() {
-        chatMessages.add({
-          'sender': 'bot',
-          'text':
-              'Your personalized ${selectedSubject.toLowerCase()} insight will appear here after backend integration 🔮',
-        });
-      });
+    // 2) Fetch from backend (does NOT show immediately)
+    await provider.fetchAnswer(question, profile);
+
+    // 3) Simulate reward ad
+    await Future.delayed(const Duration(seconds: 3));
+
+    // 4) Show backend answer
+    final ans = provider.pendingAnswer ?? "No answer received.";
+    provider.clearPending();
+
+    setState(() {
+      chatMessages.add({"sender": "bot", "text": ans});
     });
   }
 
+  // -----------------------------------------------------------
+  // UI
+  // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<AskNowProvider>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFFEEFF5),
+
       appBar: AppBar(
         title: const Text('Ask Now 🔮'),
         backgroundColor: const Color(0xFF7C3AED),
         elevation: 0,
         centerTitle: true,
       ),
+
       body: Column(
         children: [
-          // 🟣 Top Category Bar
+          // ------------------------------
+          // TOP SUBJECT CHIPS
+          // ------------------------------
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Column(
@@ -79,6 +106,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                   ),
                 ),
                 const SizedBox(height: 8),
+
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
@@ -108,7 +136,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
             ),
           ),
 
-          // 🟣 Chat Window Sheet
+          // ------------------------------
+          // CHAT WINDOW
+          // ------------------------------
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
@@ -118,17 +148,11 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                   topLeft: Radius.circular(24),
                   topRight: Radius.circular(24),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 6,
-                    offset: Offset(0, -2),
-                  ),
-                ],
               ),
+
               child: Column(
                 children: [
-                  // Chat Messages
+                  // Chat list
                   Expanded(
                     child: chatMessages.isEmpty
                         ? Center(
@@ -152,21 +176,25 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                             itemBuilder: (context, index) {
                               final msg = chatMessages[index];
                               final isUser = msg['sender'] == 'user';
+
                               return Align(
                                 alignment: isUser
                                     ? Alignment.centerRight
                                     : Alignment.centerLeft,
+
                                 child: Container(
                                   margin: const EdgeInsets.symmetric(
                                     vertical: 4,
                                   ),
                                   padding: const EdgeInsets.all(12),
+
                                   decoration: BoxDecoration(
                                     color: isUser
                                         ? const Color(0xFF7C3AED)
                                         : const Color(0xFFF6F6F6),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
+
                                   child: Text(
                                     msg['text']!,
                                     style: GoogleFonts.montserrat(
@@ -182,7 +210,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                           ),
                   ),
 
-                  // Input Bar
+                  // ------------------------------
+                  // INPUT BAR
+                  // ------------------------------
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                     child: Row(
@@ -204,15 +234,27 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                           ),
                         ),
                         const SizedBox(width: 8),
+
                         FloatingActionButton(
-                          onPressed: _sendQuestion,
-                          backgroundColor: const Color(0xFF7C3AED),
+                          onPressed: provider.isLoading ? null : _sendQuestion,
+                          backgroundColor: provider.isLoading
+                              ? Colors.grey
+                              : const Color(0xFF7C3AED),
                           mini: true,
-                          child: const Icon(
-                            Icons.send,
-                            color: Colors.white,
-                            size: 20,
-                          ),
+                          child: provider.isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.send,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                         ),
                       ],
                     ),

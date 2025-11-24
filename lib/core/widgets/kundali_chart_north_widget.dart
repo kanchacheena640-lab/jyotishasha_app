@@ -45,16 +45,16 @@ class KundaliChartNorthWidget extends StatelessWidget {
     const double center = base / 2;
 
     final Map<int, Offset> centerPos = {
-      1: Offset(center, center - 20),
+      1: Offset(center, center + 10),
       2: Offset(center - 100, center - 90),
       3: Offset(center - 130, center - 60),
-      4: Offset(center - 50, center + 30),
+      4: Offset(center - 30, center + 40),
       5: Offset(center - 125, center + 135),
       6: Offset(center - 100, center + 170),
       7: Offset(center, center + 70),
       8: Offset(center + 100, center + 170),
       9: Offset(center + 125, center + 135),
-      10: Offset(center + 50, center + 30),
+      10: Offset(center + 30, center + 40),
       11: Offset(center + 130, center - 60),
       12: Offset(center + 100, center - 90),
     };
@@ -87,6 +87,7 @@ class KundaliChartNorthWidget extends StatelessWidget {
                     width: 60,
                     child: Column(
                       children: [
+                        // ---------- RASHI NUMBER ----------
                         Text(
                           rashis[h - 1].toString(),
                           style: const TextStyle(
@@ -95,20 +96,44 @@ class KundaliChartNorthWidget extends StatelessWidget {
                           ),
                         ),
 
+                        // ---------- PLANETS (VERTICAL OR HORIZONTAL) ----------
                         if (housePlanets[h]!.isNotEmpty)
                           Transform.translate(
                             offset: Offset(
                               planetShift(h).dx * sx,
                               planetShift(h).dy * sy,
                             ),
-                            child: Text(
-                              housePlanets[h]!.join(" "),
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+
+                            child:
+                                (
+                                // these houses will show vertical stacking
+                                [3, 5, 9, 11].contains(h))
+                                ? Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (final p in housePlanets[h]!)
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 0.1,
+                                          ),
+                                          child: Text(
+                                            p,
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  )
+                                : Text(
+                                    housePlanets[h]!.join(" "),
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                       ],
                     ),
@@ -124,11 +149,13 @@ class KundaliChartNorthWidget extends StatelessWidget {
 
   // Planet shifting per house
   Offset planetShift(int h) {
-    if ([1, 2, 12].contains(h)) return const Offset(0, -55);
+    if ([1].contains(h)) return const Offset(0, -100);
+    if ([2, 12].contains(h)) return const Offset(0, -55);
     if ([3, 4, 5].contains(h)) return const Offset(-30, -30);
     if ([7].contains(h)) return const Offset(0, 30);
     if ([6, 8].contains(h)) return const Offset(0, 15);
-    if ([9, 10, 11].contains(h)) return const Offset(30, -30);
+    if ([9, 11].contains(h)) return const Offset(50, -50);
+    if ([10].contains(h)) return const Offset(50, -30);
     return Offset.zero;
   }
 

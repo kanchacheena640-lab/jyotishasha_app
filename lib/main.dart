@@ -10,6 +10,7 @@ import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
+import 'package:jyotishasha_app/core/state/asknow_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,6 +27,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ManualKundaliProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
+        ChangeNotifierProvider(create: (_) => AskNowProvider()),
       ],
       child: const JyotishashaApp(), // 🔮 GoRouter intact
     ),
