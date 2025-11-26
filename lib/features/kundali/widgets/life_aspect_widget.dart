@@ -27,84 +27,81 @@ class LifeAspectWidget extends StatefulWidget {
 class _LifeAspectWidgetState extends State<LifeAspectWidget> {
   final GlobalKey _shareKey = GlobalKey();
 
-  String _pickLang(String en, String hi, String lang) {
-    if (lang == "hi" && hi.trim().isNotEmpty) return hi;
-    return en;
-  }
-
-  Map<String, dynamic> _getAspectMeta(String name) {
+  // META FETCHER (English Title Matching)
+  Map<String, dynamic> _getAspectMeta(String nameEN) {
     try {
       return LifeAspectMeta.allAspects.firstWhere(
-        (m) => m["name"] == name,
+        (m) => m["name"] == nameEN,
         orElse: () => <String, dynamic>{},
       );
-    } catch (e) {
+    } catch (_) {
       return <String, dynamic>{};
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Manual Kundali Language
-    final String lang =
-        widget.kundali["language"]?.toString().substring(0, 2) ?? "en";
+    final d = widget.data;
 
-    final data = widget.data;
+    // CLEAN LANGUAGE HANDLING (Backend-driven)
+    final aspect = d["aspect_hi"]?.toString().trim().isNotEmpty == true
+        ? d["aspect_hi"]
+        : d["aspect"];
 
-    final aspect = _pickLang(
-      (data["aspect"] ?? "").toString(),
-      (data["aspect_hi"] ?? "").toString(),
-      lang,
-    );
+    final summary = d["summary_hi"]?.toString().trim().isNotEmpty == true
+        ? d["summary_hi"]
+        : d["summary"];
 
-    final summary = _pickLang(
-      (data["summary"] ?? "").toString(),
-      (data["summary_hi"] ?? "").toString(),
-      lang,
-    );
+    final example = d["example_hi"]?.toString().trim().isNotEmpty == true
+        ? d["example_hi"]
+        : d["example"];
 
-    final example = _pickLang(
-      (data["example"] ?? "").toString(),
-      (data["example_hi"] ?? "").toString(),
-      lang,
-    );
+    final houses = d["houses_hi"]?.toString().trim().isNotEmpty == true
+        ? d["houses_hi"]
+        : d["houses"];
 
-    final houses = (data["houses"] ?? "").toString();
-    final planets = (data["planets"] ?? "").toString();
-    final yogas = (data["yogas"] ?? "").toString();
+    final planets = d["planets_hi"]?.toString().trim().isNotEmpty == true
+        ? d["planets_hi"]
+        : d["planets"];
 
-    final meta = _getAspectMeta((data["aspect"] ?? "").toString());
+    final yogas = d["yogas_hi"]?.toString().trim().isNotEmpty == true
+        ? d["yogas_hi"]
+        : d["yogas"];
+
+    // META ENGLISH BASED
+    final meta = _getAspectMeta(d["aspect"] ?? "");
     final emoji = (meta["emoji"] ?? "✨").toString();
     final colorHex = meta["color"] is int ? meta["color"] as int : 0xFF7C3AED;
-    final Color baseColor = Color(colorHex);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildHeader(aspect, emoji, baseColor, houses, planets),
-
+        _buildHeader(aspect, emoji, Color(colorHex), houses, planets),
         const SizedBox(height: 20),
 
-        // 🖼 SHAREABLE CONTENT
         RepaintBoundary(
           key: _shareKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _sectionCard("Overview", summary),
+
               if (example.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _sectionCard("Example", example),
               ],
+
               if (houses.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _sectionCard("Key Houses", houses),
               ],
+
               if (planets.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
                 _sectionCard("Key Planets", planets),
               ],
-              if (yogas.trim().isNotEmpty && yogas.trim() != "—") ...[
+
+              if (yogas.trim().isNotEmpty && yogas != "—") ...[
                 const SizedBox(height: 16),
                 _sectionCard("Important Yogas", yogas),
               ],
@@ -117,9 +114,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // ----------------------------------------------------
-  // HEADER
-  // ----------------------------------------------------
+  // HEADER UI
   Widget _buildHeader(
     String aspect,
     String emoji,
@@ -135,8 +130,8 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                baseColor.withOpacity(0.95),
-                baseColor.withOpacity(0.75),
+                baseColor.withOpacity(0.98),
+                baseColor.withOpacity(0.78),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -154,7 +149,6 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Text(emoji, style: const TextStyle(fontSize: 30)),
                   const SizedBox(width: 12),
@@ -208,9 +202,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // ----------------------------------------------------
-  // CARD UI
-  // ----------------------------------------------------
+  // CARD FOR SECTIONS
   Widget _sectionCard(String title, String content) {
     return Container(
       width: double.infinity,
@@ -246,28 +238,24 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // ----------------------------------------------------
   // SHARE LOGIC
-  // ----------------------------------------------------
   Future<void> _shareAspect() async {
     try {
       final boundary =
           _shareKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
 
-      final image = await boundary.toImage(pixelRatio: 3.0);
+      final image = await boundary.toImage(pixelRatio: 3.2);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData!.buffer.asUint8List();
 
       final dir = await getTemporaryDirectory();
-      final file = File("${dir.path}/life_aspect.png");
+      final file = File("${dir.path}/life_aspect_share.png");
       await file.writeAsBytes(pngBytes);
 
       await ShareUtils.shareImage(
         file.path,
         text: "✨ Life Aspect Insight — Generated by Jyotishasha App",
       );
-    } catch (e) {
-      // optional debug
-    }
+    } catch (_) {}
   }
 }

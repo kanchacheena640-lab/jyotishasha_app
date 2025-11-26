@@ -43,7 +43,9 @@ class MahadashaResultWidget extends StatelessWidget {
             mahaName: mahaName,
             antarName: antarName,
             period: currentBlock['period']?.toString(),
-            impact: currentBlock['impact_snippet']?.toString(),
+            impact:
+                currentBlock['impact_snippet_hi'] ??
+                currentBlock['impact_snippet'],
           ),
           const SizedBox(height: 16),
           _tabBar(context),
@@ -84,6 +86,19 @@ class MahadashaResultWidget extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
+    // ⭐ FORCE HINDI IF SELECTED
+    String finalImpact = impact ?? "";
+    try {
+      final lang = Localizations.localeOf(context).languageCode;
+      if (lang == "hi") {
+        finalImpact =
+            kundali["dasha_summary"]?["current_block"]?["impact_snippet_hi"]
+                ?.toString() ??
+            impact ??
+            "";
+      }
+    } catch (_) {}
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -114,6 +129,8 @@ class MahadashaResultWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+
+          // MAHA → ANTAR ROW
           Row(
             children: [
               Container(
@@ -147,10 +164,13 @@ class MahadashaResultWidget extends StatelessWidget {
                 ),
             ],
           ),
+
           const SizedBox(height: 10),
-          if (impact != null && impact.trim().isNotEmpty)
+
+          // ⭐ USE finalImpact instead of impact
+          if (finalImpact.trim().isNotEmpty)
             Text(
-              impact,
+              finalImpact,
               style: GoogleFonts.montserrat(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w400,

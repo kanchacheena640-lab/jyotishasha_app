@@ -32,42 +32,45 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
-    _initFlow();
 
-    // NEW LISTENER — when active profile changes
-    Future.microtask(() {
-      final profileProvider = context.read<ProfileProvider>();
-      profileProvider.addListener(() async {
-        if (!mounted) return;
+    // RUN INIT FLOW ONCE
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFlow();
+    });
 
-        print("🔄 Profile switched → Reloading Dashboard...");
+    // SETUP LISTENER SAFELY
+    final profileProvider = context.read<ProfileProvider>();
 
-        final firebaseKundali = context.read<FirebaseKundaliProvider>();
-        await firebaseKundali.loadFromFirebaseProfile();
+    profileProvider.addListener(() async {
+      if (!mounted) return;
 
-        final kd = firebaseKundali.kundaliData;
-        if (kd == null) return;
+      print("🔄 Profile switched → Reloading Dashboard...");
 
-        final lang = (kd['language'] ?? "en").substring(0, 2);
-        final lagna = kd['lagna_sign'] ?? '';
-        final lat = kd['location']?['lat'] ?? 26.8467;
-        final lng = kd['location']?['lng'] ?? 80.9462;
+      final firebaseKundali = context.read<FirebaseKundaliProvider>();
+      await firebaseKundali.loadFromFirebaseProfile();
 
-        // DAILY
-        context.read<DailyProvider>().fetchDaily(
-          lagna: lagna,
-          lat: lat,
-          lon: lng,
-          lang: lang,
-        );
+      final kd = firebaseKundali.kundaliData;
+      if (kd == null) return;
 
-        // PANCHANG
-        context.read<PanchangProvider>().fetchPanchang(
-          date: DateTime.now(),
-          lat: lat,
-          lng: lng,
-        );
-      });
+      final lang = (kd['language'] ?? "en").substring(0, 2);
+      final lagna = kd['lagna_sign'] ?? '';
+      final lat = kd['location']?['lat'] ?? 26.8467;
+      final lng = kd['location']?['lng'] ?? 80.9462;
+
+      // DAILY
+      await context.read<DailyProvider>().fetchDaily(
+        lagna: lagna,
+        lat: lat,
+        lon: lng,
+        lang: lang,
+      );
+
+      // PANCHANG
+      await context.read<PanchangProvider>().fetchPanchang(
+        date: DateTime.now(),
+        lat: lat,
+        lng: lng,
+      );
     });
   }
 
@@ -82,27 +85,30 @@ class _DashboardPageState extends State<DashboardPage> {
       if (user == null) return;
 
       final firebaseKundali = context.read<FirebaseKundaliProvider>();
-      print("🟣 Loading Kundali...");
       await firebaseKundali.loadFromFirebaseProfile();
 
       final kd = firebaseKundali.kundaliData;
       if (kd == null) return;
-
-      print("✅ Kundali Loaded");
-
-      final daily = context.read<DailyProvider>();
 
       final lang = (kd['language'] ?? "en").substring(0, 2);
       final lagna = kd['lagna_sign'] ?? '';
       final lat = kd['location']?['lat'] ?? 26.8467;
       final lng = kd['location']?['lng'] ?? 80.9462;
 
-      print("🟣 Fetching Daily Horoscope...");
-      await daily.fetchDaily(lagna: lagna, lat: lat, lon: lng, lang: lang);
+      // DAILY
+      await context.read<DailyProvider>().fetchDaily(
+        lagna: lagna,
+        lat: lat,
+        lon: lng,
+        lang: lang,
+      );
 
-      final panchang = context.read<PanchangProvider>();
-      print("🟣 Fetching Panchang...");
-      await panchang.fetchPanchang(date: DateTime.now(), lat: lat, lng: lng);
+      // PANCHANG
+      await context.read<PanchangProvider>().fetchPanchang(
+        date: DateTime.now(),
+        lat: lat,
+        lng: lng,
+      );
 
       print("🏁 Dashboard Init Completed");
     } catch (e) {

@@ -22,8 +22,71 @@ class YogDoshResultWidget extends StatefulWidget {
 
 class _YogDoshResultWidgetState extends State<YogDoshResultWidget> {
   final GlobalKey _shareKey = GlobalKey();
+  // LANGUAGE PICKER
+  String _pickText(dynamic value, String lang) {
+    if (value == null) return "";
+
+    // If already a string → return directly
+    if (value is String) return value;
+
+    // If map containing en/hi
+    if (value is Map) {
+      if (value[lang] is String) return value[lang];
+      if (value["en"] is String) return value["en"];
+    }
+
+    return value.toString();
+  }
+
+  List<String> _pickList(dynamic value, String lang) {
+    if (value == null) return [];
+
+    // Already list of strings
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+
+    // Map of lists for en/hi
+    if (value is Map) {
+      if (value[lang] is List) {
+        return (value[lang] as List).map((e) => e.toString()).toList();
+      }
+      if (value["en"] is List) {
+        return (value["en"] as List).map((e) => e.toString()).toList();
+      }
+    }
+
+    return [];
+  }
 
   Map<String, dynamic> get _data => widget.data;
+
+  // ------------------------------------------------
+  // TITLE RESOLVER (handle Hindi heading vs English name)
+  // ------------------------------------------------
+  String _titleForHeader() {
+    final profile = widget.kundali["profile"] ?? {};
+    final lang = (profile["language"] == "Hindi") ? "hi" : "en";
+
+    // 🔥 1) Hindi heading_hi (if exists)
+    if (lang == "hi" && _data["heading_hi"] != null) {
+      final h = _data["heading_hi"].toString().trim();
+      if (h.isNotEmpty) return h;
+    }
+
+    // 🔥 2) English heading
+    if (_data["heading"] != null &&
+        _data["heading"].toString().trim().isNotEmpty) {
+      return _data["heading"].toString().trim();
+    }
+
+    // 🔥 3) Fallback english name
+    if (_data["name"] != null && _data["name"].toString().trim().isNotEmpty) {
+      return _data["name"].toString().trim();
+    }
+
+    return "Yog / Dosh Analysis";
+  }
 
   String _fallbackText(List<String> keys, {String defaultValue = "-"}) {
     for (final k in keys) {
@@ -75,11 +138,7 @@ class _YogDoshResultWidgetState extends State<YogDoshResultWidget> {
   // HEADER STRIP (gradient + emoji + heading + share)
   // ------------------------------------------------
   Widget _buildHeader() {
-    final String title = _fallbackText([
-      "heading",
-      "name",
-    ], defaultValue: "Yog / Dosh Analysis");
-
+    final String title = _titleForHeader();
     final String emoji = (_data["emoji"] ?? "✨").toString();
 
     return RepaintBoundary(

@@ -7,9 +7,13 @@ import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/kundali_chart_north_widget.dart';
+
+import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/core/utils/translator.dart';
 
 // RESULT WIDGETS
 import 'package:jyotishasha_app/features/kundali/widgets/mahadasha_result_widget.dart';
@@ -38,10 +42,7 @@ class AstrologyToolDetailPage extends StatefulWidget {
 }
 
 class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
-  // FULL PAGE SHARE KEY
   final GlobalKey _fullPageKey = GlobalKey();
-
-  // TOP BLOCK SHARE KEY (optional)
   final GlobalKey _shareKey = GlobalKey();
 
   @override
@@ -56,6 +57,12 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
     final pob = (profile["place"] ?? "-").toString().split(",").first.trim();
     final lagna = k["lagna_sign"] ?? "-";
     final rashi = k["rashi"] ?? "-";
+
+    String _fixUrl(String? path) {
+      if (path == null || path.trim().isEmpty) return "";
+      if (path.startsWith("http")) return path;
+      return "https://jyotishasha.com$path";
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -82,7 +89,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    // TOP HEADER BLOCK
+                    // TOP BLOCK
                     RepaintBoundary(
                       key: _shareKey,
                       child: Container(
@@ -159,6 +166,95 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
   }
 
   // ---------------------------------------------------------------------------
+  // CONTENT BUILDER
+  // ---------------------------------------------------------------------------
+  Widget _buildContent() {
+    final title = widget.title;
+    final data = widget.data;
+    final kundali = widget.kundaliData;
+
+    if (data == null) return _empty("No data found");
+
+    print("🔎 TITLE: $title");
+    print("🔎 DATA RECEIVED: $data");
+
+    // ⭐ SPECIAL CASES
+    if (title.contains("Gemstone")) {
+      return GemstoneResultWidget(data: data);
+    }
+
+    if (title.contains("Saturn Today")) {
+      return SaturnTodayWidget(data: data);
+    }
+
+    // ⭐ RASHI FINDER — NEW CARD
+    if (title.contains("Rashi Finder")) {
+      return _rashiCard(data);
+    }
+
+    // ⭐ LAGNA FINDER — NEW CARD
+    if (title.contains("Lagna Finder")) {
+      return _lagnaCard(data);
+    }
+
+    // ⭐ HOUSE
+    if (data is Map && data.containsKey("house")) {
+      final hn = int.tryParse(data["house"].toString()) ?? 0;
+      return HouseResultWidget(
+        house: hn,
+        data: Map<String, dynamic>.from(data),
+        kundali: kundali,
+      );
+    }
+
+    // ⭐ MAHADASHA
+    if (title.toLowerCase().contains("mahadasha")) {
+      Map<String, dynamic> cleanMaha = {};
+
+      if (data is Map && data.containsKey("antardashas")) {
+        cleanMaha = Map<String, dynamic>.from(data);
+      } else if (kundali["dasha_summary"]?["current_mahadasha"] != null) {
+        cleanMaha = Map<String, dynamic>.from(
+          kundali["dasha_summary"]["current_mahadasha"],
+        );
+      }
+
+      return MahadashaResultWidget(data: cleanMaha, kundali: kundali);
+    }
+
+    // ⭐ PLANET
+    if (data is Map && data["planet"] != null) {
+      return PlanetResultWidget(
+        data: Map<String, dynamic>.from(data),
+        kundali: kundali,
+      );
+    }
+
+    // ⭐ LIFE ASPECT
+    if (data is Map && data["aspect"] != null) {
+      return Builder(
+        builder: (ctx) => LifeAspectWidget(
+          data: Map<String, dynamic>.from(data),
+          kundali: kundali,
+        ),
+      );
+    }
+
+    // ⭐ YOG & DOSH
+    if (data is Map && data["id"] != null) {
+      final yogas = (kundali["yogas"] ?? {}) as Map;
+      final resolved = yogas[data["id"]] ?? data;
+
+      return YogDoshResultWidget(
+        data: Map<String, dynamic>.from(resolved),
+        kundali: kundali,
+      );
+    }
+
+    return _defaultViewer(data);
+  }
+
+  // ---------------------------------------------------------------------------
   // KUNDALI BOX
   // ---------------------------------------------------------------------------
   Widget _kundaliBox(List planets, String lagna) {
@@ -183,121 +279,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
   }
 
   // ---------------------------------------------------------------------------
-  // MAIN CONTENT BUILDER
-  // ---------------------------------------------------------------------------
-  Widget _buildContent() {
-    final title = widget.title;
-    final data = widget.data;
-    final kundali = widget.kundaliData;
-
-    if (data == null) return _empty("No data found");
-
-    print("🔎 TITLE: $title");
-    print("🔎 DATA RECEIVED: $data");
-
-    // ⭐ 0) SPECIAL CLEAN WIDGET OVERRIDES
-    if (title.contains("Gemstone")) {
-      return GemstoneResultWidget(data: data);
-    }
-
-    if (title.contains("Saturn Today")) {
-      return SaturnTodayWidget(data: data);
-    }
-
-    if (title.contains("Lagna Finder")) {
-      return _simpleCard(data);
-    }
-
-    if (title.contains("Rashi Finder")) {
-      return _simpleCard(data);
-    }
-
-    // ⭐ 1) HOUSE
-    if (data is Map && data.containsKey("house")) {
-      final hn = int.tryParse(data["house"].toString()) ?? 0;
-      return HouseResultWidget(
-        house: hn,
-        data: Map<String, dynamic>.from(data),
-        kundali: kundali,
-      );
-    }
-
-    // ⭐ 2) MAHADASHA
-    if (title.toLowerCase().contains("mahadasha")) {
-      Map<String, dynamic> cleanMaha = {};
-
-      if (data is Map && data.containsKey("antardashas")) {
-        cleanMaha = Map<String, dynamic>.from(data);
-      } else if (kundali["dasha_summary"]?["current_mahadasha"] != null) {
-        cleanMaha = Map<String, dynamic>.from(
-          kundali["dasha_summary"]["current_mahadasha"],
-        );
-      }
-
-      return MahadashaResultWidget(data: cleanMaha, kundali: kundali);
-    }
-
-    // ⭐ 3) PLANET
-    if (data is Map && data["planet"] != null) {
-      return PlanetResultWidget(
-        data: Map<String, dynamic>.from(data),
-        kundali: kundali,
-      );
-    }
-
-    // ⭐ 4) LIFE ASPECT
-    if (data is Map && data["aspect"] != null) {
-      return LifeAspectWidget(
-        data: Map<String, dynamic>.from(data),
-        kundali: kundali,
-      );
-    }
-
-    // ⭐ 5) YOG DOSH
-    if (data is Map && data["id"] != null) {
-      final yogas = (kundali["yogas"] ?? {}) as Map;
-      final resolved = yogas[data["id"]] ?? data;
-
-      return YogDoshResultWidget(
-        data: Map<String, dynamic>.from(resolved),
-        kundali: kundali,
-      );
-    }
-
-    // FALLBACK
-    return _defaultViewer(data);
-  }
-
-  // ---------------------------------------------------------------------------
-  // SIMPLE CARD
-  // ---------------------------------------------------------------------------
-  Widget _simpleCard(dynamic data) {
-    final result = data["result"] ?? "-";
-    final text = data["text"] ?? "";
-
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: _decor(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            result,
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(text, style: GoogleFonts.montserrat(fontSize: 15, height: 1.55)),
-        ],
-      ),
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // DEFAULT VIEW
+  // DEFAULT SIMPLE VIEWER (fallback)
   // ---------------------------------------------------------------------------
   Widget _defaultViewer(dynamic data) {
     return Container(
@@ -305,6 +287,152 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
       decoration: _decor(),
       child: Text(data.toString(), style: GoogleFonts.montserrat(fontSize: 14)),
     );
+  }
+
+  // ---------------------------------------------------------------------------
+  // FINAL RASHI CARD (UNIVERSAL FOR EN + HI) — PERFECT CLEAN VERSION
+  // ---------------------------------------------------------------------------
+  Widget _rashiCard(dynamic data) {
+    final img = _fixUrl(data["image"]);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _decor(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// TITLE
+          Text(
+            data["title"] ?? "",
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+
+          const SizedBox(height: 14),
+
+          /// IMAGE
+          if (img.isNotEmpty)
+            Center(
+              child: Image.network(
+                img,
+                height: 80,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
+            ),
+
+          const SizedBox(height: 20),
+
+          /// RESULT (Moon Sign Name)
+          if (data["result"] != null)
+            Text(
+              "Moon Sign: ${data["result"]}",
+              style: GoogleFonts.montserrat(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+
+          const SizedBox(height: 12),
+
+          /// META INFO
+          _metaRow("Element", data["element"]),
+          _metaRow("Symbol", data["symbol"]),
+          _metaRow("Ruling Planet", data["ruling_planet"]),
+
+          const SizedBox(height: 18),
+
+          /// PERSONALITY / MAIN TEXT
+          Text(
+            (data["text"] ?? "").replaceAll("\\n", "\n"),
+            style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+          ),
+
+          const SizedBox(height: 24),
+
+          /// LAST INFO BLOCK (IMAGE URL + SYMBOL + PLANET)
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (img.isNotEmpty)
+                  Text(
+                    "Zodiac Image URL:\n$img",
+                    style: GoogleFonts.montserrat(fontSize: 13),
+                  ),
+
+                const SizedBox(height: 8),
+
+                Text(
+                  "Symbol: ${data["symbol"] ?? "-"}",
+                  style: GoogleFonts.montserrat(fontSize: 13),
+                ),
+
+                Text(
+                  "Ruling Planet: ${data["ruling_planet"] ?? "-"}",
+                  style: GoogleFonts.montserrat(fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _metaRow(String label, dynamic value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        "$label: ${value ?? "-"}",
+        style: GoogleFonts.montserrat(fontSize: 14),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // LAGNA CARD (FINAL WORKING VERSION)
+  // ---------------------------------------------------------------------------
+  Widget _lagnaCard(dynamic data) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _decor(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            data["title"] ?? "",
+            style: GoogleFonts.playfairDisplay(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            data["text"] ?? "",
+            style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // IMAGE URL FIXER (for /zodiac/... paths)
+  // ---------------------------------------------------------------------------
+  String _fixUrl(String? path) {
+    if (path == null || path.trim().isEmpty) return "";
+    if (path.startsWith("http")) return path;
+    return "https://jyotishasha.com$path";
   }
 
   // SHARE BUTTON

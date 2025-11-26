@@ -5,83 +5,77 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:flutter/material.dart';
+
+BuildContext? globalKundaliContext;
 
 class FirebaseKundaliProvider extends ChangeNotifier {
-  Map<String, dynamic>? kundaliData; // final backend kundali
-  Map<String, dynamic>? profileData; // firebase profile data
+  Map<String, dynamic>? kundaliData;
+  Map<String, dynamic>? profileData;
   bool isLoading = false;
   String? errorMessage;
 
-  /// 🔧 DOB FORMAT FIXER
-  /// - If "1985-01-14" → keep as is
-  /// - If "14-01-1985" → convert to "1985-01-14"
+  // ---------------------------------------------------------
+  // DOB FIXER
+  // ---------------------------------------------------------
   String _fixDob(dynamic rawDob) {
     if (rawDob == null) return "";
 
     final dob = rawDob.toString().trim();
-    print("🧩 Raw DOB from Firestore: $dob");
+    print("🧩 [DOB] Raw: $dob");
 
-    final isoRegex = RegExp(r'^\d{4}-\d{2}-\d{2}$');
-    if (isoRegex.hasMatch(dob)) {
-      print("✅ DOB looks ISO already → $dob");
-      return dob; // already correct
+    final iso = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+    if (iso.hasMatch(dob)) {
+      print("✅ DOB already ISO");
+      return dob;
     }
 
     final parts = dob.split("-");
     if (parts.length == 3) {
       final fixed = "${parts[2]}-${parts[1]}-${parts[0]}";
-      print("🔁 DOB converted → $fixed");
+      print("🔁 DOB fixed → $fixed");
       return fixed;
     }
 
-    print("⚠️ DOB format unknown, sending as-is");
+    print("⚠️ DOB format unknown");
     return dob;
   }
 
-  /// 🔥 MAIN FUNCTION → Firebase Profile + Backend Kundali
+  // ---------------------------------------------------------
+  // MAIN FUNCTION
+  // ---------------------------------------------------------
   Future<void> loadFromFirebaseProfile() async {
     print("--------------------------------------------------");
-    print("🔮 FirebaseKundaliProvider → loadFromFirebaseProfile()");
+    print("🔮 FirebaseKundaliProvider → START");
     print("--------------------------------------------------");
 
     try {
       isLoading = true;
-      errorMessage = null;
       notifyListeners();
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
-        print("❌ User not logged in");
-        errorMessage = "User not logged in";
-        kundaliData = null;
-        isLoading = false;
-        notifyListeners();
+        print("❌ No Firebase user");
         return;
       }
 
-      // -------------------------------------------
-      // 🔥 STEP 1 — LOAD ACTIVE PROFILE ID
-      // -------------------------------------------
+      // LOAD USER ROOT DOC
       final userDoc = await FirebaseFirestore.instance
           .collection("users")
           .doc(user.uid)
           .get();
 
       final activeId = userDoc.data()?["activeProfileId"];
-      print("🟣 ACTIVE PROFILE ID = $activeId");
+      print("🟣 Active ID = $activeId");
 
       if (activeId == null) {
-        print("❌ No active profile selected");
-        errorMessage = "No active profile selected";
-        kundaliData = null;
-        isLoading = false;
-        notifyListeners();
+        print("❌ No active profile found");
         return;
       }
 
-      // -------------------------------------------
-      // 🔥 STEP 2 — LOAD ACTIVE PROFILE DATA
-      // -------------------------------------------
+      // LOAD PROFILE DOC
       final profileDoc = await FirebaseFirestore.instance
           .collection("users")
           .doc(user.uid)
@@ -89,64 +83,51 @@ class FirebaseKundaliProvider extends ChangeNotifier {
           .doc(activeId)
           .get();
 
-      print("📄 Profile Exists? ${profileDoc.exists}");
-      print("📄 Profile Data: ${profileDoc.data()}");
+      print("📄 Profile exists → ${profileDoc.exists}");
+      print("📄 ProfileData → ${profileDoc.data()}");
 
       if (!profileDoc.exists) {
-        print("❌ Profile not found");
-        errorMessage = "Profile not found";
-        kundaliData = null;
-        isLoading = false;
-        notifyListeners();
+        print("❌ Profile missing");
         return;
       }
 
       profileData = profileDoc.data();
 
+      // Extract Values
       final name = profileData?["name"];
-      final rawDob = profileData?["dob"];
-      final fixedDob = _fixDob(rawDob);
+      final dob = _fixDob(profileData?["dob"]);
       final tob = profileData?["tob"];
       final pob = profileData?["pob"];
       final lat = profileData?["lat"];
       final lng = profileData?["lng"];
 
-      if (name == null || fixedDob.isEmpty || tob == null || pob == null) {
-        print("❌ Incomplete profile → name/dob/tob/pob missing");
-        errorMessage = "Incomplete profile";
-        kundaliData = null;
-        isLoading = false;
-        notifyListeners();
-        return;
-      }
+      final selectedLang = (profileData?["language"] ?? "en")
+          .toString()
+          .toLowerCase()
+          .substring(0, 2);
 
-      // -------------------------------------------
-      // 🔥 STEP 3 — CALL BACKEND KUNDALI API
-      // -------------------------------------------
-      final url = Uri.parse(
-        "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
-      );
+      print("🌐 User Language from Firebase = $selectedLang");
 
+      // BACKEND CALL PAYLOAD
       final payload = {
         "name": name,
-        "dob": fixedDob, // ✅ ALWAYS YYYY-MM-DD
+        "dob": dob,
         "tob": tob,
         "place_name": pob,
         "lat": lat,
         "lng": lng,
         "timezone": profileData?["timezone"] ?? "+05:30",
         "ayanamsa": profileData?["ayanamsa"] ?? "Lahiri",
-        "language":
-            (profileData?["language"] ?? "en")
-                .toString()
-                .toLowerCase()
-                .startsWith("e")
-            ? "en"
-            : "hi",
+        "language": selectedLang,
       };
 
-      print("🌐 Sending Payload to backend:");
+      print("🌐 Sending to backend:");
       print(jsonEncode(payload));
+
+      // BACKEND CALL
+      final url = Uri.parse(
+        "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
+      );
 
       final response = await http.post(
         url,
@@ -154,40 +135,56 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         body: jsonEncode(payload),
       );
 
-      print("🌐 Status Code: ${response.statusCode}");
+      print("🌐 Response → ${response.statusCode}");
 
       if (response.statusCode != 200) {
-        print("❌ Backend error → ${response.body}");
-        errorMessage = "Backend error: ${response.statusCode}";
-        kundaliData = null;
-      } else {
-        kundaliData = jsonDecode(response.body);
-        print("✅ Kundali Loaded Successfully");
-        if (kDebugMode) {
-          print("🟢 Kundali keys: ${kundaliData?.keys}");
+        print("❌ Backend error");
+        print(response.body);
+        return;
+      }
+
+      kundaliData = jsonDecode(response.body);
+      print("✅ Kundali Loaded, keys:");
+      print(kundaliData?.keys);
+
+      // ---------------------------------------------
+      // LANGUAGE SYNC (ONLY FROM FIREBASE)
+      // ---------------------------------------------
+      try {
+        final profileLang = (profileData?["language"] ?? "en")
+            .toString()
+            .toLowerCase()
+            .substring(0, 2);
+
+        print("🌐 Applying Firebase Profile language → $profileLang");
+
+        if (globalKundaliContext != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            globalKundaliContext!.read<LanguageProvider>().setLanguage(
+              profileLang,
+            );
+          });
         }
+      } catch (e) {
+        print("❌ Firebase language sync error → $e");
       }
     } catch (e) {
-      print("❌ Exception: $e");
-      errorMessage = e.toString();
-      kundaliData = null;
+      print("❌ Exception → $e");
     }
 
     isLoading = false;
     notifyListeners();
-    print("🎯 FINAL kundaliData: ${kundaliData != null ? "Loaded" : "NULL"}");
+
+    print("🎯 FINAL → ${kundaliData != null ? "Kundali Loaded" : "NULL"}");
     print("--------------------------------------------------");
   }
 
-  Future<void> refresh() async {
-    await loadFromFirebaseProfile();
-  }
+  Future<void> refresh() async => await loadFromFirebaseProfile();
 
   void clear() {
     kundaliData = null;
     profileData = null;
     errorMessage = null;
-    isLoading = false;
     notifyListeners();
   }
 }

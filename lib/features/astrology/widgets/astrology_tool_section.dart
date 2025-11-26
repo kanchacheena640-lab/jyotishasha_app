@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/features/astrology/data/astrology_meta.dart';
 
 class AstrologyToolSection extends StatefulWidget {
@@ -23,33 +24,44 @@ class AstrologyToolSection extends StatefulWidget {
 }
 
 //
-// 🔥 TOOL DATA RESOLVER
+// 🔥 TOOL DATA RESOLVER (DO NOT TOUCH)
 //
 dynamic _resolveToolData(String id, Map k) {
   if (id == "rashi") {
     final mt = k["moon_traits"] ?? {};
+
     return {
-      "result": k["rashi"],
-      "text": mt["personality"] ?? "",
+      "result": k["rashi"] ?? "-",
       "title": mt["title"] ?? "",
+      "text": mt["personality"] ?? "",
       "image": mt["image"],
-      "element": mt["element"],
-      "symbol": mt["symbol"],
-      "ruling_planet": mt["ruling_planet"],
+      "element": mt["element"] ?? "",
+      "symbol": mt["symbol"] ?? "",
+      "ruling_planet": mt["ruling_planet"] ?? "",
     };
   }
 
   if (id == "gemstone") {
     final g = Map<String, dynamic>.from(k["gemstone_suggestion"] ?? {});
     g.remove("cta");
-    return g;
+
+    return {
+      "gemstone": g["gemstone"] ?? "-",
+      "substone": g["substone"] ?? "-",
+      "planet": g["planet"] ?? "-",
+      "paragraph": g["paragraph"] ?? "-",
+      "paragraph_hi": g["paragraph_hi"] ?? "",
+    };
   }
 
   if (id == "lagna") {
+    final sign = k["lagna_sign"] ?? "-";
+    final trait = k["lagna_trait"] ?? ""; // backend jo bhejega, wahi dikhayenge
+
     return {
-      "result": k["lagna_sign"],
-      "text": k["lagna_trait"] ?? "",
-      "title": "Your Ascendant (Lagna)",
+      "result": sign,
+      "title": "Your Ascendant (Lagna): $sign",
+      "text": trait,
     };
   }
 
@@ -94,9 +106,6 @@ dynamic _resolveToolData(String id, Map k) {
   return null;
 }
 
-//
-// MAIN UI
-//
 class _AstrologyToolSectionState extends State<AstrologyToolSection> {
   int _selected = 0;
 
@@ -147,7 +156,6 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     });
   }
 
-  /// Auto-scroll selected category chip
   void _scrollToSelectedChip() {
     try {
       final ctx = _chipKeys[_selected].currentContext;
@@ -162,7 +170,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     } catch (_) {}
   }
 
-  /// Single tool card
+  /// ───────── GRID CARD ─────────
   Widget _toolCard({
     required String name,
     required String id,
@@ -221,7 +229,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     );
   }
 
-  /// Grid builder
+  /// ───────── GRID ─────────
   Widget _buildGrid(List<Map<String, dynamic>> data) {
     return GridView.builder(
       shrinkWrap: true,
@@ -242,17 +250,18 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
 
   @override
   Widget build(BuildContext context) {
-    // ⭐ LIVE KUNDALI FROM PROVIDER (MOST IMPORTANT FIX)
     final firebase = context.watch<FirebaseKundaliProvider>();
     final k = firebase.kundaliData ?? {};
 
+    final String lang = Provider.of<LanguageProvider>(context).currentLang;
+
     final pages = [
-      AstrologyMeta.profileTools(),
-      AstrologyMeta.planetCategory(k["planet_overview"] ?? []),
-      AstrologyMeta.houseCategory(k["houses_overview"] ?? []),
-      AstrologyMeta.mahadashaCategory(k),
-      AstrologyMeta.lifeAspectCategory(k["life_aspects"] ?? []),
-      AstrologyMeta.yogaCategory(k["yogas"] ?? {}),
+      AstrologyMeta.profileTools(context),
+      AstrologyMeta.planetCategory(k["planet_overview"] ?? [], context),
+      AstrologyMeta.houseCategory(k["houses_overview"] ?? [], context),
+      AstrologyMeta.mahadashaCategory(k, context),
+      AstrologyMeta.lifeAspectCategory(k["life_aspects"] ?? [], context),
+      AstrologyMeta.yogaCategory(k["yogas"] ?? {}, context),
     ];
 
     return Column(
@@ -260,7 +269,6 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
       children: [
         const SizedBox(height: 12),
 
-        // ⭐ CATEGORY CHIPS
         SizedBox(
           height: 45,
           child: ListView.separated(
