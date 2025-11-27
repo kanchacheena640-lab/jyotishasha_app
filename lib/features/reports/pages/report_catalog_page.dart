@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'report_checkout_page.dart';
 
 class ReportCatalogPage extends StatefulWidget {
@@ -19,12 +22,23 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
   @override
   void initState() {
     super.initState();
-    loadReports();
+    // Delay to ensure context available for Provider
+    Future.microtask(() => loadReports());
   }
 
   Future<void> loadReports() async {
     try {
-      final data = await rootBundle.loadString('assets/data/reports.json');
+      final lang = Provider.of<LanguageProvider>(
+        context,
+        listen: false,
+      ).currentLang;
+
+      final file = lang == "hi"
+          ? 'assets/data/reports_hi.json'
+          : 'assets/data/reports.json';
+
+      final data = await rootBundle.loadString(file);
+
       setState(() {
         reports = jsonDecode(data);
         loading = false;
@@ -37,10 +51,16 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context).currentLang;
+
     return Scaffold(
       backgroundColor: const Color(0xFFFEEFF5),
       appBar: AppBar(
-        title: const Text("Personal Astrology Reports"),
+        title: Text(
+          lang == "hi"
+              ? "व्यक्तिगत ज्योतिष रिपोर्ट"
+              : "Personal Astrology Reports",
+        ),
         centerTitle: true,
         backgroundColor: const Color(0xFF7C3AED),
         elevation: 0,
@@ -60,7 +80,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                       horizontal: 16,
                       vertical: 8,
                     ),
-                    children: _buildCategoryChips(),
+                    children: _buildCategoryChips(lang),
                   ),
                 ),
 
@@ -71,6 +91,15 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                     itemCount: _filteredReports().length,
                     itemBuilder: (context, index) {
                       final r = _filteredReports()[index];
+
+                      final title = lang == "hi"
+                          ? (r["title_hi"] ?? r["title"])
+                          : r["title"];
+
+                      final desc = lang == "hi"
+                          ? (r["description_hi"] ?? r["description"])
+                          : r["description"];
+
                       return Container(
                         margin: const EdgeInsets.only(bottom: 16),
                         decoration: BoxDecoration(
@@ -91,7 +120,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(20),
                           onTap: () {
-                            _showReportDetails(context, r);
+                            _showReportDetails(context, r, lang);
                           },
                           child: Row(
                             children: [
@@ -118,7 +147,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        r["title"],
+                                        title,
                                         style: GoogleFonts.montserrat(
                                           fontSize: 16,
                                           fontWeight: FontWeight.bold,
@@ -127,7 +156,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                       ),
                                       const SizedBox(height: 6),
                                       Text(
-                                        r["description"],
+                                        desc,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
                                         style: GoogleFonts.montserrat(
@@ -164,11 +193,17 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                                   ),
                                             ),
                                             onPressed: () {
-                                              _showReportDetails(context, r);
+                                              _showReportDetails(
+                                                context,
+                                                r,
+                                                lang,
+                                              );
                                             },
-                                            child: const Text(
-                                              "Buy Now",
-                                              style: TextStyle(
+                                            child: Text(
+                                              lang == "hi"
+                                                  ? "खरीदें"
+                                                  : "Buy Now",
+                                              style: const TextStyle(
                                                 color: Colors.white,
                                               ),
                                             ),
@@ -192,9 +227,9 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
   }
 
   // 🔮 Category Chips builder
-  List<Widget> _buildCategoryChips() {
+  List<Widget> _buildCategoryChips(String lang) {
     final categories = [
-      "All",
+      lang == "hi" ? "सभी" : "All",
       ...{...reports.map((r) => r["category"]).toSet()},
     ];
 
@@ -225,18 +260,26 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
 
   // 🎯 Filter reports by category
   List<dynamic> _filteredReports() {
-    if (selectedCategory == "All") return reports;
+    if (selectedCategory == "All" || selectedCategory == "सभी") return reports;
     return reports
         .where(
-          (r) => r["category"].toString().toLowerCase().contains(
-            selectedCategory.toLowerCase(),
-          ),
+          (r) =>
+              r["category"].toString().toLowerCase() ==
+              selectedCategory.toLowerCase(),
         )
         .toList();
   }
 
-  // 🪶 Show full details in bottom sheet
-  void _showReportDetails(BuildContext context, dynamic report) {
+  // 🪶 Show full details in dialog
+  void _showReportDetails(BuildContext context, dynamic report, String lang) {
+    final title = lang == "hi"
+        ? (report["title_hi"] ?? report["title"])
+        : report["title"];
+
+    final desc = lang == "hi"
+        ? (report["fullDescription_hi"] ?? report["fullDescription"])
+        : report["fullDescription"];
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -275,7 +318,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 🖼️ Image on top
+                    // 🖼️ Image
                     ClipRRect(
                       borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(20),
@@ -296,7 +339,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            report["title"],
+                            title,
                             style: GoogleFonts.montserrat(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -305,7 +348,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                           ),
                           const SizedBox(height: 12),
                           Text(
-                            report["fullDescription"],
+                            desc,
                             style: GoogleFonts.montserrat(
                               fontSize: 14,
                               color: Colors.black87,
@@ -336,7 +379,9 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                 );
                               },
                               child: Text(
-                                "Buy Now ₹${report["price"]}",
+                                lang == "hi"
+                                    ? "खरीदें ₹${report["price"]}"
+                                    : "Buy Now ₹${report["price"]}",
                                 style: GoogleFonts.montserrat(
                                   fontSize: 16,
                                   color: Colors.white,

@@ -1,156 +1,156 @@
 class LifeAspectMeta {
   static final List<Map<String, dynamic>> allAspects = [
     {
-      "name": "Personality & Outlook",
+      "key": "aspect_personality",
       "emoji": "🤵",
-      "icon": "assets/icons/aspects/personality.png", // optional
+      "icon": "assets/icons/aspects/personality.png",
       "color": 0xFF7C3AED,
     },
     {
-      "name": "Wealth & Finances",
+      "key": "aspect_wealth",
       "emoji": "💰",
       "icon": "assets/icons/aspects/wealth.png",
       "color": 0xFF4CAF50,
     },
     {
-      "name": "Communication & Siblings",
+      "key": "aspect_siblings",
       "emoji": "🗣️",
       "icon": "assets/icons/aspects/communication.png",
       "color": 0xFF03A9F4,
     },
     {
-      "name": "Home & Family",
+      "key": "aspect_family",
       "emoji": "🏡",
       "icon": "assets/icons/aspects/home.png",
-      "color": 0xFF8D6E63, // Soft brown
+      "color": 0xFF8D6E63,
     },
     {
-      "name": "Creativity & Children",
+      "key": "aspect_creativity",
       "emoji": "🎨",
       "icon": "assets/icons/aspects/creativity.png",
-      "color": 0xFFFF7043, // Coral orange
+      "color": 0xFFFF7043,
     },
     {
-      "name": "Health & Challenges",
+      "key": "aspect_health",
       "emoji": "💪",
       "icon": "assets/icons/aspects/health.png",
-      "color": 0xFFE53935, // Bright red
+      "color": 0xFFE53935,
     },
     {
-      "name": "Marriage & Partnerships",
+      "key": "aspect_marriage",
       "emoji": "💞",
       "icon": "assets/icons/aspects/marriage.png",
-      "color": 0xFFEC407A, // Pink rose
+      "color": 0xFFEC407A,
     },
     {
-      "name": "Transformation & Longevity",
+      "key": "aspect_transformation",
       "emoji": "🦂",
       "icon": "assets/icons/aspects/transformation.png",
-      "color": 0xFF5D4037, // Dark earthy brown
+      "color": 0xFF5D4037,
     },
     {
-      "name": "Luck & Spiritual Growth",
+      "key": "aspect_spiritual",
       "emoji": "🔱",
       "icon": "assets/icons/aspects/spiritual.png",
-      "color": 0xFF7E57C2, // Indigo violet
+      "color": 0xFF7E57C2,
     },
     {
-      "name": "Career & Public Life",
+      "key": "aspect_career",
       "emoji": "💼",
       "icon": "assets/icons/aspects/career.png",
-      "color": 0xFF1565C0, // Deep blue
+      "color": 0xFF1565C0,
     },
     {
-      "name": "Gains & Social Network",
+      "key": "aspect_gains",
       "emoji": "🤝",
       "icon": "assets/icons/aspects/gains.png",
-      "color": 0xFF00897B, // Teal
+      "color": 0xFF00897B,
     },
     {
-      "name": "Expenses & Isolation",
+      "key": "aspect_expenses",
       "emoji": "💸",
       "icon": "assets/icons/aspects/expenses.png",
-      "color": 0xFF6D4C41, // Brown grey
+      "color": 0xFF6D4C41,
     },
     {
-      "name": "Mind & Emotions",
+      "key": "aspect_mind",
       "emoji": "🧠",
       "icon": "assets/icons/aspects/mind.png",
-      "color": 0xFF5C6BC0, // Indigo
+      "color": 0xFF5C6BC0,
     },
     {
-      "name": "Family & Domestic Life",
+      "key": "aspect_family_domestic",
       "emoji": "👨‍👩‍👧‍👦",
       "icon": "assets/icons/aspects/family.png",
-      "color": 0xFF8E24AA, // Purple
+      "color": 0xFF8E24AA,
     },
     {
-      "name": "Spiritual Growth & Karma",
+      "key": "aspect_karma",
       "emoji": "🕉️",
       "icon": "assets/icons/aspects/karma.png",
-      "color": 0xFF3949AB, // Deep Indigo
+      "color": 0xFF3949AB,
     },
     {
-      "name": "Social Circle & Gains",
+      "key": "aspect_social_circle",
       "emoji": "📈",
       "icon": "assets/icons/aspects/social_circle.png",
-      "color": 0xFF26A69A, // Aqua green
+      "color": 0xFF26A69A,
     },
     {
-      "name": "Property & Assets",
+      "key": "aspect_property",
       "emoji": "🏠",
       "icon": "assets/icons/aspects/property.png",
-      "color": 0xFF795548, // Dark brown
+      "color": 0xFF795548,
     },
     {
-      "name": "Children & Creativity",
+      "key": "aspect_children",
       "emoji": "👶🎭",
       "icon": "assets/icons/aspects/children.png",
-      "color": 0xFFFF8A65, // Soft Orange
+      "color": 0xFFFF8A65,
     },
     {
-      "name": "Work & Service",
+      "key": "aspect_work",
       "emoji": "🛠️",
       "icon": "assets/icons/aspects/work.png",
-      "color": 0xFF546E7A, // Blue Grey
+      "color": 0xFF546E7A,
     },
     {
-      "name": "Marriage & Partnership",
+      "key": "aspect_partnership",
       "emoji": "💍",
       "icon": "assets/icons/aspects/partnership.png",
-      "color": 0xFFD81B60, // Vibrant Pink
+      "color": 0xFFD81B60,
     },
     {
-      "name": "Justice & Wisdom",
+      "key": "aspect_justice",
       "emoji": "⚖️",
       "icon": "assets/icons/aspects/justice.png",
-      "color": 0xFF283593, // Navy Indigo
+      "color": 0xFF283593,
     },
     {
-      "name": "Father & Authority",
+      "key": "aspect_father",
       "emoji": "👨‍🦳",
       "icon": "assets/icons/aspects/father.png",
-      "color": 0xFF6A1B9A, // Purple Dark
+      "color": 0xFF6A1B9A,
     },
     {
-      "name": "Past Life Karma",
+      "key": "aspect_past_life",
       "emoji": "♾️",
       "icon": "assets/icons/aspects/past_life.png",
-      "color": 0xFF4E342E, // Espresso Brown
+      "color": 0xFF4E342E,
     },
     {
-      "name": "Mother & Comfort",
+      "key": "aspect_mother",
       "emoji": "👩‍🍼",
       "icon": "assets/icons/aspects/mother.png",
-      "color": 0xFFAD1457, // Deep Rose
+      "color": 0xFFAD1457,
     },
   ];
 }
 
 class ProfileMeta {
   static final List<Map<String, dynamic>> profileTools = [
-    {"name": "Lagna Finder", "emoji": "📍", "color": 0xFF7C3AED},
-    {"name": "Rashi Finder", "emoji": "🌙", "color": 0xFF4CAF50},
-    {"name": "Gemstone Suggestion", "emoji": "💎", "color": 0xFFFF9800},
+    {"key": "profile_lagna_finder", "emoji": "📍", "color": 0xFF7C3AED},
+    {"key": "profile_rashi_finder", "emoji": "🌙", "color": 0xFF4CAF50},
+    {"key": "profile_gemstone_suggestion", "emoji": "💎", "color": 0xFFFF9800},
   ];
 }

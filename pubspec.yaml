@@ -11,50 +11,28 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  
-  # 🌐 HTTP Requests (latest)
-  http: ^1.2.2
 
-  # 🔥 Firebase Core + Auth + Firestore
+  http: ^1.2.2
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.0
   cloud_firestore: ^5.4.3
-
-  # 🔑 Google & Facebook Sign-In
   google_sign_in: ^6.2.1
   flutter_facebook_auth: ^7.1.1
-
-  # 📍 Google Places Autocomplete (Fixed version)
   google_places_flutter: ^2.1.1
-  
-
-  # 🗓️ Date & Time Formatting
   intl: ^0.20.2
-
-  # 💳 Razorpay Payments
   razorpay_flutter: ^1.3.7
-
-  # 💎 UI & Fonts
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.2
-
-  # ⚙️ Environment Variables
   flutter_dotenv: ^5.1.0
   timezone: ^0.10.1
   provider: ^6.0.5
   geocoding: ^3.0.0
-
-  # 📄 File & Sharing
   syncfusion_flutter_pdfviewer: 31.2.15
   share_plus: ^10.0.2
   permission_handler: ^11.3.1
   path_provider: ^2.1.3
-
-  # 🧭 Navigation + Cache
   go_router: ^16.3.0
   shared_preferences: ^2.5.3
-
-  # ✨ UI Effects
   shimmer: ^3.0.0
   audioplayers: ^6.5.1
 
@@ -65,8 +43,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  generate: true
-
+  generate: true    # ⭐ REQUIRED FOR L10N
   assets:
     - assets/icons/google.png
     - assets/icons/facebook.png
@@ -76,3 +53,9 @@ flutter:
     - assets/zodiac/
     - assets/data/reports.json
     - assets/images/reports/
+
+# ⭐ LOCALIZATION CONFIG (flutter ke bahar)
+l10n:
+  arb-dir: lib/l10n
+  template-arb-file: app_en.arb
+  output-localization-file: app_localizations.dart
