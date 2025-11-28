@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AstrologyProfileCard extends StatelessWidget {
   final Map<String, dynamic> kundali;
@@ -8,6 +9,8 @@ class AstrologyProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
     final profile = kundali["profile"] ?? {};
 
     final lagna = (kundali["lagna_sign"] ?? "-").toString();
@@ -21,17 +24,15 @@ class AstrologyProfileCard extends StatelessWidget {
         "-";
     final activeDasha = "$maha - $antar";
 
-    // Nakshatra smart detection
     final nakshatra = _extractNakshatra(kundali);
 
-    // Moon image
     final moon = rashi.toLowerCase().replaceAll(" ", "_");
     final moonImagePath = "assets/zodiac/$moon.png";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // ************ ORIGINAL CARD (UNCHANGED) ************
+        // ⭐ MAIN PURPLE CARD
         Container(
           margin: const EdgeInsets.fromLTRB(4, 4, 4, 8),
           padding: const EdgeInsets.all(18),
@@ -53,13 +54,13 @@ class AstrologyProfileCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // LEFT SIDE TEXT
+              // LEFT TEXT
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Astrology Profile",
+                      t.profile_title, // ⭐ LOCALIZED
                       style: GoogleFonts.playfairDisplay(
                         color: Colors.white,
                         fontSize: 20,
@@ -69,10 +70,13 @@ class AstrologyProfileCard extends StatelessWidget {
 
                     const SizedBox(height: 12),
 
-                    _info("Name", profile["name"]),
-                    _info("DOB", _format(profile["dob"])),
-                    _info("TOB", profile["tob"]),
-                    _info("POB", profile["pob"] ?? profile["place"]),
+                    _info(t.profile_name, profile["name"]),
+                    _info(t.profile_dob, _format(profile["dob"])),
+                    _info(t.profile_tob, profile["tob"]),
+                    _info(
+                      t.profile_pob,
+                      profile["pob"] ?? profile["place"] ?? "-",
+                    ),
 
                     const SizedBox(height: 14),
                   ],
@@ -115,39 +119,39 @@ class AstrologyProfileCard extends StatelessWidget {
 
         const SizedBox(height: 10),
 
-        // ************ BLUE SECTION OUTSIDE CARD ************
+        // ⭐ OUTSIDE BLUE TEXT SECTION
         Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // ⭐ SINGLE LINE — Rashi | Ascendant | Nakshatra
+            // ⭐ Rashi | Lagna | Nakshatra
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
                 style: GoogleFonts.montserrat(
-                  color: const Color(0xFF3B56A6), // DARK BLUE
-                  fontSize: 13, // SMALL PREMIUM SIZE
+                  color: const Color(0xFF3B56A6),
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.6,
                 ),
                 children: [
-                  TextSpan(text: "Rashi: $rashi"),
-                  TextSpan(text: "   |   "),
-                  TextSpan(text: "Ascendant: $lagna"),
-                  TextSpan(text: "   |   "),
-                  TextSpan(text: "Nakshatra: $nakshatra"),
+                  TextSpan(text: "${t.profile_rashi}: $rashi"),
+                  const TextSpan(text: "   |   "),
+                  TextSpan(text: "${t.profile_lagna}: $lagna"),
+                  const TextSpan(text: "   |   "),
+                  TextSpan(text: "${t.profile_nakshatra}: $nakshatra"),
                 ],
               ),
             ),
 
             const SizedBox(height: 6),
 
-            // ⭐ SECOND LINE — Active Planets
+            // ⭐ ACTIVE DASHAS
             Text(
-              "Active Planets: $activeDasha",
+              "${t.profile_active_planets}: $activeDasha",
               textAlign: TextAlign.center,
               style: GoogleFonts.montserrat(
-                color: const Color(0xFF3B56A6), // SAME DARK BLUE
-                fontSize: 13, // SAME SMALL SIZE
+                color: const Color(0xFF3B56A6),
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.6,
               ),
@@ -158,7 +162,9 @@ class AstrologyProfileCard extends StatelessWidget {
     );
   }
 
-  // ************ Helper Methods ************
+  // ---------------------------------------------------------------------------
+  // HELPERS
+  // ---------------------------------------------------------------------------
 
   String _extractNakshatra(Map<String, dynamic> kundali) {
     final fbNak = kundali["nakshatra"];

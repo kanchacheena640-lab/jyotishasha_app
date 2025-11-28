@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:jyotishasha_app/core/constants/planet_meta.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:provider/provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 
 class PlanetResultWidget extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -24,24 +28,54 @@ class PlanetResultWidget extends StatefulWidget {
 class _PlanetResultWidgetState extends State<PlanetResultWidget> {
   final GlobalKey _shareKey = GlobalKey();
 
-  Map<String, dynamic> getPlanetMeta(String planetName) {
+  // SAFE META LOOKUP (Hindi → English mapping)
+  Map<String, dynamic> getPlanetMeta(String planet) {
+    // Hindi names se match nahi hota → English planet use karo
+    final englishName = widget.data["planet"]?.toString() ?? planet;
+
     try {
       return PlanetMeta.allPlanets.firstWhere(
-        (p) => p["name"] == planetName,
+        (p) => p["name"].toString().toLowerCase() == englishName.toLowerCase(),
         orElse: () => {},
       );
-    } catch (e) {
+    } catch (_) {
       return {};
     }
   }
 
+  // SAFETY PICKER FOR ALL TEXTS
+  String safePick(dynamic hi, dynamic en) {
+    if (hi is String && hi.trim().isNotEmpty) return hi;
+    if (en is String && en.trim().isNotEmpty) return en;
+    return "";
+  }
+
   @override
   Widget build(BuildContext context) {
-    final planet = widget.data["planet"] ?? "";
-    final benefitArea = widget.data["benefit_area"] ?? "";
-    final remedy = widget.data["remedy"] ?? "";
-    final summary = widget.data["summary"] ?? "";
-    final text = widget.data["text"] ?? "";
+    final t = AppLocalizations.of(context)!;
+    final lang = Provider.of<LanguageProvider>(context).currentLang;
+    final p = widget.data;
+
+    // ⭐ Always use safePick for non-crashing fallback
+    final planet = lang == "hi"
+        ? safePick(p["planet_hi"], p["planet"])
+        : (p["planet"] ?? "");
+
+    final benefitArea = lang == "hi"
+        ? safePick(p["benefit_area_hi"], p["benefit_area"])
+        : (p["benefit_area"] ?? "");
+
+    final remedy = lang == "hi"
+        ? safePick(p["remedy_hi"], p["remedy"])
+        : (p["remedy"] ?? "");
+
+    final summary = lang == "hi"
+        ? safePick(p["summary_hi"], p["summary"])
+        : (p["summary"] ?? "");
+
+    final text = lang == "hi"
+        ? safePick(p["text_hi"], p["text"])
+        : (p["text"] ?? "");
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,21 +88,21 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
           key: _shareKey,
           child: Column(
             children: [
-              _sectionCard("Planet Overview", summary),
+              _sectionCard(t.planetOverview, summary),
 
-              if (benefitArea.toString().trim().isNotEmpty) ...[
+              if (benefitArea.trim().isNotEmpty) ...[
                 const SizedBox(height: 20),
-                _sectionCard("Benefit Area", benefitArea),
+                _sectionCard(t.benefitArea, benefitArea),
               ],
 
-              if (remedy.toString().trim().isNotEmpty) ...[
+              if (remedy.trim().isNotEmpty) ...[
                 const SizedBox(height: 20),
-                _sectionCard("Recommended Remedy", remedy),
+                _sectionCard(t.recommendedRemedy, remedy),
               ],
 
               const SizedBox(height: 20),
 
-              _sectionCard("Detailed Interpretation", text),
+              _sectionCard(t.detailedInterpretation, text),
             ],
           ),
         ),
@@ -113,9 +147,7 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
             ],
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Planet symbol or emoji
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -131,9 +163,7 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
                   ),
                 ),
               ),
-
               const SizedBox(width: 14),
-
               Expanded(
                 child: Text(
                   planet,
@@ -148,7 +178,6 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
           ),
         ),
 
-        // Share button
         Positioned(
           top: 8,
           right: 8,

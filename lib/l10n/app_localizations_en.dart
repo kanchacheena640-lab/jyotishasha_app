@@ -753,4 +753,297 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profile_gemstone_suggestion => 'Gemstone Suggestion';
+
+  @override
+  String get astro_loading_error => 'Unable to load astrology data';
+
+  @override
+  String get astro_insights_title => 'Your Insights';
+
+  @override
+  String get astro_share_button => 'Share With Friends';
+
+  @override
+  String get tool_share_result => 'Share Result';
+
+  @override
+  String get tool_no_data => 'No data found';
+
+  @override
+  String get tool_dob => 'DOB';
+
+  @override
+  String get tool_tob => 'TOB';
+
+  @override
+  String get tool_pob => 'POB';
+
+  @override
+  String get tool_name => 'Name';
+
+  @override
+  String get tool_rashi => 'Rashi';
+
+  @override
+  String get tool_lagna => 'Lagna';
+
+  @override
+  String get tool_moon_sign => 'Moon Sign';
+
+  @override
+  String get tool_element => 'Element';
+
+  @override
+  String get tool_symbol => 'Symbol';
+
+  @override
+  String get tool_ruling_planet => 'Ruling Planet';
+
+  @override
+  String get tool_zodiac_image_url => 'Zodiac Image URL';
+
+  @override
+  String get profile_title => 'Astrology Profile';
+
+  @override
+  String get profile_name => 'Name';
+
+  @override
+  String get profile_dob => 'DOB';
+
+  @override
+  String get profile_tob => 'TOB';
+
+  @override
+  String get profile_pob => 'POB';
+
+  @override
+  String get profile_rashi => 'Rashi';
+
+  @override
+  String get profile_lagna => 'Ascendant';
+
+  @override
+  String get profile_nakshatra => 'Nakshatra';
+
+  @override
+  String get profile_active_planets => 'Active Planets';
+
+  @override
+  String get cat_profile => 'Profile';
+
+  @override
+  String get cat_planets => 'Planets';
+
+  @override
+  String get cat_house => 'House';
+
+  @override
+  String get cat_mahadasha => 'Mahadasha';
+
+  @override
+  String get cat_life_aspect => 'Life Aspect';
+
+  @override
+  String get cat_yog_dosh => 'Yog & Dosh';
+
+  @override
+  String get tool_mahadasha => 'Mahadasha';
+
+  @override
+  String get tool_mahadasha_timeline => 'Mahadasha Timeline';
+
+  @override
+  String get lagna_title => 'Your Ascendant (Lagna):';
+
+  @override
+  String house_header(Object house) {
+    return 'House $house';
+  }
+
+  @override
+  String get house_meaning_not_available => 'Meaning not available.';
+
+  @override
+  String house_deals_with(Object text) {
+    return 'This house deals with $text.';
+  }
+
+  @override
+  String get house_no_placements => 'No major planetary placements here.';
+
+  @override
+  String house_lord_line(Object house, Object lord) {
+    return 'The Lord of House $house is $lord.';
+  }
+
+  @override
+  String get house_remedy_default => 'Do small consistent actions to activate this house.';
+
+  @override
+  String get house_meaning_title => 'House Meaning';
+
+  @override
+  String get house_placements_title => 'Notable Placements';
+
+  @override
+  String get house_lord_title => 'House Lord';
+
+  @override
+  String get house_activate_title => 'Activate Now';
+
+  @override
+  String get yogDoshActive => 'Active in your chart';
+
+  @override
+  String get yogDoshInactive => 'Not active in chart';
+
+  @override
+  String yogDoshStrength(Object value) {
+    return 'Strength: $value';
+  }
+
+  @override
+  String get yogDoshMeaning => 'What this Yog / Dosh means';
+
+  @override
+  String get yogDoshBlessings => 'Key blessings & strengths';
+
+  @override
+  String get yogDoshChallenge => 'Possible challenges';
+
+  @override
+  String get yogDoshReasons => 'Why this Yog / Dosh is formed';
+
+  @override
+  String get yogDoshDetails => 'Detailed explanation';
+
+  @override
+  String get yogDoshSummary => 'Summary';
+
+  @override
+  String get yogDoshEvaluation => 'Astrological evaluation';
+
+  @override
+  String get yogDoshContext => 'Chart context (for reference)';
+
+  @override
+  String get yogDoshRemedies => 'Suggested remedies / focus points';
+
+  @override
+  String get yogDoshFooter => 'Note: Above points are based on your current Kundali data and Yog/Dosh rules configured in Jyotishasha engine.';
+
+  @override
+  String get dashboard_home => 'Home';
+
+  @override
+  String get dashboard_astrology => 'Astrology';
+
+  @override
+  String get dashboard_reports => 'Reports';
+
+  @override
+  String get dashboard_ask_now => 'Ask Now';
+
+  @override
+  String get dashboard_profile => 'Profile';
+
+  @override
+  String get panchang_view_full => 'View Full Panchang →';
+
+  @override
+  String get blog_load_error => 'Failed to load blog posts';
+
+  @override
+  String get blog_no_data => 'No blog data found';
+
+  @override
+  String get panchangViewFull => 'View Full Panchang →';
+
+  @override
+  String get tool_free_kundali => 'Free Kundali';
+
+  @override
+  String get tool_lagna_finder => 'Lagna Finder';
+
+  @override
+  String get tool_rashi_finder => 'Rashi Finder';
+
+  @override
+  String get tool_love_match => 'Love Match';
+
+  @override
+  String get tool_rajyog_check => 'Rajyog Check';
+
+  @override
+  String get tool_health_insight => 'Health Insight';
+
+  @override
+  String get blog_highlights_title => 'Astrology Blog Highlights';
+
+  @override
+  String get blog_highlights_subtitle => 'Read the latest updates, tips and celestial insights.';
+
+  @override
+  String get blog_explore_button => 'Explore Blog';
+
+  @override
+  String get error_blog_failed => 'Failed to load blog posts';
+
+  @override
+  String get error_blog_none => 'No blog data found';
+
+  @override
+  String get greetNamaste => 'Namaste';
+
+  @override
+  String get greetFriend => 'Friend';
+
+  @override
+  String get dailyLoading => 'Loading your personal horoscope for today...';
+
+  @override
+  String get dailyRemedy => 'Remedy';
+
+  @override
+  String get panchangTimeAlert => 'Today\'s Time Alert';
+
+  @override
+  String get panchangCalcLoading => 'Calculating best and sensitive timings...';
+
+  @override
+  String get timeToDo => 'Time to Do';
+
+  @override
+  String get timeToHold => 'Time to Hold';
+
+  @override
+  String get panchang_today => 'Today\'s Panchang';
+
+  @override
+  String get panchang_loading => 'Fetching today\'s Panchang...';
+
+  @override
+  String get panchang_error => 'Unable to fetch Panchang data.';
+
+  @override
+  String get panchang_sunrise => 'Sunrise';
+
+  @override
+  String get panchang_sunset => 'Sunset';
+
+  @override
+  String get panchang_rahu => 'Rahu Kaal';
+
+  @override
+  String get panchang_viewFull => 'View Full Panchang →';
+
+  @override
+  String get panchang_panchak => 'Panchak';
+
+  @override
+  String get panchang_yes => 'Yes';
+
+  @override
+  String get panchang_no => 'No';
 }

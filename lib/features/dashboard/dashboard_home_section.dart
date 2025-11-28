@@ -19,6 +19,7 @@ import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -28,6 +29,7 @@ class DashboardHomeSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final daily = context.watch<DailyProvider>();
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -73,7 +75,7 @@ class DashboardHomeSection extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Today's Day Lord",
+                              t.todaysDayLord,
                               style: GoogleFonts.playfairDisplay(
                                 fontSize: 22,
                                 fontWeight: FontWeight.bold,
@@ -83,7 +85,7 @@ class DashboardHomeSection extends StatelessWidget {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              "Darshan with Mantra",
+                              t.darshanWithMantra,
                               style: GoogleFonts.montserrat(
                                 fontSize: 16,
                                 color: Colors.white70,
@@ -198,7 +200,7 @@ class DashboardHomeSection extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "Create Manual Kundali",
+                              t.createManualKundali,
                               style: GoogleFonts.montserrat(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -207,7 +209,7 @@ class DashboardHomeSection extends StatelessWidget {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Enter name, date & birthplace",
+                              t.enterNameDateBirthplace,
                               style: GoogleFonts.montserrat(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w400,
@@ -245,7 +247,7 @@ class DashboardHomeSection extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Explore Your Chart",
+                      t.exploreYourChart,
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -274,9 +276,11 @@ class DashboardHomeSection extends StatelessWidget {
     );
   }
 
-  // 🕉️ Panchang Card (old helper - unused currently) -------------------------
+  // 🕉️ Panchang Card (old helper - unused currently)
   Widget _buildPanchangCard(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
@@ -297,11 +301,14 @@ class DashboardHomeSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
+
+          // ❗ This is static demo text (not real Panchang)
+          // Keeping it English or Hindi isn't needed for now
           Text(
-            "Today is Dwitiya Tithi and Nakshatra is Rohini. "
-            "Auspicious time 9:00 AM – 1:00 PM • Avoid 2:00 PM – 4:00 PM.",
+            t.panchangTitle, // 👈 best ARB replacement for demo
             style: theme.textTheme.bodyMedium,
           ),
+
           const SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
@@ -313,7 +320,7 @@ class DashboardHomeSection extends StatelessWidget {
                 );
               },
               child: Text(
-                "View Full Panchang →",
+                t.panchangViewFull,
                 style: GoogleFonts.montserrat(
                   fontSize: 13.5,
                   color: Colors.blueAccent,
@@ -331,6 +338,7 @@ class DashboardHomeSection extends StatelessWidget {
   // 🌙 Horoscope Section -------------------------------------------------------
   Widget _buildHoroscopeSection(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -338,7 +346,7 @@ class DashboardHomeSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // ⭐ TODAY Horoscope (Dashboard Summary Card)
-          const HoroscopeCardWidget(title: "Today"),
+          HoroscopeCardWidget(title: t.today),
 
           const SizedBox(height: 12),
 
@@ -356,7 +364,7 @@ class DashboardHomeSection extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.calendar_today, size: 20),
-                  label: const Text("Tomorrow"),
+                  label: Text(t.tomorrow),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: theme.colorScheme.primary.withOpacity(.3),
@@ -385,7 +393,7 @@ class DashboardHomeSection extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.view_week, size: 20),
-                  label: const Text("Weekly"),
+                  label: Text(t.weekly),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(
                       color: theme.colorScheme.primary.withOpacity(.3),
@@ -452,20 +460,34 @@ class DashboardHomeSection extends StatelessWidget {
   }
 
   // 🌟 Helper: Icon based on Tool
-  IconData _getIcon(String title) {
+  IconData _getIcon(BuildContext context, String title) {
+    final t = AppLocalizations.of(context)!;
+
     switch (title) {
       case "Free Kundali":
+      case "फ्री कुंडली":
         return Icons.self_improvement;
+
       case "Lagna Finder":
+      case "लग्न फाइंडर":
         return Icons.wb_sunny_outlined;
+
       case "Rashi Finder":
+      case "राशि फाइंडर":
         return Icons.star_outline;
+
       case "Love Match":
+      case "लव मैच":
         return Icons.favorite_outline;
+
       case "Rajyog Check":
+      case "राजयोग चेक":
         return Icons.auto_graph;
+
       case "Health Insight":
+      case "हेल्थ इनसाइट":
         return Icons.health_and_safety;
+
       default:
         return Icons.api;
     }
@@ -474,6 +496,7 @@ class DashboardHomeSection extends StatelessWidget {
   // 📰 Blog Section (Dynamic from WordPress) -------------------------------
   Widget _buildBlogSection(BuildContext context) {
     final theme = Theme.of(context);
+    final t = AppLocalizations.of(context)!;
 
     return FutureBuilder(
       future: http.get(
@@ -487,12 +510,12 @@ class DashboardHomeSection extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return const Center(child: Text("Failed to load blog posts"));
+          return Center(child: Text(t.error_blog_failed));
         }
 
         final response = snapshot.data as http.Response;
         if (response.statusCode != 200) {
-          return const Center(child: Text("No blog data found"));
+          return Center(child: Text(t.error_blog_none));
         }
 
         final List posts = jsonDecode(response.body);
@@ -503,7 +526,7 @@ class DashboardHomeSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Astrology Blog Highlights",
+                t.blog_highlights_title,
                 style: GoogleFonts.playfairDisplay(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -512,7 +535,7 @@ class DashboardHomeSection extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                "Read the latest updates, tips and celestial insights.",
+                t.blog_highlights_subtitle,
                 style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
               ),
               const SizedBox(height: 16),
@@ -550,7 +573,7 @@ class DashboardHomeSection extends StatelessWidget {
                     launchUrl(Uri.parse("https://jyotishasha.com/blog"));
                   },
                   icon: const Icon(Icons.menu_book_rounded),
-                  label: const Text("Explore Blog"),
+                  label: Text(t.blog_explore_button),
                 ),
               ),
             ],
@@ -569,6 +592,7 @@ class DashboardHomeSection extends StatelessWidget {
     String link,
   ) {
     final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: () => launchUrl(Uri.parse(link)),
       child: Container(
@@ -594,7 +618,11 @@ class DashboardHomeSection extends StatelessWidget {
                 errorBuilder: (_, __, ___) => Container(
                   height: 100,
                   color: Colors.grey[300],
-                  child: const Icon(Icons.image_not_supported, size: 40),
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    size: 40,
+                    color: Colors.black54,
+                  ),
                 ),
               ),
             ),
@@ -604,7 +632,7 @@ class DashboardHomeSection extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    title, // 🟢 dynamic (no ARB)
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -615,7 +643,7 @@ class DashboardHomeSection extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    tag,
+                    tag, // 🟢 dynamic (no ARB)
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white70,
                     ),

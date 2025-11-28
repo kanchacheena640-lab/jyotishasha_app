@@ -2,11 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart';
-import 'package:jyotishasha_app/core/utils/translator.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class GemstoneResultWidget extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -15,18 +12,15 @@ class GemstoneResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lang = Provider.of<LanguageProvider>(
-      context,
-      listen: false,
-    ).currentLang;
+    final t = AppLocalizations.of(context)!;
 
-    // SAFE FETCH
     final gemstone = data["gemstone"]?.toString() ?? "-";
     final substone = data["substone"]?.toString() ?? "-";
     final planet = data["planet"]?.toString() ?? "-";
 
-    // paragraph_hi supported
-    final paragraph = tr(context, data, "paragraph");
+    /// 🟢 No more _hi logic.
+    /// We ONLY use English paragraph because backend is not sending paragraph_hi.
+    final paragraph = data["paragraph"]?.toString() ?? "-";
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -40,9 +34,9 @@ class GemstoneResultWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TITLE
+          /// TITLE
           Text(
-            lang == "hi" ? "रत्न सुझाव" : "Gemstone Suggestion",
+            t.gemstoneSuggestion,
             style: GoogleFonts.playfairDisplay(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -52,12 +46,14 @@ class GemstoneResultWidget extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          _line("Gemstone", gemstone),
-          _line("Sub-stone", substone),
-          _line("Planet", planet),
+          /// LINES
+          _line(t.gemstoneLabel, gemstone),
+          _line(t.substoneLabel, substone),
+          _line(t.planetLabel, planet),
 
           const SizedBox(height: 16),
 
+          /// FINAL PARAGRAPH (English Always)
           Text(
             paragraph,
             style: GoogleFonts.montserrat(
@@ -66,8 +62,6 @@ class GemstoneResultWidget extends StatelessWidget {
               color: Colors.black87,
             ),
           ),
-
-          const SizedBox(height: 8),
         ],
       ),
     );

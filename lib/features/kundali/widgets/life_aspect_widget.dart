@@ -6,9 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/constants/life_aspect_meta.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/utils/share_utils.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class LifeAspectWidget extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -27,7 +30,6 @@ class LifeAspectWidget extends StatefulWidget {
 class _LifeAspectWidgetState extends State<LifeAspectWidget> {
   final GlobalKey _shareKey = GlobalKey();
 
-  // META FETCHER (English Title Matching)
   Map<String, dynamic> _getAspectMeta(String nameEN) {
     try {
       return LifeAspectMeta.allAspects.firstWhere(
@@ -41,34 +43,30 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = Provider.of<LanguageProvider>(context).currentLang;
+    final t = AppLocalizations.of(context)!;
     final d = widget.data;
 
-    // CLEAN LANGUAGE HANDLING (Backend-driven)
-    final aspect = d["aspect_hi"]?.toString().trim().isNotEmpty == true
-        ? d["aspect_hi"]
-        : d["aspect"];
+    // --------------------------
+    // PERFECT LANGUAGE PICKING
+    // --------------------------
+    String pick(String enKey, String hiKey) {
+      if (lang == "hi" && (d[hiKey]?.toString().isNotEmpty ?? false)) {
+        return d[hiKey];
+      }
+      return d[enKey] ?? "";
+    }
 
-    final summary = d["summary_hi"]?.toString().trim().isNotEmpty == true
-        ? d["summary_hi"]
-        : d["summary"];
+    final aspect = pick("aspect", "aspect_hi");
+    final summary = pick("summary", "summary_hi");
+    final example = pick("example", "example_hi");
+    final houses = pick("houses", "houses_hi");
+    final planets = pick("planets", "planets_hi");
+    final yogas = pick("yogas", "yogas_hi");
 
-    final example = d["example_hi"]?.toString().trim().isNotEmpty == true
-        ? d["example_hi"]
-        : d["example"];
-
-    final houses = d["houses_hi"]?.toString().trim().isNotEmpty == true
-        ? d["houses_hi"]
-        : d["houses"];
-
-    final planets = d["planets_hi"]?.toString().trim().isNotEmpty == true
-        ? d["planets_hi"]
-        : d["planets"];
-
-    final yogas = d["yogas_hi"]?.toString().trim().isNotEmpty == true
-        ? d["yogas_hi"]
-        : d["yogas"];
-
-    // META ENGLISH BASED
+    // -----------------------
+    // META DATA (emoji/color)
+    // -----------------------
     final meta = _getAspectMeta(d["aspect"] ?? "");
     final emoji = (meta["emoji"] ?? "✨").toString();
     final colorHex = meta["color"] is int ? meta["color"] as int : 0xFF7C3AED;
@@ -84,26 +82,26 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _sectionCard("Overview", summary),
+              _sectionCard(t.overview, summary),
 
               if (example.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _sectionCard("Example", example),
+                _sectionCard(t.example, example),
               ],
 
               if (houses.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _sectionCard("Key Houses", houses),
+                _sectionCard(t.keyHouses, houses),
               ],
 
               if (planets.trim().isNotEmpty) ...[
                 const SizedBox(height: 16),
-                _sectionCard("Key Planets", planets),
+                _sectionCard(t.keyPlanets, planets),
               ],
 
               if (yogas.trim().isNotEmpty && yogas != "—") ...[
                 const SizedBox(height: 16),
-                _sectionCard("Important Yogas", yogas),
+                _sectionCard(t.importantYogas, yogas),
               ],
             ],
           ),
@@ -114,7 +112,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // HEADER UI
+  // HEADER
   Widget _buildHeader(
     String aspect,
     String emoji,
@@ -169,7 +167,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
 
               if (houses.trim().isNotEmpty)
                 Text(
-                  "Houses: $houses",
+                  AppLocalizations.of(context)!.housesPrefix(houses),
                   style: GoogleFonts.montserrat(
                     color: Colors.white70,
                     fontSize: 12,
@@ -179,7 +177,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
               if (planets.trim().isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
-                  "Planets: $planets",
+                  AppLocalizations.of(context)!.planetsPrefix(planets),
                   style: GoogleFonts.montserrat(
                     color: Colors.white70,
                     fontSize: 12,
@@ -202,7 +200,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // CARD FOR SECTIONS
+  // CARD
   Widget _sectionCard(String title, String content) {
     return Container(
       width: double.infinity,
@@ -238,7 +236,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
     );
   }
 
-  // SHARE LOGIC
+  // SHARE
   Future<void> _shareAspect() async {
     try {
       final boundary =
@@ -254,7 +252,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
 
       await ShareUtils.shareImage(
         file.path,
-        text: "✨ Life Aspect Insight — Generated by Jyotishasha App",
+        text: AppLocalizations.of(context)!.shareLifeAspectText,
       );
     } catch (_) {}
   }

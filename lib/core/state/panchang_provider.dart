@@ -1,63 +1,132 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 
 class PanchangProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  String? abhijitStart;
-  String? abhijitEnd;
-  String? rahukaalStart;
-  String? rahukaalEnd;
+  /// FULL Panchang JSON (selected_date)
+  Map<String, dynamic>? fullPanchang;
 
-  Future<void> fetchPanchang({
-    required double lat,
-    required double lng,
-    DateTime? date,
-  }) async {
+  /// Cache control
+  String? lastFetchDate;
+  double savedLat = 26.8467;
+  double savedLng = 80.9462;
+
+  /// Reset after 4 AM
+  final int cacheResetHour = 4;
+
+  // ------------------------------------------------------------
+  // SMART LOAD — Call anywhere (Dashboard, Greeting, etc)
+  // ------------------------------------------------------------
+  Future<void> loadPanchang({double? lat, double? lng}) async {
+    final now = DateTime.now();
+    final today = DateFormat('yyyy-MM-dd').format(now);
+
+    // reset cache at 4 AM
+    if (_shouldResetCache(now)) {
+      fullPanchang = null;
+      lastFetchDate = null;
+    }
+
+    // same location + same date → no API call
+    if (lastFetchDate == today &&
+        fullPanchang != null &&
+        (lat == null || lat == savedLat) &&
+        (lng == null || lng == savedLng)) {
+      return;
+    }
+
+    await fetchPanchang(lat: lat ?? savedLat, lng: lng ?? savedLng);
+  }
+
+  // ------------------------------------------------------------
+  // REAL API CALL
+  // ------------------------------------------------------------
+  Future<void> fetchPanchang({required double lat, required double lng}) async {
     isLoading = true;
-    errorMessage = null;
     notifyListeners();
 
-    final today = (date ?? DateTime.now()).toIso8601String().substring(0, 10);
+    savedLat = lat;
+    savedLng = lng;
 
-    final url = Uri.parse(
-      "https://jyotishasha-backend.onrender.com/api/panchang",
-    );
+    const endpoint = "https://jyotishasha-backend.onrender.com/api/panchang";
+    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    final payload = {"date": today, "latitude": lat, "longitude": lng};
+    final body = {"latitude": lat, "longitude": lng, "date": today};
 
     try {
       final res = await http.post(
-        url,
+        Uri.parse(endpoint),
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
+        body: jsonEncode(body),
       );
 
       if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        final selected = data["selected_date"] ?? {};
+        final decoded = jsonDecode(res.body);
 
-        final abhijit = selected["abhijit_muhurta"] ?? {};
-        final rahu = selected["rahu_kaal"] ?? {};
-
-        abhijitStart = abhijit["start"];
-        abhijitEnd = abhijit["end"];
-        rahukaalStart = rahu["start"];
-        rahukaalEnd = rahu["end"];
-
-        isLoading = false;
-        notifyListeners();
+        fullPanchang = decoded["selected_date"];
+        lastFetchDate = today;
       } else {
-        errorMessage = "Server error: ${res.statusCode}";
-        isLoading = false;
-        notifyListeners();
+        errorMessage = "Server error ${res.statusCode}";
       }
     } catch (e) {
-      errorMessage = "Error: $e";
-      isLoading = false;
-      notifyListeners();
+      errorMessage = "Network error: $e";
     }
+
+    isLoading = false;
+    notifyListeners();
   }
+
+  // ------------------------------------------------------------
+  // Cache reset helper
+  // ------------------------------------------------------------
+  bool _shouldResetCache(DateTime now) {
+    if (lastFetchDate == null) return true;
+
+    final last = DateTime.parse(lastFetchDate!);
+    final today = DateTime(now.year, now.month, now.day);
+
+    // New day after 4 AM
+    if (now.isAfter(
+          DateTime(today.year, today.month, today.day, cacheResetHour),
+        ) &&
+        last.isBefore(today)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  // ------------------------------------------------------------
+  // SAFE UI GETTERS — Always return string for widgets
+  // ------------------------------------------------------------
+
+  String get sunrise => fullPanchang?["sunrise"] ?? "--";
+  String get sunset => fullPanchang?["sunset"] ?? "--";
+
+  String get tithiName => fullPanchang?["tithi"]?["name"] ?? "--";
+  String get tithiPaksha => fullPanchang?["tithi"]?["paksha"] ?? "--";
+
+  String get nakshatra => fullPanchang?["nakshatra"]?["name"] ?? "--";
+  String get nakshatraPada =>
+      fullPanchang?["nakshatra"]?["pada"]?.toString() ?? "--";
+
+  String get weekday => fullPanchang?["weekday"] ?? "--";
+  String get monthName => fullPanchang?["month_name"] ?? "--";
+
+  String get abhijitStart => fullPanchang?["abhijit_muhurta"]?["start"] ?? "--";
+  String get abhijitEnd => fullPanchang?["abhijit_muhurta"]?["end"] ?? "--";
+
+  String get rahukaalStart => fullPanchang?["rahu_kaal"]?["start"] ?? "--";
+  String get rahukaalEnd => fullPanchang?["rahu_kaal"]?["end"] ?? "--";
+
+  String get panchakMessage => fullPanchang?["panchak"]?["message"] ?? "--";
+
+  String get yoga => fullPanchang?["yoga"]?["name"] ?? "--";
+  String get karan => fullPanchang?["karan"]?["name"] ?? "--";
+
+  bool get hasError => errorMessage != null;
 }

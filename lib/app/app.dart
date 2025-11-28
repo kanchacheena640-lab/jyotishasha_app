@@ -5,6 +5,9 @@ import 'package:jyotishasha_app/app/routes/app_routes.dart';
 import 'package:jyotishasha_app/app/theme/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
+// ⭐ IMPORT THIS
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+
 class JyotishashaApp extends StatelessWidget {
   const JyotishashaApp({super.key});
 
@@ -19,14 +22,15 @@ class JyotishashaApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
 
-      // ⭐ LANGUAGE APPLY HERE
+      // ⭐ APPLY LANGUAGE
       locale: Locale(lang),
-      supportedLocales: const [Locale('en'), Locale('hi')],
+      supportedLocales: AppLocalizations.supportedLocales,
 
-      // ❌ const hata diya
-      localizationsDelegates: [
-        GlobalWidgetsLocalizations.delegate,
+      // ⭐ MUST HAVE DELEGATES
+      localizationsDelegates: const [
+        AppLocalizations.delegate, // ← MISSING
         GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
 

@@ -753,4 +753,297 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get profile_gemstone_suggestion => 'रत्न सुझाव';
+
+  @override
+  String get astro_loading_error => 'डेटा लोड नहीं हो पाया';
+
+  @override
+  String get astro_insights_title => 'आपका ज्‍योतिषीय विवरण';
+
+  @override
+  String get astro_share_button => 'दोस्तों के साथ साझा करें';
+
+  @override
+  String get tool_share_result => 'परिणाम साझा करें';
+
+  @override
+  String get tool_no_data => 'कोई डेटा उपलब्ध नहीं';
+
+  @override
+  String get tool_dob => 'जन्म तिथि';
+
+  @override
+  String get tool_tob => 'जन्म समय';
+
+  @override
+  String get tool_pob => 'जन्म स्थान';
+
+  @override
+  String get tool_name => 'नाम';
+
+  @override
+  String get tool_rashi => 'राशि';
+
+  @override
+  String get tool_lagna => 'लग्न';
+
+  @override
+  String get tool_moon_sign => 'चंद्र राशि';
+
+  @override
+  String get tool_element => 'तत्व';
+
+  @override
+  String get tool_symbol => 'चिन्ह';
+
+  @override
+  String get tool_ruling_planet => 'स्वामी ग्रह';
+
+  @override
+  String get tool_zodiac_image_url => 'राशि चित्र URL';
+
+  @override
+  String get profile_title => 'ज्योतिष प्रोफ़ाइल';
+
+  @override
+  String get profile_name => 'नाम';
+
+  @override
+  String get profile_dob => 'जन्म तिथि';
+
+  @override
+  String get profile_tob => 'जन्म समय';
+
+  @override
+  String get profile_pob => 'जन्म स्थान';
+
+  @override
+  String get profile_rashi => 'राशि';
+
+  @override
+  String get profile_lagna => 'लग्न';
+
+  @override
+  String get profile_nakshatra => 'नक्षत्र';
+
+  @override
+  String get profile_active_planets => 'सक्रिय ग्रह';
+
+  @override
+  String get cat_profile => 'प्रोफ़ाइल';
+
+  @override
+  String get cat_planets => 'ग्रह';
+
+  @override
+  String get cat_house => 'भाव';
+
+  @override
+  String get cat_mahadasha => 'महादशा';
+
+  @override
+  String get cat_life_aspect => 'जीवन पहलू';
+
+  @override
+  String get cat_yog_dosh => 'योग एवं दोष';
+
+  @override
+  String get tool_mahadasha => 'महादशा';
+
+  @override
+  String get tool_mahadasha_timeline => 'महादशा समयचक्र';
+
+  @override
+  String get lagna_title => 'आपका लग्न:';
+
+  @override
+  String house_header(Object house) {
+    return 'भाव $house';
+  }
+
+  @override
+  String get house_meaning_not_available => 'अर्थ उपलब्ध नहीं है।';
+
+  @override
+  String house_deals_with(Object text) {
+    return 'यह भाव $text से सम्बंधित है।';
+  }
+
+  @override
+  String get house_no_placements => 'यहाँ कोई प्रमुख ग्रह स्थित नहीं है।';
+
+  @override
+  String house_lord_line(Object house, Object lord) {
+    return 'भाव $house के स्वामी $lord हैं।';
+  }
+
+  @override
+  String get house_remedy_default => 'इस भाव को सक्रिय करने के लिए छोटे नियमित कार्य करें।';
+
+  @override
+  String get house_meaning_title => 'भाव का अर्थ';
+
+  @override
+  String get house_placements_title => 'मुख्य ग्रह स्थितियाँ';
+
+  @override
+  String get house_lord_title => 'भाव स्वामी';
+
+  @override
+  String get house_activate_title => 'सक्रिय करें';
+
+  @override
+  String get yogDoshActive => 'आपकी कुंडली में सक्रिय';
+
+  @override
+  String get yogDoshInactive => 'कुंडली में सक्रिय नहीं';
+
+  @override
+  String yogDoshStrength(Object value) {
+    return 'शक्ति: $value';
+  }
+
+  @override
+  String get yogDoshMeaning => 'यह योग / दोष क्या दर्शाता है';
+
+  @override
+  String get yogDoshBlessings => 'मुख्य वरदान और सकारात्मकताएँ';
+
+  @override
+  String get yogDoshChallenge => 'संभावित चुनौतियाँ';
+
+  @override
+  String get yogDoshReasons => 'यह योग/दोष क्यों बना है';
+
+  @override
+  String get yogDoshDetails => 'विस्तृत व्याख्या';
+
+  @override
+  String get yogDoshSummary => 'सारांश';
+
+  @override
+  String get yogDoshEvaluation => 'ज्योतिषीय मूल्यांकन';
+
+  @override
+  String get yogDoshContext => 'चार्ट संदर्भ (आपकी जानकारी के लिए)';
+
+  @override
+  String get yogDoshRemedies => 'अनुशंसित उपाय और फोकस पॉइंट';
+
+  @override
+  String get yogDoshFooter => 'नोट: ऊपर दिए गए बिंदु आपकी वर्तमान कुंडली और ज्योतिषाशा इंजन में कॉन्फ़िगर किए गए योग/दोष नियमों पर आधारित हैं।';
+
+  @override
+  String get dashboard_home => 'होम';
+
+  @override
+  String get dashboard_astrology => 'ज्योतिष';
+
+  @override
+  String get dashboard_reports => 'रिपोर्ट्स';
+
+  @override
+  String get dashboard_ask_now => 'पूछें';
+
+  @override
+  String get dashboard_profile => 'प्रोफ़ाइल';
+
+  @override
+  String get panchang_view_full => 'पूरा पंचांग देखें →';
+
+  @override
+  String get blog_load_error => 'ब्लॉग पोस्ट लोड करने में विफल';
+
+  @override
+  String get blog_no_data => 'कोई ब्लॉग डेटा उपलब्ध नहीं है';
+
+  @override
+  String get panchangViewFull => 'पूरा पंचांग देखें →';
+
+  @override
+  String get tool_free_kundali => 'फ्री कुंडली';
+
+  @override
+  String get tool_lagna_finder => 'लग्न फाइंडर';
+
+  @override
+  String get tool_rashi_finder => 'राशि फाइंडर';
+
+  @override
+  String get tool_love_match => 'लव मैच';
+
+  @override
+  String get tool_rajyog_check => 'राजयोग चेक';
+
+  @override
+  String get tool_health_insight => 'हेल्थ इनसाइट';
+
+  @override
+  String get blog_highlights_title => 'ज्योतिष ब्लॉग हाइलाइट्स';
+
+  @override
+  String get blog_highlights_subtitle => 'नए अपडेट, सुझाव और खगोलीय अंतर्दृष्टि पढ़ें।';
+
+  @override
+  String get blog_explore_button => 'ब्लॉग देखें';
+
+  @override
+  String get error_blog_failed => 'ब्लॉग लोड करने में विफल';
+
+  @override
+  String get error_blog_none => 'कोई ब्लॉग डेटा नहीं मिला';
+
+  @override
+  String get greetNamaste => 'नमस्ते';
+
+  @override
+  String get greetFriend => 'मित्र';
+
+  @override
+  String get dailyLoading => 'आपका व्यक्तिगत दैनिक राशिफल लोड हो रहा है...';
+
+  @override
+  String get dailyRemedy => 'उपाय';
+
+  @override
+  String get panchangTimeAlert => 'आज का समय अलर्ट';
+
+  @override
+  String get panchangCalcLoading => 'शुभ और संवेदनशील समय की गणना जारी है...';
+
+  @override
+  String get timeToDo => 'शुभ समय';
+
+  @override
+  String get timeToHold => 'अशुभ समय';
+
+  @override
+  String get panchang_today => 'आज का पंचांग';
+
+  @override
+  String get panchang_loading => 'आज का पंचांग ...';
+
+  @override
+  String get panchang_error => 'पंचांग डेटा प्राप्त नहीं हो सका।';
+
+  @override
+  String get panchang_sunrise => 'सूर्योदय';
+
+  @override
+  String get panchang_sunset => 'सूर्यास्त';
+
+  @override
+  String get panchang_rahu => 'राहुकाल';
+
+  @override
+  String get panchang_viewFull => 'पूरा पंचांग देखें →';
+
+  @override
+  String get panchang_panchak => 'Panchak';
+
+  @override
+  String get panchang_yes => 'Yes';
+
+  @override
+  String get panchang_no => 'No';
 }

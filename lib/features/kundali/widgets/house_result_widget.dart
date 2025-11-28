@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import '/data/house_remedies.dart';
 
 class HouseResultWidget extends StatelessWidget {
@@ -17,32 +21,31 @@ class HouseResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
     final chart = kundali["chart_data"] ?? {};
     final lords = chart["lords"] ?? {};
 
     final lord = lords["${house}_house_lord"] ?? "-";
-    final meaningWidget = _buildMeaning(data);
-    final placements = _buildPlacements(data);
-    final remedy = _buildRemedy(house);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 50),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _header(),
+          _header(t),
 
           const SizedBox(height: 18),
-          _sectionCard("House Meaning", meaningWidget),
+          _sectionCard(t.house_meaning_title, _buildMeaning(context, t)),
 
           const SizedBox(height: 18),
-          _sectionCard("Notable Placements", placements),
+          _sectionCard(t.house_placements_title, _buildPlacements(context, t)),
 
           const SizedBox(height: 18),
-          _sectionCard("House Lord", _buildLord(lord)),
+          _sectionCard(t.house_lord_title, _buildLord(t, lord)),
 
           const SizedBox(height: 18),
-          _sectionCard("Activate Now", remedy),
+          _sectionCard(t.house_activate_title, _buildRemedy(context, t)),
         ],
       ),
     );
@@ -51,18 +54,14 @@ class HouseResultWidget extends StatelessWidget {
   // ---------------------------------------------------
   // HEADER
   // ---------------------------------------------------
-  Widget _header() {
-    return Row(
-      children: [
-        Text(
-          "🏠 House $house",
-          style: GoogleFonts.playfairDisplay(
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-            color: AppColors.primary,
-          ),
-        ),
-      ],
+  Widget _header(AppLocalizations t) {
+    return Text(
+      t.house_header(house.toString()),
+      style: GoogleFonts.playfairDisplay(
+        fontSize: 26,
+        fontWeight: FontWeight.bold,
+        color: AppColors.primary,
+      ),
     );
   }
 
@@ -99,13 +98,11 @@ class HouseResultWidget extends StatelessWidget {
   }
 
   // ---------------------------------------------------
-  // MEANING — focus → paragraph
+  // MEANING
   // ---------------------------------------------------
-  Widget _buildMeaning(Map<String, dynamic> data) {
-    // Priority 1 → direct focus
+  Widget _buildMeaning(BuildContext context, AppLocalizations t) {
     String? focus = data["focus"]?.toString();
 
-    // Priority 2 → summary se extract
     if (focus == null || focus.trim().isEmpty) {
       final summary = data["summary"]?.toString() ?? "";
       if (summary.toLowerCase().contains("focus:")) {
@@ -117,7 +114,7 @@ class HouseResultWidget extends StatelessWidget {
 
     if (focus == null || focus.trim().isEmpty) {
       return Text(
-        "Meaning not available.",
+        t.house_meaning_not_available,
         style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
       );
     }
@@ -129,27 +126,24 @@ class HouseResultWidget extends StatelessWidget {
         .toList();
 
     final formatted = parts
-        .map((e) {
-          if (e.isEmpty) return e;
-          return e[0].toLowerCase() + e.substring(1);
-        })
+        .map((e) => e[0].toLowerCase() + e.substring(1))
         .join(", ");
 
     return Text(
-      "This house deals with $formatted.",
+      t.house_deals_with(formatted),
       style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
     );
   }
 
   // ---------------------------------------------------
-  // NOTABLE PLACEMENTS — paragraph form
+  // NOTABLE PLACEMENTS
   // ---------------------------------------------------
-  Widget _buildPlacements(Map<String, dynamic> data) {
+  Widget _buildPlacements(BuildContext context, AppLocalizations t) {
     final placements = data["notable_placements"] as List<dynamic>? ?? [];
 
     if (placements.isEmpty) {
       return Text(
-        "No major planetary placements here.",
+        t.house_no_placements,
         style: GoogleFonts.montserrat(color: Colors.grey),
       );
     }
@@ -180,20 +174,21 @@ class HouseResultWidget extends StatelessWidget {
   // ---------------------------------------------------
   // HOUSE LORD
   // ---------------------------------------------------
-  Widget _buildLord(String lord) {
+  Widget _buildLord(AppLocalizations t, String lord) {
     return Text(
-      "The Lord of House $house is $lord.",
+      t.house_lord_line(house.toString(), lord),
       style: GoogleFonts.montserrat(fontSize: 14, height: 1.55),
     );
   }
 
   // ---------------------------------------------------
-  // REMEDY BLOCK
+  // REMEDY
   // ---------------------------------------------------
-  Widget _buildRemedy(int house) {
+  Widget _buildRemedy(BuildContext context, AppLocalizations t) {
     final r = HouseRemedies.remedies[house];
     final text =
-        r?["en"] ?? "Do small consistent actions to activate this house.";
+        r?[Provider.of<LanguageProvider>(context).currentLang] ??
+        t.house_remedy_default;
 
     return Text(
       text,

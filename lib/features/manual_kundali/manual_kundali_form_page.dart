@@ -247,7 +247,7 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
                     ),
                   ),
                   child: DropdownButtonFormField<String>(
-                    value: selectedLanguage,
+                    initialValue: selectedLanguage,
                     decoration: const InputDecoration(
                       labelText: "Preferred Language",
                       border: InputBorder.none,

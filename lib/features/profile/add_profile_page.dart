@@ -181,7 +181,7 @@ class _AddProfilePageState extends State<AddProfilePage> {
 
                 // 👩 Gender
                 DropdownButtonFormField<String>(
-                  value: _selectedGender,
+                  initialValue: _selectedGender,
                   items: const [
                     DropdownMenuItem(value: 'Male', child: Text('Male')),
                     DropdownMenuItem(value: 'Female', child: Text('Female')),
@@ -194,7 +194,7 @@ class _AddProfilePageState extends State<AddProfilePage> {
 
                 // 🌐 Language
                 DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
+                  initialValue: _selectedLanguage,
                   items: const [
                     DropdownMenuItem(value: 'English', child: Text('English')),
                     DropdownMenuItem(value: 'Hindi', child: Text('Hindi')),

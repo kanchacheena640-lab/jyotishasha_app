@@ -25,9 +25,15 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
+    // ⭐ Auto choose correct title based on global app language
+    final appLang = Localizations.localeOf(context).languageCode;
+    final pageTitle = appLang == "hi"
+        ? (widget.report["title_hi"] ?? widget.report["title"])
+        : widget.report["title"];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.report["title"]),
+        title: Text(pageTitle),
         backgroundColor: const Color(0xFF7C3AED),
         foregroundColor: Colors.white,
         centerTitle: true,
@@ -98,7 +104,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
 
               // Language Dropdown
               DropdownButtonFormField<String>(
-                value: language,
+                initialValue: language,
                 decoration: InputDecoration(labelText: t.checkout_language),
                 items: [
                   DropdownMenuItem(
@@ -133,6 +139,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
                     }
                   },
                   child: Text(
+                    // ⭐ Bilingual price text with AppLocalizations
                     t.checkout_proceed_pay(widget.report["price"].toString()),
                     style: GoogleFonts.montserrat(
                       fontSize: 16,

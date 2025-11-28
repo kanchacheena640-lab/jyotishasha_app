@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class GreetingHeaderWidget extends StatelessWidget {
   final DailyProvider daily;
+
   const GreetingHeaderWidget({super.key, required this.daily});
 
   @override
@@ -15,9 +16,10 @@ class GreetingHeaderWidget extends StatelessWidget {
     final firebase = context.watch<FirebaseKundaliProvider>();
     final kundali = firebase.kundaliData ?? {};
     final panchang = context.watch<PanchangProvider>();
-    final dailyProvider = context.watch<DailyProvider>(); // ✅ FIX
+    final dailyProvider = context.watch<DailyProvider>();
+    final t = AppLocalizations.of(context)!;
 
-    final displayName = kundali["profile"]?["name"] ?? "Friend";
+    final displayName = kundali["profile"]?["name"] ?? t.greetFriend;
     final birthRashi = kundali["rashi"] ?? "";
     final zodiacAsset = _zodiacAssetForRashi(birthRashi);
 
@@ -38,13 +40,10 @@ class GreetingHeaderWidget extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
         ],
       ),
-
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // -----------------------------------------------
-          // 🌙 Rashi Icon + Name
-          // -----------------------------------------------
+          // 🌙 Rashi Icon + Greeting
           Row(
             children: [
               Container(
@@ -63,15 +62,13 @@ class GreetingHeaderWidget extends StatelessWidget {
                   child: Image.asset(zodiacAsset, fit: BoxFit.contain),
                 ),
               ),
-
               const SizedBox(width: 12),
-
               Expanded(
                 child: RichText(
                   text: TextSpan(
                     children: [
                       TextSpan(
-                        text: "Namaste ",
+                        text: "${t.greetNamaste} ",
                         style: GoogleFonts.montserrat(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -86,9 +83,8 @@ class GreetingHeaderWidget extends StatelessWidget {
                           color: Colors.deepPurple.shade900,
                         ),
                       ),
-
                       if (birthRashi.isNotEmpty) ...[
-                        const TextSpan(text: "  "),
+                        const TextSpan(text: " "),
                         TextSpan(
                           text: "($birthRashi Rashi)",
                           style: GoogleFonts.montserrat(
@@ -106,9 +102,7 @@ class GreetingHeaderWidget extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // -----------------------------------------------
-          // 🪔 Daily Lines (Personalized Daily)
-          // -----------------------------------------------
+          // 🪔 Daily Lines
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -119,7 +113,7 @@ class GreetingHeaderWidget extends StatelessWidget {
             ),
             child: dailyProvider.isLoading
                 ? Text(
-                    "Loading your personal horoscope for today...",
+                    t.dailyLoading,
                     style: GoogleFonts.montserrat(
                       fontSize: 14.5,
                       color: Colors.deepPurple.shade800,
@@ -139,20 +133,16 @@ class GreetingHeaderWidget extends StatelessWidget {
                             height: 1.5,
                           ),
                         ),
-
                       const SizedBox(height: 10),
-
                       Text(
-                        "Remedy",
+                        t.dailyRemedy,
                         style: GoogleFonts.montserrat(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.deepPurple.shade700,
                         ),
                       ),
-
                       const SizedBox(height: 4),
-
                       Text(
                         dailyProvider.remedyLine ?? "—",
                         style: GoogleFonts.montserrat(
@@ -167,11 +157,9 @@ class GreetingHeaderWidget extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // -----------------------------------------------
-          // 📅 Time Alert (Panchang)
-          // -----------------------------------------------
+          // 📅 Time Alert
           Text(
-            "Today's Time Alert",
+            t.panchangTimeAlert,
             style: GoogleFonts.playfairDisplay(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -182,7 +170,7 @@ class GreetingHeaderWidget extends StatelessWidget {
 
           panchang.isLoading
               ? Text(
-                  "Calculating best and sensitive timings...",
+                  t.panchangCalcLoading,
                   style: GoogleFonts.montserrat(
                     fontSize: 13,
                     color: Colors.deepPurple.shade500,
@@ -192,11 +180,11 @@ class GreetingHeaderWidget extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _timeTile(
-                      "🕒 Time to Do",
+                      "🕒 ${t.timeToDo}",
                       "${panchang.abhijitStart} – ${panchang.abhijitEnd}",
                     ),
                     _timeTile(
-                      "🌑 Time to Hold",
+                      "🌑 ${t.timeToHold}",
                       "${panchang.rahukaalStart} – ${panchang.rahukaalEnd}",
                     ),
                   ],
@@ -206,17 +194,12 @@ class GreetingHeaderWidget extends StatelessWidget {
     );
   }
 
-  // -------------------------------------------------------
   // ♈ Rashi → image asset
-  // -------------------------------------------------------
   String _zodiacAssetForRashi(String? rashi) {
     if (rashi == null || rashi.isEmpty) return 'assets/zodiac/leo.png';
     return 'assets/zodiac/${rashi.toLowerCase()}.png';
   }
 
-  // -------------------------------------------------------
-  // Time Tile (Abhijit / Rahukaal)
-  // -------------------------------------------------------
   Widget _timeTile(String title, String time) {
     return Expanded(
       child: Container(

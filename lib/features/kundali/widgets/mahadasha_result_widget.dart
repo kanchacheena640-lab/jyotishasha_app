@@ -1,8 +1,22 @@
+// lib/features/kundali/widgets/mahadasha_result_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+
+// ---------------------------------------------------------
+// ONLY IMPACT SNIPPET IS BILINGUAL
+// ---------------------------------------------------------
+String pickImpact(Map<String, dynamic> json, String lang) {
+  if (lang == "hi") {
+    final hi = (json["impact_snippet_hi"] ?? "").toString().trim();
+    if (hi.isNotEmpty) return hi;
+  }
+  return (json["impact_snippet"] ?? "").toString();
+}
 
 class MahadashaResultWidget extends StatelessWidget {
-  final Map<String, dynamic> data; // kept for compatibility
+  final Map<String, dynamic> data;
   final Map<String, dynamic> kundali;
 
   const MahadashaResultWidget({
@@ -13,11 +27,14 @@ class MahadashaResultWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final lang = Localizations.localeOf(context).languageCode;
+
     final dashaSummary =
         (kundali['dasha_summary'] ?? {}) as Map<String, dynamic>;
 
     if (dashaSummary.isEmpty) {
-      return _emptyState(context);
+      return _emptyState(context, t);
     }
 
     final currentBlock =
@@ -30,8 +47,12 @@ class MahadashaResultWidget extends StatelessWidget {
         (dashaSummary['mahadashas'] as List?)?.cast<Map<String, dynamic>>() ??
         [];
 
-    final mahaName = (currentBlock['mahadasha'] ?? '-').toString();
-    final antarName = (currentBlock['antardasha'] ?? '-').toString();
+    // ⭐ ONLY THESE TWO ARE BILINGUAL
+    final impact = pickImpact(currentBlock, lang);
+
+    // ⭐ ALWAYS ENGLISH PLANET NAMES
+    final mahaName = currentBlock["mahadasha"]?.toString() ?? "-";
+    final antarName = currentBlock["antardasha"]?.toString() ?? "-";
 
     return DefaultTabController(
       length: 2,
@@ -40,28 +61,30 @@ class MahadashaResultWidget extends StatelessWidget {
         children: [
           _headerCard(
             context,
+            t,
             mahaName: mahaName,
             antarName: antarName,
             period: currentBlock['period']?.toString(),
-            impact:
-                currentBlock['impact_snippet_hi'] ??
-                currentBlock['impact_snippet'],
+            impact: impact,
           ),
+
           const SizedBox(height: 16),
-          _tabBar(context),
+          _tabBar(context, t),
           const SizedBox(height: 12),
-          // Important: fixed height so TabBarView works inside scroll
+
           SizedBox(
             height: 420,
             child: TabBarView(
               children: [
                 _currentMahadashaTab(
                   context,
+                  t,
                   currentMaha: currentMaha,
                   currentAntar: currentAntar,
                 ),
                 _allMahadashasTab(
                   context,
+                  t,
                   allMahadashas: allMahadashas,
                   currentMahadashaName: mahaName,
                 ),
@@ -73,64 +96,45 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------
-  // HEADER CARD: Current Mahadasha → Antardasha + Prediction
-  // ------------------------------------------------------------
+  // =========================================================
+  // HEADER
+  // =========================================================
   Widget _headerCard(
-    BuildContext context, {
+    BuildContext context,
+    AppLocalizations t, {
     required String mahaName,
     required String antarName,
     String? period,
     String? impact,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    // ⭐ FORCE HINDI IF SELECTED
-    String finalImpact = impact ?? "";
-    try {
-      final lang = Localizations.localeOf(context).languageCode;
-      if (lang == "hi") {
-        finalImpact =
-            kundali["dasha_summary"]?["current_block"]?["impact_snippet_hi"]
-                ?.toString() ??
-            impact ??
-            "";
-      }
-    } catch (_) {}
+    final color = Theme.of(context).colorScheme;
 
     return Container(
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            colorScheme.primary.withOpacity(0.14),
-            colorScheme.primary.withOpacity(0.05),
+            color.primary.withOpacity(0.14),
+            color.primary.withOpacity(0.05),
           ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: colorScheme.primary.withOpacity(0.35),
-          width: 1.2,
-        ),
+        border: Border.all(color: color.primary.withOpacity(0.35)),
       ),
-      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Current Dasha',
+            t.currentDasha,
             style: GoogleFonts.montserrat(
+              fontWeight: FontWeight.w600,
+              color: color.primary,
               fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: colorScheme.primary,
-              letterSpacing: 0.6,
             ),
           ),
           const SizedBox(height: 8),
 
-          // MAHA → ANTAR ROW
+          // CURRENT BLOCK
           Row(
             children: [
               Container(
@@ -139,15 +143,15 @@ class MahadashaResultWidget extends StatelessWidget {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: colorScheme.primary.withOpacity(0.1),
+                  color: color.primary.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '$mahaName  →  $antarName',
+                  "$mahaName → $antarName",
                   style: GoogleFonts.montserrat(
-                    fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                    fontSize: 15,
+                    color: color.onSurface,
                   ),
                 ),
               ),
@@ -157,25 +161,21 @@ class MahadashaResultWidget extends StatelessWidget {
                   period,
                   style: GoogleFonts.montserrat(
                     fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: colorScheme.onSurface.withOpacity(0.65),
+                    color: color.onSurface.withOpacity(0.6),
                   ),
-                  textAlign: TextAlign.right,
                 ),
             ],
           ),
 
           const SizedBox(height: 10),
 
-          // ⭐ USE finalImpact instead of impact
-          if (finalImpact.trim().isNotEmpty)
+          if (impact != null && impact.trim().isNotEmpty)
             Text(
-              finalImpact,
+              impact,
               style: GoogleFonts.montserrat(
                 fontSize: 12.5,
-                fontWeight: FontWeight.w400,
-                height: 1.4,
-                color: colorScheme.onSurface.withOpacity(0.8),
+                height: 1.35,
+                color: color.onSurface.withOpacity(0.8),
               ),
             ),
         ],
@@ -183,137 +183,84 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------
+  // =========================================================
   // TAB BAR
-  // ------------------------------------------------------------
-  Widget _tabBar(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+  // =========================================================
+  Widget _tabBar(BuildContext context, AppLocalizations t) {
+    final color = Theme.of(context).colorScheme;
 
     return Container(
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: colorScheme.outline.withOpacity(0.3),
-          width: 0.9,
-        ),
+        border: Border.all(color: color.outline.withOpacity(0.3)),
       ),
       child: TabBar(
         indicator: BoxDecoration(
-          color: colorScheme.primary.withOpacity(0.12),
+          color: color.primary.withOpacity(0.15),
           borderRadius: BorderRadius.circular(999),
         ),
-        labelColor: colorScheme.primary,
-        unselectedLabelColor: colorScheme.onSurface.withOpacity(0.6),
-        labelStyle: GoogleFonts.montserrat(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        ),
-        unselectedLabelStyle: GoogleFonts.montserrat(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-        tabs: const [
-          Tab(text: 'Current Mahadasha'),
-          Tab(text: 'All Mahadashas'),
+        labelStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: GoogleFonts.montserrat(),
+        labelColor: color.primary,
+        unselectedLabelColor: color.onSurface.withOpacity(0.6),
+        tabs: [
+          Tab(text: t.currentMahadasha),
+          Tab(text: t.allMahadashas),
         ],
       ),
     );
   }
 
-  // ------------------------------------------------------------
-  // TAB 1: CURRENT MAHADASHA → Vertical Antar List
-  // ------------------------------------------------------------
+  // =========================================================
+  // TAB 1 — CURRENT MAHADASHA
+  // =========================================================
   Widget _currentMahadashaTab(
-    BuildContext context, {
+    BuildContext context,
+    AppLocalizations t, {
     required Map<String, dynamic> currentMaha,
     required Map<String, dynamic> currentAntar,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final color = Theme.of(context).colorScheme;
 
-    final mahaName = (currentMaha['mahadasha'] ?? '-').toString();
+    final mahaName = currentMaha["mahadasha"]?.toString() ?? "-";
     final mahaStart = currentMaha['start']?.toString();
     final mahaEnd = currentMaha['end']?.toString();
 
-    final antarList =
+    final antars =
         (currentMaha['antardashas'] as List?)?.cast<Map<String, dynamic>>() ??
         [];
 
     return ListView(
-      padding: const EdgeInsets.only(top: 4, left: 2, right: 2, bottom: 12),
+      padding: const EdgeInsets.all(4),
       children: [
-        // Mahadasha timeline bar
-        Container(
-          margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: colorScheme.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: colorScheme.outline.withOpacity(0.25),
-              width: 0.9,
-            ),
-          ),
-          child: Row(
-            children: [
-              _verticalDotBar(context),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      mahaName,
-                      style: GoogleFonts.montserrat(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (mahaStart != null && mahaEnd != null)
-                      Text(
-                        '${_formatDate(mahaStart)}  –  ${_formatDate(mahaEnd)}',
-                        style: GoogleFonts.montserrat(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w400,
-                          color: colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        _mahaTimelineCard(context, mahaName, mahaStart, mahaEnd),
+        const SizedBox(height: 12),
 
-        const SizedBox(height: 8),
         Text(
-          'Antardasha Timeline',
+          t.antardashaTimeline,
           style: GoogleFonts.montserrat(
-            fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface.withOpacity(0.85),
+            fontSize: 12,
+            color: color.onSurface.withOpacity(0.9),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
 
-        // Antar list (vertical)
-        ...antarList.map((antar) {
-          final antarName = (antar['planet'] ?? '-').toString();
-          final start = antar['start']?.toString();
-          final end = antar['end']?.toString();
+        ...antars.map((a) {
+          final name = a["planet"]?.toString() ?? "-";
+          final start = a['start'];
+          final end = a['end'];
 
           final isCurrent =
-              antarName == (currentAntar['planet'] ?? '').toString() &&
-              start == currentAntar['start']?.toString() &&
-              end == currentAntar['end']?.toString();
+              name == (currentAntar['planet']?.toString() ?? "-") &&
+              start == currentAntar['start'] &&
+              end == currentAntar['end'];
 
           return _antarRow(
             context,
-            planet: antarName,
+            t,
+            planet: name,
             start: start,
             end: end,
             isCurrent: isCurrent,
@@ -323,49 +270,81 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
+  Widget _mahaTimelineCard(
+    BuildContext context,
+    String name,
+    String? start,
+    String? end,
+  ) {
+    final color = Theme.of(context).colorScheme;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.outline.withOpacity(0.25)),
+      ),
+      child: Row(
+        children: [
+          _dotBar(context),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: GoogleFonts.montserrat(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                ),
+                if (start != null && end != null)
+                  Text(
+                    "${_formatDate(start)} – ${_formatDate(end)}",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 11,
+                      color: color.onSurface.withOpacity(0.7),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _antarRow(
-    BuildContext context, {
+    BuildContext context,
+    AppLocalizations t, {
     required String planet,
     String? start,
     String? end,
     required bool isCurrent,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final color = Theme.of(context).colorScheme;
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: isCurrent
-            ? colorScheme.primary.withOpacity(0.08)
-            : colorScheme.surface,
+        color: isCurrent ? color.primary.withOpacity(0.10) : color.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isCurrent
-              ? colorScheme.primary.withOpacity(0.7)
-              : colorScheme.outline.withOpacity(0.2),
+              ? color.primary.withOpacity(0.7)
+              : color.outline.withOpacity(0.25),
           width: isCurrent ? 1.2 : 0.8,
         ),
       ),
       child: Row(
         children: [
-          // Dot + line
-          Container(
-            width: 16,
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isCurrent
-                    ? colorScheme.primary
-                    : colorScheme.primary.withOpacity(0.4),
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
+          _dotBar(context, small: true),
+          const SizedBox(width: 8),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,38 +352,35 @@ class MahadashaResultWidget extends StatelessWidget {
                 Text(
                   planet,
                   style: GoogleFonts.montserrat(
-                    fontSize: 12.5,
                     fontWeight: FontWeight.w600,
-                    color: colorScheme.onSurface,
+                    fontSize: 13,
                   ),
                 ),
-                if (start != null && end != null) ...[
-                  const SizedBox(height: 2),
+                if (start != null && end != null)
                   Text(
-                    '${_formatDate(start)}  –  ${_formatDate(end)}',
+                    "${_formatDate(start)} – ${_formatDate(end)}",
                     style: GoogleFonts.montserrat(
                       fontSize: 11,
-                      fontWeight: FontWeight.w400,
-                      color: colorScheme.onSurface.withOpacity(0.7),
+                      color: color.onSurface.withOpacity(0.7),
                     ),
                   ),
-                ],
               ],
             ),
           ),
+
           if (isCurrent)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.12),
+                color: color.primary.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
-                'Now',
+                t.now,
                 style: GoogleFonts.montserrat(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
-                  color: colorScheme.primary,
+                  color: color.primary,
                 ),
               ),
             ),
@@ -413,46 +389,47 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------
-  // TAB 2: ALL MAHADASHA LIST (VERTICAL) → Bottom Sheet for Antars
-  // ------------------------------------------------------------
+  // =========================================================
+  // TAB 2 — ALL MAHADASHAS
+  // =========================================================
   Widget _allMahadashasTab(
-    BuildContext context, {
+    BuildContext context,
+    AppLocalizations t, {
     required List<Map<String, dynamic>> allMahadashas,
     required String currentMahadashaName,
   }) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final color = Theme.of(context).colorScheme;
 
     return ListView.separated(
-      padding: const EdgeInsets.only(top: 4, bottom: 12),
-      itemBuilder: (context, index) {
-        final maha = allMahadashas[index];
-        final name = (maha['mahadasha'] ?? '-').toString();
-        final start = maha['start']?.toString();
-        final end = maha['end']?.toString();
+      itemBuilder: (context, i) {
+        final maha = allMahadashas[i];
+
+        final name = maha["mahadasha"]?.toString() ?? "-";
+        final start = maha['start'];
+        final end = maha['end'];
+
         final isCurrent = name == currentMahadashaName;
 
         return InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: () => _showAntardashaBottomSheet(context, maha, isCurrent),
+          onTap: () => _openAntarSheet(context, t, maha, isCurrent),
           child: Container(
+            padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: colorScheme.surface,
+              color: color.surface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isCurrent
-                    ? colorScheme.primary.withOpacity(0.75)
-                    : colorScheme.outline.withOpacity(0.25),
-                width: isCurrent ? 1.3 : 0.9,
+                    ? color.primary.withOpacity(0.8)
+                    : color.outline.withOpacity(0.25),
+                width: isCurrent ? 1.3 : 1,
               ),
             ),
             child: Row(
               children: [
-                _verticalDotBar(context),
-                const SizedBox(width: 10),
+                _dotBar(context),
+                const SizedBox(width: 12),
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,29 +437,25 @@ class MahadashaResultWidget extends StatelessWidget {
                       Text(
                         name,
                         style: GoogleFonts.montserrat(
-                          fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: colorScheme.onSurface,
+                          fontSize: 13,
                         ),
                       ),
-                      if (start != null && end != null) ...[
-                        const SizedBox(height: 2),
+                      if (start != null && end != null)
                         Text(
-                          '${_formatDate(start)}  –  ${_formatDate(end)}',
+                          "${_formatDate(start)} – ${_formatDate(end)}",
                           style: GoogleFonts.montserrat(
                             fontSize: 11,
-                            fontWeight: FontWeight.w400,
-                            color: colorScheme.onSurface.withOpacity(0.7),
+                            color: color.onSurface.withOpacity(0.7),
                           ),
                         ),
-                      ],
                     ],
                   ),
                 ),
+
                 Icon(
                   Icons.keyboard_arrow_up_rounded,
-                  size: 18,
-                  color: colorScheme.onSurface.withOpacity(0.5),
+                  color: color.onSurface.withOpacity(0.5),
                 ),
               ],
             ),
@@ -494,36 +467,40 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
-  void _showAntardashaBottomSheet(
+  // =========================================================
+  // BOTTOM SHEET — ANTARDASHAS
+  // =========================================================
+  void _openAntarSheet(
     BuildContext context,
+    AppLocalizations t,
     Map<String, dynamic> maha,
     bool isCurrent,
   ) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    final color = Theme.of(context).colorScheme;
 
-    final name = (maha['mahadasha'] ?? '-').toString();
-    final start = maha['start']?.toString();
-    final end = maha['end']?.toString();
+    final name = maha["mahadasha"]?.toString() ?? "-";
+    final start = maha['start'];
+    final end = maha['end'];
+
     final antarList =
         (maha['antardashas'] as List?)?.cast<Map<String, dynamic>>() ?? [];
 
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
+      isScrollControlled: true,
       builder: (ctx) {
         return DraggableScrollableSheet(
           expand: false,
-          initialChildSize: 0.6,
+          initialChildSize: 0.65,
           maxChildSize: 0.9,
           minChildSize: 0.4,
           builder: (context, scrollController) {
             return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -532,23 +509,24 @@ class MahadashaResultWidget extends StatelessWidget {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: colorScheme.outline.withOpacity(0.4),
-                        borderRadius: BorderRadius.circular(999),
+                        color: color.outline.withOpacity(0.35),
+                        borderRadius: BorderRadius.circular(99),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
+
                   Row(
                     children: [
                       Text(
-                        '$name Mahadasha',
+                        t.mahadashaOf(name),
                         style: GoogleFonts.montserrat(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(width: 8),
+
                       if (isCurrent)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -556,94 +534,92 @@ class MahadashaResultWidget extends StatelessWidget {
                             vertical: 3,
                           ),
                           decoration: BoxDecoration(
-                            color: colorScheme.primary.withOpacity(0.12),
+                            color: color.primary.withOpacity(0.12),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            'Current',
+                            t.current,
                             style: GoogleFonts.montserrat(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: colorScheme.primary,
+                              color: color.primary,
                             ),
                           ),
                         ),
                     ],
                   ),
-                  if (start != null && end != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_formatDate(start)}  –  ${_formatDate(end)}',
-                      style: GoogleFonts.montserrat(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w400,
-                        color: colorScheme.onSurface.withOpacity(0.7),
+
+                  if (start != null && end != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        "${_formatDate(start)} – ${_formatDate(end)}",
+                        style: GoogleFonts.montserrat(
+                          fontSize: 11.5,
+                          color: color.onSurface.withOpacity(0.7),
+                        ),
                       ),
                     ),
-                  ],
-                  const SizedBox(height: 12),
+
+                  const SizedBox(height: 16),
+
                   Text(
-                    'Antardasha Timeline',
+                    t.antardashaTimeline,
                     style: GoogleFonts.montserrat(
-                      fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: colorScheme.onSurface.withOpacity(0.85),
+                      fontSize: 12,
                     ),
                   ),
-                  const SizedBox(height: 6),
+
+                  const SizedBox(height: 8),
+
                   Expanded(
                     child: ListView.builder(
                       controller: scrollController,
                       itemCount: antarList.length,
                       itemBuilder: (context, index) {
                         final antar = antarList[index];
-                        final antarName = (antar['planet'] ?? '-').toString();
-                        final aStart = antar['start']?.toString();
-                        final aEnd = antar['end']?.toString();
+
+                        final aName = antar["planet"]?.toString() ?? "-";
+                        final aStart = antar['start'];
+                        final aEnd = antar['end'];
 
                         return Container(
-                          margin: const EdgeInsets.symmetric(
-                            vertical: 4,
-                            horizontal: 2,
-                          ),
+                          margin: const EdgeInsets.symmetric(vertical: 6),
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
+                            horizontal: 12,
+                            vertical: 10,
                           ),
                           decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(12),
+                            color: color.surface,
+                            borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: colorScheme.outline.withOpacity(0.25),
-                              width: 0.9,
+                              color: color.outline.withOpacity(0.25),
                             ),
                           ),
                           child: Row(
                             children: [
-                              _verticalDotBar(context, small: true),
-                              const SizedBox(width: 8),
+                              _dotBar(context, small: true),
+                              const SizedBox(width: 10),
+
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      antarName,
+                                      aName,
                                       style: GoogleFonts.montserrat(
-                                        fontSize: 12.5,
                                         fontWeight: FontWeight.w600,
-                                        color: colorScheme.onSurface,
+                                        fontSize: 13,
                                       ),
                                     ),
                                     if (aStart != null && aEnd != null)
-                                      Padding(
-                                        padding: const EdgeInsets.only(top: 2),
-                                        child: Text(
-                                          '${_formatDate(aStart)}  –  ${_formatDate(aEnd)}',
-                                          style: GoogleFonts.montserrat(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w400,
-                                            color: colorScheme.onSurface
-                                                .withOpacity(0.7),
+                                      Text(
+                                        "${_formatDate(aStart)} – ${_formatDate(aEnd)}",
+                                        style: GoogleFonts.montserrat(
+                                          fontSize: 11,
+                                          color: color.onSurface.withOpacity(
+                                            0.7,
                                           ),
                                         ),
                                       ),
@@ -665,21 +641,21 @@ class MahadashaResultWidget extends StatelessWidget {
     );
   }
 
-  // ------------------------------------------------------------
-  // SMALL HELPERS
-  // ------------------------------------------------------------
-  Widget _verticalDotBar(BuildContext context, {bool small = false}) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final height = small ? 30.0 : 38.0;
+  // =========================================================
+  // HELPERS
+  // =========================================================
+  Widget _dotBar(BuildContext context, {bool small = false}) {
+    final color = Theme.of(context).colorScheme;
+    final size = small ? 30.0 : 40.0;
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
           width: 2,
-          height: height / 2.4,
+          height: size / 2.4,
           decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.32),
+            color: color.primary.withOpacity(0.32),
             borderRadius: BorderRadius.circular(999),
           ),
         ),
@@ -687,15 +663,15 @@ class MahadashaResultWidget extends StatelessWidget {
           width: small ? 8 : 10,
           height: small ? 8 : 10,
           decoration: BoxDecoration(
+            color: color.primary,
             shape: BoxShape.circle,
-            color: colorScheme.primary,
           ),
         ),
         Container(
           width: 2,
-          height: height / 2.4,
+          height: size / 2.4,
           decoration: BoxDecoration(
-            color: colorScheme.primary.withOpacity(0.18),
+            color: color.primary.withOpacity(0.18),
             borderRadius: BorderRadius.circular(999),
           ),
         ),
@@ -706,48 +682,42 @@ class MahadashaResultWidget extends StatelessWidget {
   String _formatDate(String raw) {
     try {
       final dt = DateTime.parse(raw);
-      const monthNames = [
-        '',
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
+      const months = [
+        "",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
       ];
-      final d = dt.day.toString().padLeft(2, '0');
-      final m = monthNames[dt.month];
-      final y = dt.year.toString();
-      return '$d $m $y';
+      return "${dt.day.toString().padLeft(2, '0')} ${months[dt.month]} ${dt.year}";
     } catch (_) {
       return raw;
     }
   }
 
-  Widget _emptyState(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+  Widget _emptyState(BuildContext context, AppLocalizations t) {
+    final color = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: colorScheme.surface,
+        color: color.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: colorScheme.outline.withOpacity(0.3),
-          width: 0.9,
-        ),
+        border: Border.all(color: color.outline.withOpacity(0.3)),
       ),
       child: Text(
-        'Dasha data is not available for this profile.',
+        t.dashaDataUnavailable,
         style: GoogleFonts.montserrat(
           fontSize: 12,
-          fontWeight: FontWeight.w400,
-          color: colorScheme.onSurface.withOpacity(0.75),
+          color: color.onSurface.withOpacity(0.75),
         ),
       ),
     );

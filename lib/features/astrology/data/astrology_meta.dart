@@ -108,11 +108,6 @@ class AstrologyMeta {
         "name": (lang == "hi") ? "वर्तमान दशा" : "Current Dasha",
         "icon": "⏳",
       },
-      {
-        "id": "timeline",
-        "name": (lang == "hi") ? "महादशा" : "Full Timeline",
-        "icon": "📜",
-      },
     ];
   }
 
@@ -175,23 +170,30 @@ class AstrologyMeta {
     final n = name.toLowerCase();
 
     if (n.contains("career") || n.contains("कैरियर")) return "💼";
-    if (n.contains("wealth") || n.contains("finance") || n.contains("धन"))
+    if (n.contains("wealth") || n.contains("finance") || n.contains("धन")) {
       return "💰";
+    }
     if (n.contains("health") || n.contains("स्वास्थ्य")) return "💊";
-    if (n.contains("marriage") || n.contains("विवाह") || n.contains("संबंध"))
+    if (n.contains("marriage") || n.contains("विवाह") || n.contains("संबंध")) {
       return "❤️";
-    if (n.contains("family") || n.contains("परिवार") || n.contains("घर"))
+    }
+    if (n.contains("family") || n.contains("परिवार") || n.contains("घर")) {
       return "🏡";
-    if (n.contains("children") || n.contains("बच्चे") || n.contains("संतान"))
+    }
+    if (n.contains("children") || n.contains("बच्चे") || n.contains("संतान")) {
       return "🎨";
-    if (n.contains("mind") || n.contains("emotion") || n.contains("मन"))
+    }
+    if (n.contains("mind") || n.contains("emotion") || n.contains("मन")) {
       return "🧠";
+    }
     if (n.contains("spiritual") ||
         n.contains("आध्यात्मिक") ||
-        n.contains("कर्म"))
+        n.contains("कर्म")) {
       return "🕉️";
-    if (n.contains("social") || n.contains("network") || n.contains("समाज"))
+    }
+    if (n.contains("social") || n.contains("network") || n.contains("समाज")) {
       return "🌐";
+    }
 
     return "✨";
   }

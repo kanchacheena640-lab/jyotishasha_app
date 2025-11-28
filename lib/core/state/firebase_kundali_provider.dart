@@ -1,15 +1,10 @@
 // lib/core/state/firebase_kundali_provider.dart
 
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:flutter/material.dart';
-
-BuildContext? globalKundaliContext;
 
 class FirebaseKundaliProvider extends ChangeNotifier {
   Map<String, dynamic>? kundaliData;
@@ -32,6 +27,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       return dob;
     }
 
+    // dd-mm-yyyy → yyyy-mm-dd
     final parts = dob.split("-");
     if (parts.length == 3) {
       final fixed = "${parts[2]}-${parts[1]}-${parts[0]}";
@@ -46,22 +42,23 @@ class FirebaseKundaliProvider extends ChangeNotifier {
   // ---------------------------------------------------------
   // MAIN FUNCTION
   // ---------------------------------------------------------
-  Future<void> loadFromFirebaseProfile() async {
+  Future<void> loadFromFirebaseProfile(BuildContext context) async {
     print("--------------------------------------------------");
     print("🔮 FirebaseKundaliProvider → START");
     print("--------------------------------------------------");
 
-    try {
-      isLoading = true;
-      notifyListeners();
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
 
+    try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
         print("❌ No Firebase user");
         return;
       }
 
-      // LOAD USER ROOT DOC
+      // LOAD ROOT DOC
       final userDoc = await FirebaseFirestore.instance
           .collection("users")
           .doc(user.uid)
@@ -93,7 +90,6 @@ class FirebaseKundaliProvider extends ChangeNotifier {
 
       profileData = profileDoc.data();
 
-      // Extract Values
       final name = profileData?["name"];
       final dob = _fixDob(profileData?["dob"]);
       final tob = profileData?["tob"];
@@ -101,6 +97,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       final lat = profileData?["lat"];
       final lng = profileData?["lng"];
 
+      // language सिर्फ backend को भेजने के लिए
       final selectedLang = (profileData?["language"] ?? "en")
           .toString()
           .toLowerCase()
@@ -108,7 +105,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
 
       print("🌐 User Language from Firebase = $selectedLang");
 
-      // BACKEND CALL PAYLOAD
+      // BACKEND PAYLOAD
       final payload = {
         "name": name,
         "dob": dob,
@@ -140,46 +137,25 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       if (response.statusCode != 200) {
         print("❌ Backend error");
         print(response.body);
+        errorMessage = response.body;
         return;
       }
 
       kundaliData = jsonDecode(response.body);
+
       print("✅ Kundali Loaded, keys:");
       print(kundaliData?.keys);
-
-      // ---------------------------------------------
-      // LANGUAGE SYNC (ONLY FROM FIREBASE)
-      // ---------------------------------------------
-      try {
-        final profileLang = (profileData?["language"] ?? "en")
-            .toString()
-            .toLowerCase()
-            .substring(0, 2);
-
-        print("🌐 Applying Firebase Profile language → $profileLang");
-
-        if (globalKundaliContext != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            globalKundaliContext!.read<LanguageProvider>().setLanguage(
-              profileLang,
-            );
-          });
-        }
-      } catch (e) {
-        print("❌ Firebase language sync error → $e");
-      }
     } catch (e) {
       print("❌ Exception → $e");
+      errorMessage = e.toString();
+    } finally {
+      isLoading = false;
+      notifyListeners();
+
+      print("🎯 FINAL → ${kundaliData != null ? "Kundali Loaded" : "NULL"}");
+      print("--------------------------------------------------");
     }
-
-    isLoading = false;
-    notifyListeners();
-
-    print("🎯 FINAL → ${kundaliData != null ? "Kundali Loaded" : "NULL"}");
-    print("--------------------------------------------------");
   }
-
-  Future<void> refresh() async => await loadFromFirebaseProfile();
 
   void clear() {
     kundaliData = null;

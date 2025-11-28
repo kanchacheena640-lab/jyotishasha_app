@@ -1,5 +1,3 @@
-// lib/features/astrology/astrology_page.dart
-
 import 'dart:io';
 import 'dart:ui';
 
@@ -12,6 +10,7 @@ import 'package:flutter/rendering.dart';
 import 'widgets/astrology_profile_card.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AstrologyPage extends StatefulWidget {
   final String? selectedSection;
@@ -25,7 +24,6 @@ class _AstrologyPageState extends State<AstrologyPage> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _shareKey = GlobalKey();
 
-  // ⭐ Anchor Keys for each section
   final profileKey = GlobalKey();
   final planetsKey = GlobalKey();
   final bhavaKey = GlobalKey();
@@ -44,7 +42,6 @@ class _AstrologyPageState extends State<AstrologyPage> {
     }
   }
 
-  /// ⭐ KEY-BASED SCROLL
   void _scrollToSection(String section) {
     BuildContext? targetContext;
 
@@ -79,7 +76,6 @@ class _AstrologyPageState extends State<AstrologyPage> {
     }
   }
 
-  /// ⭐ Share Screenshot Function
   Future<void> _shareAstrologyProfile() async {
     try {
       RenderRepaintBoundary boundary =
@@ -94,9 +90,7 @@ class _AstrologyPageState extends State<AstrologyPage> {
       final file = File("${dir.path}/astrology_profile.png");
       await file.writeAsBytes(pngBytes);
 
-      await Share.shareXFiles([
-        XFile(file.path),
-      ], text: "My Astrology Profile from Jyotishasha ✨");
+      await Share.shareXFiles([XFile(file.path)]);
     } catch (e) {
       debugPrint("❌ Error sharing: $e");
     }
@@ -104,6 +98,7 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final firebase = context.watch<FirebaseKundaliProvider>();
 
     if (firebase.isLoading) {
@@ -111,11 +106,11 @@ class _AstrologyPageState extends State<AstrologyPage> {
     }
 
     if (firebase.kundaliData == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Text(
-            "Unable to load astrology data",
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            t.astro_loading_error,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -126,9 +121,12 @@ class _AstrologyPageState extends State<AstrologyPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F3FF),
       appBar: AppBar(
-        title: const Text(
-          "Your Insights",
-          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black),
+        title: Text(
+          t.astro_insights_title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            color: Colors.black,
+          ),
         ),
         elevation: 0,
         centerTitle: true,
@@ -153,9 +151,9 @@ class _AstrologyPageState extends State<AstrologyPage> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.share, color: Colors.white),
-                label: const Text(
-                  "Share With Friends",
-                  style: TextStyle(color: Colors.white),
+                label: Text(
+                  t.astro_share_button,
+                  style: const TextStyle(color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF7C3AED),
@@ -170,7 +168,6 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
             const SizedBox(height: 14),
 
-            /// ⭐ SECTIONS
             AstrologyToolSection(
               kundali: kundali,
               initialSection: widget.selectedSection,

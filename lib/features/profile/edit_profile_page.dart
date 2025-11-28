@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -27,7 +28,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   double _lat = 0.0;
   double _lng = 0.0;
 
-  String _selectedLanguage = 'English';
+  String _selectedLanguage = 'en';
 
   @override
   void initState() {
@@ -42,12 +43,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _lng = (widget.profile["lng"] ?? 0.0).toDouble();
 
     final lang = widget.profile["language"]?.toString().toLowerCase();
-
-    if (lang == "hindi" || lang == "hi") {
-      _selectedLanguage = "Hindi";
-    } else {
-      _selectedLanguage = "English"; // default
-    }
+    _selectedLanguage = (lang == "hi") ? "hi" : "en";
   }
 
   Future<void> _pickDate() async {
@@ -80,7 +76,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final profileProvider = context.read<ProfileProvider>();
     final activeId = profileProvider.activeProfileId;
 
-    // 🛑 SAFETY CHECK — ID MUST NOT BE NULL
     if (activeId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("No active profile selected ❌")),
@@ -98,15 +93,21 @@ class _EditProfilePageState extends State<EditProfilePage> {
       "language": _selectedLanguage,
     };
 
-    final provider = context.read<ProfileProvider>();
-    final ok = await provider.updateProfile(activeId, updatedData);
+    final ok = await profileProvider.updateProfile(activeId, updatedData);
 
     if (!mounted) return;
 
     if (ok) {
+      // ⭐ 1 — update app language
+      await context.read<LanguageProvider>().setLanguage(_selectedLanguage);
+
+      // ⭐ 2 — fire listeners (Dashboard will reload Kundali + Daily + Panchang)
+      profileProvider.notifyListeners();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Profile updated successfully ✨")),
       );
+
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -132,15 +133,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
             key: _formKey,
             child: Column(
               children: [
-                // Name
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: const InputDecoration(labelText: "Full Name"),
                   validator: (v) => v!.isEmpty ? "Enter name" : null,
                 ),
+
                 const SizedBox(height: 12),
 
-                // DOB
                 TextFormField(
                   controller: _dobCtrl,
                   readOnly: true,
@@ -150,9 +150,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   onTap: _pickDate,
                 ),
+
                 const SizedBox(height: 12),
 
-                // TOB
                 TextFormField(
                   controller: _tobCtrl,
                   readOnly: true,
@@ -162,9 +162,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   onTap: _pickTime,
                 ),
+
                 const SizedBox(height: 12),
 
-                // POB AUTOCOMPLETE
                 GooglePlaceAutoCompleteTextField(
                   textEditingController: _pobCtrl,
                   googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
@@ -183,18 +183,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     });
                   },
                 ),
+
                 const SizedBox(height: 12),
 
-                // Language
                 DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
+                  initialValue: _selectedLanguage,
                   decoration: const InputDecoration(labelText: "Language"),
                   items: const [
-                    DropdownMenuItem(value: "English", child: Text("English")),
-                    DropdownMenuItem(value: "Hindi", child: Text("Hindi")),
+                    DropdownMenuItem(value: "en", child: Text("English")),
+                    DropdownMenuItem(value: "hi", child: Text("Hindi")),
                   ],
                   onChanged: (v) => setState(() => _selectedLanguage = v!),
                 ),
+
                 const SizedBox(height: 24),
 
                 ElevatedButton.icon(

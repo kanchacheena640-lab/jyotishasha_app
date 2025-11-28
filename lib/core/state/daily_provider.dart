@@ -73,7 +73,7 @@ class DailyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
+    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "language": lang};
 
     final data = await _callApi(
       "https://jyotishasha-backend.onrender.com/api/personalized/daily",
@@ -112,7 +112,7 @@ class DailyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
+    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "language": lang};
 
     final data = await _callApi(
       "https://jyotishasha-backend.onrender.com/api/personalized/tomorrow",

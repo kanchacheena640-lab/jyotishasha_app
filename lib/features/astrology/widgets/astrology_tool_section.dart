@@ -6,7 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/features/astrology/data/astrology_meta.dart';
 
 class AstrologyToolSection extends StatefulWidget {
@@ -24,14 +24,14 @@ class AstrologyToolSection extends StatefulWidget {
 }
 
 //
-// 🔥 TOOL DATA RESOLVER (DO NOT TOUCH)
+// ⭐ SAFE TOOL DATA RESOLVER (Original stable version + light fixes only)
 //
-dynamic _resolveToolData(String id, Map k) {
+dynamic _resolveToolData(String id, Map k, AppLocalizations t) {
+  // ⭐ Rashi Finder
   if (id == "rashi") {
-    final mt = k["moon_traits"] ?? {};
+    final mt = Map<String, dynamic>.from(k["moon_traits"] ?? {});
 
     return {
-      "result": k["rashi"] ?? "-",
       "title": mt["title"] ?? "",
       "text": mt["personality"] ?? "",
       "image": mt["image"],
@@ -41,30 +41,41 @@ dynamic _resolveToolData(String id, Map k) {
     };
   }
 
+  // ⭐ Gemstone (CTA removed)
   if (id == "gemstone") {
     final g = Map<String, dynamic>.from(k["gemstone_suggestion"] ?? {});
     g.remove("cta");
-
     return {
       "gemstone": g["gemstone"] ?? "-",
       "substone": g["substone"] ?? "-",
       "planet": g["planet"] ?? "-",
       "paragraph": g["paragraph"] ?? "-",
-      "paragraph_hi": g["paragraph_hi"] ?? "",
     };
   }
 
+  // ⭐ Lagna Finder
   if (id == "lagna") {
-    final sign = k["lagna_sign"] ?? "-";
-    final trait = k["lagna_trait"] ?? ""; // backend jo bhejega, wahi dikhayenge
+    // Try planet_overview → ascendant
+    final asc = (k["planet_overview"] ?? []).firstWhere((p) {
+      final name = p["planet"]?.toString().toLowerCase() ?? "";
+      return name.contains("ascendant") || name.contains("lagna");
+    }, orElse: () => null);
 
+    if (asc != null) {
+      return {
+        "title": asc["planet"] ?? "Ascendant",
+        "text": asc["text"] ?? asc["summary"] ?? "",
+      };
+    }
+
+    // fallback (old working logic)
     return {
-      "result": sign,
-      "title": "Your Ascendant (Lagna): $sign",
-      "text": trait,
+      "title": "${t.lagna_title} ${k["lagna_sign"] ?? "-"}",
+      "text": k["lagna_trait"] ?? "",
     };
   }
 
+  // ⭐ Planet Detail
   if (id.startsWith("planet_")) {
     final name = id.replaceFirst("planet_", "");
     return (k["planet_overview"] ?? []).firstWhere(
@@ -73,6 +84,7 @@ dynamic _resolveToolData(String id, Map k) {
     );
   }
 
+  // ⭐ House Detail
   if (id.startsWith("house_")) {
     final hn = int.parse(id.replaceFirst("house_", ""));
     return (k["houses_overview"] ?? []).firstWhere(
@@ -81,18 +93,32 @@ dynamic _resolveToolData(String id, Map k) {
     );
   }
 
+  // ⭐ Current Dasha
   if (id == "current_dasha") {
-    return k["dasha_summary"]?["current_block"];
+    final ds = k["dasha_summary"] ?? {};
+    final block = ds["current_block"] ?? {};
+    final maha = ds["current_mahadasha"] ?? {};
+
+    return {
+      "mahadasha": block["mahadasha"],
+      "antardasha": block["antardasha"],
+      "period": block["period"],
+      "impact_snippet": block["impact_snippet"],
+      "impact_snippet_hi": block["impact_snippet_hi"],
+      "antardashas": maha["antardashas"] ?? [],
+      "start": maha["start"],
+      "end": maha["end"],
+    };
   }
 
-  if (id == "timeline") return k["dasha_summary"];
-
+  // ⭐ Life Aspect
   if (id.startsWith("life_")) {
     final list = k["life_aspects"] ?? [];
     final index = int.parse(id.replaceFirst("life_", "")) - 1;
     return index < list.length ? list[index] : null;
   }
 
+  // ⭐ Yog Dosh
   if (id.startsWith("yoga_")) {
     final key = id.replaceFirst("yoga_", "");
     final yogas = k["yogas"] ?? {};
@@ -112,14 +138,22 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
   final ScrollController _tabScrollController = ScrollController();
   final List<GlobalKey> _chipKeys = List.generate(6, (_) => GlobalKey());
 
-  final List<String> categories = [
-    "Profile",
-    "Planets",
-    "House",
-    "Mahadasha",
-    "Life Aspect",
-    "Yog & Dosh",
-  ];
+  late List<String> categories;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final t = AppLocalizations.of(context)!;
+
+    categories = [
+      t.cat_profile,
+      t.cat_planets,
+      t.cat_house,
+      t.cat_mahadasha,
+      t.cat_life_aspect,
+      t.cat_yog_dosh,
+    ];
+  }
 
   @override
   void initState() {
@@ -170,24 +204,23 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     } catch (_) {}
   }
 
-  /// ───────── GRID CARD ─────────
+  /// TOOL CARD
   Widget _toolCard({
     required String name,
     required String id,
     required String icon,
+    required AppLocalizations t,
   }) {
     return InkWell(
       onTap: () {
         final firebase = context.read<FirebaseKundaliProvider>();
         final current = firebase.kundaliData ?? {};
 
-        var data = _resolveToolData(id, current);
+        var data = _resolveToolData(id, current, t);
 
         String title = name;
         if (id == "current_dasha" && data != null) {
-          title = "${data["mahadasha"]} Mahadasha";
-        } else if (id == "timeline") {
-          title = "Mahadasha Timeline";
+          title = "${data["mahadasha"]} ${t.tool_mahadasha}";
         }
 
         context.push(
@@ -200,11 +233,11 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           color: Colors.white,
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Colors.black12,
               blurRadius: 6,
-              offset: const Offset(2, 3),
+              offset: Offset(2, 3),
             ),
           ],
         ),
@@ -229,8 +262,8 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
     );
   }
 
-  /// ───────── GRID ─────────
-  Widget _buildGrid(List<Map<String, dynamic>> data) {
+  /// GRID
+  Widget _buildGrid(List<Map<String, dynamic>> data, AppLocalizations t) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -243,17 +276,22 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
       ),
       itemBuilder: (_, i) {
         final x = data[i];
-        return _toolCard(name: x["name"], id: x["id"], icon: x["icon"] ?? "✨");
+        return _toolCard(
+          name: x["name"],
+          id: x["id"],
+          icon: x["icon"] ?? "✨",
+          t: t,
+        );
       },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+
     final firebase = context.watch<FirebaseKundaliProvider>();
     final k = firebase.kundaliData ?? {};
-
-    final String lang = Provider.of<LanguageProvider>(context).currentLang;
 
     final pages = [
       AstrologyMeta.profileTools(context),
@@ -269,6 +307,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
       children: [
         const SizedBox(height: 12),
 
+        /// CATEGORY TABS
         SizedBox(
           height: 45,
           child: ListView.separated(
@@ -328,7 +367,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
 
         const SizedBox(height: 16),
 
-        _buildGrid(pages[_selected]),
+        _buildGrid(pages[_selected], t),
       ],
     );
   }

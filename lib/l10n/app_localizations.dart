@@ -1546,6 +1546,576 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gemstone Suggestion'**
   String get profile_gemstone_suggestion;
+
+  /// No description provided for @astro_loading_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load astrology data'**
+  String get astro_loading_error;
+
+  /// No description provided for @astro_insights_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Insights'**
+  String get astro_insights_title;
+
+  /// No description provided for @astro_share_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Share With Friends'**
+  String get astro_share_button;
+
+  /// No description provided for @tool_share_result.
+  ///
+  /// In en, this message translates to:
+  /// **'Share Result'**
+  String get tool_share_result;
+
+  /// No description provided for @tool_no_data.
+  ///
+  /// In en, this message translates to:
+  /// **'No data found'**
+  String get tool_no_data;
+
+  /// No description provided for @tool_dob.
+  ///
+  /// In en, this message translates to:
+  /// **'DOB'**
+  String get tool_dob;
+
+  /// No description provided for @tool_tob.
+  ///
+  /// In en, this message translates to:
+  /// **'TOB'**
+  String get tool_tob;
+
+  /// No description provided for @tool_pob.
+  ///
+  /// In en, this message translates to:
+  /// **'POB'**
+  String get tool_pob;
+
+  /// No description provided for @tool_name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get tool_name;
+
+  /// No description provided for @tool_rashi.
+  ///
+  /// In en, this message translates to:
+  /// **'Rashi'**
+  String get tool_rashi;
+
+  /// No description provided for @tool_lagna.
+  ///
+  /// In en, this message translates to:
+  /// **'Lagna'**
+  String get tool_lagna;
+
+  /// No description provided for @tool_moon_sign.
+  ///
+  /// In en, this message translates to:
+  /// **'Moon Sign'**
+  String get tool_moon_sign;
+
+  /// No description provided for @tool_element.
+  ///
+  /// In en, this message translates to:
+  /// **'Element'**
+  String get tool_element;
+
+  /// No description provided for @tool_symbol.
+  ///
+  /// In en, this message translates to:
+  /// **'Symbol'**
+  String get tool_symbol;
+
+  /// No description provided for @tool_ruling_planet.
+  ///
+  /// In en, this message translates to:
+  /// **'Ruling Planet'**
+  String get tool_ruling_planet;
+
+  /// No description provided for @tool_zodiac_image_url.
+  ///
+  /// In en, this message translates to:
+  /// **'Zodiac Image URL'**
+  String get tool_zodiac_image_url;
+
+  /// No description provided for @profile_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrology Profile'**
+  String get profile_title;
+
+  /// No description provided for @profile_name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get profile_name;
+
+  /// No description provided for @profile_dob.
+  ///
+  /// In en, this message translates to:
+  /// **'DOB'**
+  String get profile_dob;
+
+  /// No description provided for @profile_tob.
+  ///
+  /// In en, this message translates to:
+  /// **'TOB'**
+  String get profile_tob;
+
+  /// No description provided for @profile_pob.
+  ///
+  /// In en, this message translates to:
+  /// **'POB'**
+  String get profile_pob;
+
+  /// No description provided for @profile_rashi.
+  ///
+  /// In en, this message translates to:
+  /// **'Rashi'**
+  String get profile_rashi;
+
+  /// No description provided for @profile_lagna.
+  ///
+  /// In en, this message translates to:
+  /// **'Ascendant'**
+  String get profile_lagna;
+
+  /// No description provided for @profile_nakshatra.
+  ///
+  /// In en, this message translates to:
+  /// **'Nakshatra'**
+  String get profile_nakshatra;
+
+  /// No description provided for @profile_active_planets.
+  ///
+  /// In en, this message translates to:
+  /// **'Active Planets'**
+  String get profile_active_planets;
+
+  /// No description provided for @cat_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get cat_profile;
+
+  /// No description provided for @cat_planets.
+  ///
+  /// In en, this message translates to:
+  /// **'Planets'**
+  String get cat_planets;
+
+  /// No description provided for @cat_house.
+  ///
+  /// In en, this message translates to:
+  /// **'House'**
+  String get cat_house;
+
+  /// No description provided for @cat_mahadasha.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahadasha'**
+  String get cat_mahadasha;
+
+  /// No description provided for @cat_life_aspect.
+  ///
+  /// In en, this message translates to:
+  /// **'Life Aspect'**
+  String get cat_life_aspect;
+
+  /// No description provided for @cat_yog_dosh.
+  ///
+  /// In en, this message translates to:
+  /// **'Yog & Dosh'**
+  String get cat_yog_dosh;
+
+  /// No description provided for @tool_mahadasha.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahadasha'**
+  String get tool_mahadasha;
+
+  /// No description provided for @tool_mahadasha_timeline.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahadasha Timeline'**
+  String get tool_mahadasha_timeline;
+
+  /// No description provided for @lagna_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Ascendant (Lagna):'**
+  String get lagna_title;
+
+  /// No description provided for @house_header.
+  ///
+  /// In en, this message translates to:
+  /// **'House {house}'**
+  String house_header(Object house);
+
+  /// No description provided for @house_meaning_not_available.
+  ///
+  /// In en, this message translates to:
+  /// **'Meaning not available.'**
+  String get house_meaning_not_available;
+
+  /// No description provided for @house_deals_with.
+  ///
+  /// In en, this message translates to:
+  /// **'This house deals with {text}.'**
+  String house_deals_with(Object text);
+
+  /// No description provided for @house_no_placements.
+  ///
+  /// In en, this message translates to:
+  /// **'No major planetary placements here.'**
+  String get house_no_placements;
+
+  /// No description provided for @house_lord_line.
+  ///
+  /// In en, this message translates to:
+  /// **'The Lord of House {house} is {lord}.'**
+  String house_lord_line(Object house, Object lord);
+
+  /// No description provided for @house_remedy_default.
+  ///
+  /// In en, this message translates to:
+  /// **'Do small consistent actions to activate this house.'**
+  String get house_remedy_default;
+
+  /// No description provided for @house_meaning_title.
+  ///
+  /// In en, this message translates to:
+  /// **'House Meaning'**
+  String get house_meaning_title;
+
+  /// No description provided for @house_placements_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Notable Placements'**
+  String get house_placements_title;
+
+  /// No description provided for @house_lord_title.
+  ///
+  /// In en, this message translates to:
+  /// **'House Lord'**
+  String get house_lord_title;
+
+  /// No description provided for @house_activate_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Activate Now'**
+  String get house_activate_title;
+
+  /// No description provided for @yogDoshActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active in your chart'**
+  String get yogDoshActive;
+
+  /// No description provided for @yogDoshInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Not active in chart'**
+  String get yogDoshInactive;
+
+  /// No description provided for @yogDoshStrength.
+  ///
+  /// In en, this message translates to:
+  /// **'Strength: {value}'**
+  String yogDoshStrength(Object value);
+
+  /// No description provided for @yogDoshMeaning.
+  ///
+  /// In en, this message translates to:
+  /// **'What this Yog / Dosh means'**
+  String get yogDoshMeaning;
+
+  /// No description provided for @yogDoshBlessings.
+  ///
+  /// In en, this message translates to:
+  /// **'Key blessings & strengths'**
+  String get yogDoshBlessings;
+
+  /// No description provided for @yogDoshChallenge.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible challenges'**
+  String get yogDoshChallenge;
+
+  /// No description provided for @yogDoshReasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Why this Yog / Dosh is formed'**
+  String get yogDoshReasons;
+
+  /// No description provided for @yogDoshDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Detailed explanation'**
+  String get yogDoshDetails;
+
+  /// No description provided for @yogDoshSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get yogDoshSummary;
+
+  /// No description provided for @yogDoshEvaluation.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrological evaluation'**
+  String get yogDoshEvaluation;
+
+  /// No description provided for @yogDoshContext.
+  ///
+  /// In en, this message translates to:
+  /// **'Chart context (for reference)'**
+  String get yogDoshContext;
+
+  /// No description provided for @yogDoshRemedies.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested remedies / focus points'**
+  String get yogDoshRemedies;
+
+  /// No description provided for @yogDoshFooter.
+  ///
+  /// In en, this message translates to:
+  /// **'Note: Above points are based on your current Kundali data and Yog/Dosh rules configured in Jyotishasha engine.'**
+  String get yogDoshFooter;
+
+  /// No description provided for @dashboard_home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get dashboard_home;
+
+  /// No description provided for @dashboard_astrology.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrology'**
+  String get dashboard_astrology;
+
+  /// No description provided for @dashboard_reports.
+  ///
+  /// In en, this message translates to:
+  /// **'Reports'**
+  String get dashboard_reports;
+
+  /// No description provided for @dashboard_ask_now.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Now'**
+  String get dashboard_ask_now;
+
+  /// No description provided for @dashboard_profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get dashboard_profile;
+
+  /// No description provided for @panchang_view_full.
+  ///
+  /// In en, this message translates to:
+  /// **'View Full Panchang →'**
+  String get panchang_view_full;
+
+  /// No description provided for @blog_load_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load blog posts'**
+  String get blog_load_error;
+
+  /// No description provided for @blog_no_data.
+  ///
+  /// In en, this message translates to:
+  /// **'No blog data found'**
+  String get blog_no_data;
+
+  /// No description provided for @panchangViewFull.
+  ///
+  /// In en, this message translates to:
+  /// **'View Full Panchang →'**
+  String get panchangViewFull;
+
+  /// No description provided for @tool_free_kundali.
+  ///
+  /// In en, this message translates to:
+  /// **'Free Kundali'**
+  String get tool_free_kundali;
+
+  /// No description provided for @tool_lagna_finder.
+  ///
+  /// In en, this message translates to:
+  /// **'Lagna Finder'**
+  String get tool_lagna_finder;
+
+  /// No description provided for @tool_rashi_finder.
+  ///
+  /// In en, this message translates to:
+  /// **'Rashi Finder'**
+  String get tool_rashi_finder;
+
+  /// No description provided for @tool_love_match.
+  ///
+  /// In en, this message translates to:
+  /// **'Love Match'**
+  String get tool_love_match;
+
+  /// No description provided for @tool_rajyog_check.
+  ///
+  /// In en, this message translates to:
+  /// **'Rajyog Check'**
+  String get tool_rajyog_check;
+
+  /// No description provided for @tool_health_insight.
+  ///
+  /// In en, this message translates to:
+  /// **'Health Insight'**
+  String get tool_health_insight;
+
+  /// No description provided for @blog_highlights_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrology Blog Highlights'**
+  String get blog_highlights_title;
+
+  /// No description provided for @blog_highlights_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the latest updates, tips and celestial insights.'**
+  String get blog_highlights_subtitle;
+
+  /// No description provided for @blog_explore_button.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore Blog'**
+  String get blog_explore_button;
+
+  /// No description provided for @error_blog_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load blog posts'**
+  String get error_blog_failed;
+
+  /// No description provided for @error_blog_none.
+  ///
+  /// In en, this message translates to:
+  /// **'No blog data found'**
+  String get error_blog_none;
+
+  /// No description provided for @greetNamaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Namaste'**
+  String get greetNamaste;
+
+  /// No description provided for @greetFriend.
+  ///
+  /// In en, this message translates to:
+  /// **'Friend'**
+  String get greetFriend;
+
+  /// No description provided for @dailyLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading your personal horoscope for today...'**
+  String get dailyLoading;
+
+  /// No description provided for @dailyRemedy.
+  ///
+  /// In en, this message translates to:
+  /// **'Remedy'**
+  String get dailyRemedy;
+
+  /// No description provided for @panchangTimeAlert.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Time Alert'**
+  String get panchangTimeAlert;
+
+  /// No description provided for @panchangCalcLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculating best and sensitive timings...'**
+  String get panchangCalcLoading;
+
+  /// No description provided for @timeToDo.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to Do'**
+  String get timeToDo;
+
+  /// No description provided for @timeToHold.
+  ///
+  /// In en, this message translates to:
+  /// **'Time to Hold'**
+  String get timeToHold;
+
+  /// No description provided for @panchang_today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Panchang'**
+  String get panchang_today;
+
+  /// No description provided for @panchang_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching today\'s Panchang...'**
+  String get panchang_loading;
+
+  /// No description provided for @panchang_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to fetch Panchang data.'**
+  String get panchang_error;
+
+  /// No description provided for @panchang_sunrise.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get panchang_sunrise;
+
+  /// No description provided for @panchang_sunset.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get panchang_sunset;
+
+  /// No description provided for @panchang_rahu.
+  ///
+  /// In en, this message translates to:
+  /// **'Rahu Kaal'**
+  String get panchang_rahu;
+
+  /// No description provided for @panchang_viewFull.
+  ///
+  /// In en, this message translates to:
+  /// **'View Full Panchang →'**
+  String get panchang_viewFull;
+
+  /// No description provided for @panchang_panchak.
+  ///
+  /// In en, this message translates to:
+  /// **'Panchak'**
+  String get panchang_panchak;
+
+  /// No description provided for @panchang_yes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get panchang_yes;
+
+  /// No description provided for @panchang_no.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get panchang_no;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

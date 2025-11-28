@@ -52,6 +52,7 @@ flutter:
     - assets/audio/
     - assets/zodiac/
     - assets/data/reports.json
+    - assets/data/reports_hi.json
     - assets/images/reports/
 
 # ⭐ LOCALIZATION CONFIG (flutter ke bahar)

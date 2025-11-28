@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // ⭐ ADD THIS
 
 import 'package:jyotishasha_app/app/app.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
@@ -14,7 +13,6 @@ import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/asknow_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 
-/// ⭐ Global context for syncing language after kundali load
 BuildContext? globalKundaliContext;
 
 Future<void> main() async {
@@ -23,16 +21,14 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
 
-  // ⭐ Load saved language
-  final prefs = await SharedPreferences.getInstance();
-  final savedLang = prefs.getString("app_lang") ?? "en";
-
   runApp(
     MultiProvider(
       providers: [
+        /// ⭐ Load saved language automatically
         ChangeNotifierProvider(
-          create: (_) => LanguageProvider()..setLanguage(savedLang),
+          create: (_) => LanguageProvider()..loadSavedLanguage(),
         ),
+
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => FirebaseKundaliProvider()),
         ChangeNotifierProvider(create: (_) => KundaliProvider()),
@@ -41,7 +37,6 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
         ChangeNotifierProvider(create: (_) => AskNowProvider()),
       ],
-
       child: const JyotishashaApp(),
     ),
   );

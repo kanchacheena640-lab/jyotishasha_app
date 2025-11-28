@@ -10,6 +10,7 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 // Pages
 import '../astrology/astrology_page.dart';
@@ -29,88 +30,81 @@ class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
   DateTime? _lastPressed;
 
+  bool _initialized = false; // 🛑 Prevent double-init
+  bool _listenerAttached = false; // 🛑 Prevent multiple listeners
+
   @override
   void initState() {
     super.initState();
 
-    // RUN INIT FLOW ONCE
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initFlow();
-    });
+      if (!_initialized) {
+        _initialized = true;
+        _initFlow();
+      }
 
-    // SETUP LISTENER SAFELY
+      _attachProfileSwitchListener(); // SAFE
+    });
+  }
+
+  // --------------------------------------------------
+  // SAFE LISTENER: only attach once
+  // --------------------------------------------------
+  void _attachProfileSwitchListener() {
+    if (_listenerAttached) return;
+    _listenerAttached = true;
+
     final profileProvider = context.read<ProfileProvider>();
 
     profileProvider.addListener(() async {
       if (!mounted) return;
 
-      print("🔄 Profile switched → Reloading Dashboard...");
+      print("🔄 PROFILE SWITCH TRIGGER");
 
-      final firebaseKundali = context.read<FirebaseKundaliProvider>();
-      await firebaseKundali.loadFromFirebaseProfile();
-
-      final kd = firebaseKundali.kundaliData;
-      if (kd == null) return;
-
-      final lang = (kd['language'] ?? "en").substring(0, 2);
-      final lagna = kd['lagna_sign'] ?? '';
-      final lat = kd['location']?['lat'] ?? 26.8467;
-      final lng = kd['location']?['lng'] ?? 80.9462;
-
-      // DAILY
-      await context.read<DailyProvider>().fetchDaily(
-        lagna: lagna,
-        lat: lat,
-        lon: lng,
-        lang: lang,
-      );
-
-      // PANCHANG
-      await context.read<PanchangProvider>().fetchPanchang(
-        date: DateTime.now(),
-        lat: lat,
-        lng: lng,
-      );
+      await _loadAndRefreshAll();
     });
   }
 
-  // ----------------------
-  // INITIAL BOOT FLOW
-  // ----------------------
+  // --------------------------------------------------
+  // FULL LOAD SEQUENCE
+  // --------------------------------------------------
+  Future<void> _loadAndRefreshAll() async {
+    final firebaseKundali = context.read<FirebaseKundaliProvider>();
+    await firebaseKundali.loadFromFirebaseProfile(context);
+
+    final kd = firebaseKundali.kundaliData;
+    if (kd == null) return;
+
+    final lang = (kd['language'] ?? "en").substring(0, 2);
+    final lagna = kd['lagna_sign'] ?? '';
+    final lat = kd['location']?['lat'] ?? 26.8467;
+    final lng = kd['location']?['lng'] ?? 80.9462;
+
+    // DAILY
+    await context.read<DailyProvider>().fetchDaily(
+      lagna: lagna,
+      lat: lat,
+      lon: lng,
+      lang: lang,
+    );
+
+    // PANCHANG
+    await context.read<PanchangProvider>().loadPanchang(lat: lat, lng: lng);
+  }
+
+  // --------------------------------------------------
+  // FIRST BOOT LOAD
+  // --------------------------------------------------
   Future<void> _initFlow() async {
     try {
-      print("🟣 Dashboard init START");
+      print("🟣 Dashboard INIT START");
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      final firebaseKundali = context.read<FirebaseKundaliProvider>();
-      await firebaseKundali.loadFromFirebaseProfile();
+      await _loadAndRefreshAll();
 
-      final kd = firebaseKundali.kundaliData;
-      if (kd == null) return;
-
-      final lang = (kd['language'] ?? "en").substring(0, 2);
-      final lagna = kd['lagna_sign'] ?? '';
-      final lat = kd['location']?['lat'] ?? 26.8467;
-      final lng = kd['location']?['lng'] ?? 80.9462;
-
-      // DAILY
-      await context.read<DailyProvider>().fetchDaily(
-        lagna: lagna,
-        lat: lat,
-        lon: lng,
-        lang: lang,
-      );
-
-      // PANCHANG
-      await context.read<PanchangProvider>().fetchPanchang(
-        date: DateTime.now(),
-        lat: lat,
-        lng: lng,
-      );
-
-      print("🏁 Dashboard Init Completed");
+      print("🏁 Dashboard INIT DONE");
     } catch (e) {
       print("❌ Dashboard init ERROR: $e");
     }
@@ -124,9 +118,9 @@ class _DashboardPageState extends State<DashboardPage> {
     ProfilePage(),
   ];
 
-  // -----------------------------
+  // --------------------------------------------------
   // DOUBLE BACK EXIT HANDLER
-  // -----------------------------
+  // --------------------------------------------------
   Future<void> _handleBackPress() async {
     final now = DateTime.now();
 
@@ -174,31 +168,31 @@ class _DashboardPageState extends State<DashboardPage> {
           unselectedItemColor: AppColors.textPrimary.withOpacity(0.5),
           backgroundColor: AppColors.surface,
           type: BottomNavigationBarType.fixed,
-          items: const [
+          items: [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: "Home",
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: AppLocalizations.of(context)!.dashboard_home,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.star_border),
-              activeIcon: Icon(Icons.star),
-              label: "Astrology",
+              icon: const Icon(Icons.star_border),
+              activeIcon: const Icon(Icons.star),
+              label: AppLocalizations.of(context)!.dashboard_astrology,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.description_outlined),
-              activeIcon: Icon(Icons.description),
-              label: "Reports",
+              icon: const Icon(Icons.description_outlined),
+              activeIcon: const Icon(Icons.description),
+              label: AppLocalizations.of(context)!.dashboard_reports,
             ),
             BottomNavigationBarItem(
-              icon: _AskNowIcon(),
-              activeIcon: Icon(Icons.chat),
-              label: "Ask Now",
+              icon: const _AskNowIcon(),
+              activeIcon: const Icon(Icons.chat),
+              label: AppLocalizations.of(context)!.dashboard_ask_now,
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
-              activeIcon: Icon(Icons.person),
-              label: "Profile",
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: AppLocalizations.of(context)!.dashboard_profile,
             ),
           ],
         ),
@@ -207,7 +201,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// ⭐ ASK NOW ICON WITH FREE TAG
+// --------------------------------------------------
+// ASK NOW ICON
+// --------------------------------------------------
 class _AskNowIcon extends StatelessWidget {
   const _AskNowIcon();
 
