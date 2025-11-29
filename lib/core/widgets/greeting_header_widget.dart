@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'dart:math';
+
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
@@ -11,6 +13,119 @@ class GreetingHeaderWidget extends StatelessWidget {
 
   const GreetingHeaderWidget({super.key, required this.daily});
 
+  // -------------------------------------------------------
+  // ⭐ TODAY lucky generators
+  // -------------------------------------------------------
+  String getTodayLuckyColor() {
+    final colors = [
+      "Red",
+      "Blue",
+      "Green",
+      "Purple",
+      "Pink",
+      "Yellow",
+      "Orange",
+      "White",
+      "Black",
+      "Gold",
+      "Silver",
+      "Turquoise",
+    ];
+    final seed = DateTime.now().toIso8601String().substring(0, 10).hashCode;
+    return colors[Random(seed).nextInt(colors.length)];
+  }
+
+  String getTodayLuckyNumber() {
+    final nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    final seed = (DateTime.now().millisecondsSinceEpoch ~/ 86400000);
+    return nums[Random(seed).nextInt(nums.length)];
+  }
+
+  String getTodayDirection() {
+    final dirs = [
+      "North",
+      "South",
+      "East",
+      "West",
+      "North-East",
+      "South-East",
+      "South-West",
+      "North-West",
+    ];
+    final seed = DateTime.now().day * 77;
+    return dirs[Random(seed).nextInt(dirs.length)];
+  }
+
+  // -------------------------------------------------------
+  // ⭐ Color mapping (for dot)
+  // -------------------------------------------------------
+  Color mapLuckyColor(String color) {
+    final colorMap = {
+      'red': Colors.red,
+      'blue': Colors.blue,
+      'green': Colors.green,
+      'yellow': Colors.yellow,
+      'pink': Colors.pink,
+      'purple': Colors.purple,
+      'orange': Colors.orange,
+      'white': Colors.white,
+      'black': Colors.black,
+      'brown': Colors.brown,
+      'grey': Colors.grey,
+      'gray': Colors.grey,
+      'gold': const Color(0xFFFFD700),
+      'silver': const Color(0xFFC0C0C0),
+      'turquoise': Colors.tealAccent,
+    };
+
+    return colorMap[color.toLowerCase()] ?? Colors.deepPurple;
+  }
+
+  // -------------------------------------------------------
+  // ⭐ Translate Lucky Color
+  // -------------------------------------------------------
+  String translateLuckyColor(String color, String lang) {
+    final map = {
+      "red": {"en": "Red", "hi": "लाल"},
+      "blue": {"en": "Blue", "hi": "नीला"},
+      "green": {"en": "Green", "hi": "हरा"},
+      "purple": {"en": "Purple", "hi": "बैंगनी"},
+      "pink": {"en": "Pink", "hi": "गुलाबी"},
+      "yellow": {"en": "Yellow", "hi": "पीला"},
+      "orange": {"en": "Orange", "hi": "नारंगी"},
+      "white": {"en": "White", "hi": "सफेद"},
+      "black": {"en": "Black", "hi": "काला"},
+      "gold": {"en": "Gold", "hi": "सोना"},
+      "silver": {"en": "Silver", "hi": "चांदी"},
+      "turquoise": {"en": "Turquoise", "hi": "फ़िरोज़ी"},
+    };
+
+    final key = color.toLowerCase();
+    return map[key]?[lang] ?? color;
+  }
+
+  // -------------------------------------------------------
+  // ⭐ Translate Lucky Direction
+  // -------------------------------------------------------
+  String translateDirection(String dir, String lang) {
+    final map = {
+      "north": {"en": "North", "hi": "उत्तर"},
+      "south": {"en": "South", "hi": "दक्षिण"},
+      "east": {"en": "East", "hi": "पूर्व"},
+      "west": {"en": "West", "hi": "पश्चिम"},
+      "north-east": {"en": "North-East", "hi": "उत्तर-पूर्व"},
+      "north-west": {"en": "North-West", "hi": "उत्तर-पश्चिम"},
+      "south-east": {"en": "South-East", "hi": "दक्षिण-पूर्व"},
+      "south-west": {"en": "South-West", "hi": "दक्षिण-पश्चिम"},
+    };
+
+    final key = dir.toLowerCase();
+    return map[key]?[lang] ?? dir;
+  }
+
+  // -------------------------------------------------------
+  // ⭐ UI BUILD
+  // -------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final firebase = context.watch<FirebaseKundaliProvider>();
@@ -19,9 +134,22 @@ class GreetingHeaderWidget extends StatelessWidget {
     final dailyProvider = context.watch<DailyProvider>();
     final t = AppLocalizations.of(context)!;
 
+    final String lang = t.localeName; // "en" or "hi"
+
     final displayName = kundali["profile"]?["name"] ?? t.greetFriend;
     final birthRashi = kundali["rashi"] ?? "";
     final zodiacAsset = _zodiacAssetForRashi(birthRashi);
+
+    // ⭐ Generate today's lucky values
+    final luckyColor = getTodayLuckyColor();
+    final luckyNumber = getTodayLuckyNumber();
+    final luckyDirection = getTodayDirection();
+
+    // ⭐ Translated for UI
+    final luckyColorTranslated = translateLuckyColor(luckyColor, lang);
+    final luckyDirectionTranslated = translateDirection(luckyDirection, lang);
+
+    final dotColor = mapLuckyColor(luckyColor);
 
     return Container(
       width: double.infinity,
@@ -40,10 +168,13 @@ class GreetingHeaderWidget extends StatelessWidget {
           BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
         ],
       ),
+
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🌙 Rashi Icon + Greeting
+          // ---------------------------------------------------
+          // 🌙 Greeting + Rashi Icon
+          // ---------------------------------------------------
           Row(
             children: [
               Container(
@@ -102,7 +233,9 @@ class GreetingHeaderWidget extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // 🪔 Daily Lines
+          // ---------------------------------------------------
+          // 🪔 Daily Aspect + Remedy
+          // ---------------------------------------------------
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
@@ -155,9 +288,127 @@ class GreetingHeaderWidget extends StatelessWidget {
                   ),
           ),
 
+          const SizedBox(height: 16),
+
+          // ---------------------------------------------------
+          // ⭐ LUCKY BLOCK (NEW PREMIUM STYLE)
+          // ---------------------------------------------------
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFFF8F5FF),
+                  Color(0xFFEDE7FF),
+                ], // Soft Premium Gradient
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.deepPurple.shade100, width: 1.2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.deepPurple.withOpacity(0.12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 🎨 Lucky Color + 🔢 Lucky Number → SIDE-BY-SIDE
+                Row(
+                  children: [
+                    // ⭐ Lucky Color
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: dotColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.black26,
+                                width: 0.6,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              "${t.luckyColorLabel}: $luckyColorTranslated",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF5A189A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ⭐ Lucky Number
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.confirmation_num_rounded,
+                            size: 18,
+                            color: Color(0xFF5A189A),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              "${t.luckyNumberLabel}: $luckyNumber",
+                              style: GoogleFonts.montserrat(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF5A189A),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 14),
+
+                // 🧭 Lucky Direction (FULL WIDTH)
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.explore_rounded,
+                      size: 18,
+                      color: Color(0xFF5A189A),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "${t.favourableDirectionLabel}: $luckyDirectionTranslated",
+                        style: GoogleFonts.montserrat(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF5A189A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 18),
 
-          // 📅 Time Alert
+          // ---------------------------------------------------
+          // 📅 Panchang Time Alert
+          // ---------------------------------------------------
           Text(
             t.panchangTimeAlert,
             style: GoogleFonts.playfairDisplay(
@@ -166,6 +417,7 @@ class GreetingHeaderWidget extends StatelessWidget {
               color: Colors.deepPurple.shade700,
             ),
           ),
+
           const SizedBox(height: 8),
 
           panchang.isLoading
@@ -194,12 +446,17 @@ class GreetingHeaderWidget extends StatelessWidget {
     );
   }
 
-  // ♈ Rashi → image asset
+  // -------------------------------------------------------
+  // ♈ Rashi Image
+  // -------------------------------------------------------
   String _zodiacAssetForRashi(String? rashi) {
     if (rashi == null || rashi.isEmpty) return 'assets/zodiac/leo.png';
     return 'assets/zodiac/${rashi.toLowerCase()}.png';
   }
 
+  // -------------------------------------------------------
+  // ⏳ Time tile
+  // -------------------------------------------------------
   Widget _timeTile(String title, String time) {
     return Expanded(
       child: Container(

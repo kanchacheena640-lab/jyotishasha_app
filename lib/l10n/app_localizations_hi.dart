@@ -9,7 +9,7 @@ class AppLocalizationsHi extends AppLocalizations {
   AppLocalizationsHi([String locale = 'hi']) : super(locale);
 
   @override
-  String get appName => 'ज्योतिषाशा';
+  String get appName => 'Jyotishasha';
 
   @override
   String get dashboard => 'डैशबोर्ड';
@@ -114,7 +114,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get shareWithFriends => 'दोस्तों के साथ साझा करें';
 
   @override
-  String get myAstrologyProfileShareText => 'मेरी ज्योतिष प्रोफ़ाइल - ज्योतिषाशा ✨';
+  String get myAstrologyProfileShareText => 'मेरी ज्योतिष प्रोफ़ाइल - Jyotishasha ✨';
 
   @override
   String get dobLabel => 'जन्म तिथि';
@@ -354,7 +354,7 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get shareLifeAspectText => '✨ जीवन पहलू — ज्योतिषाशा ऐप द्वारा उत्पन्न';
+  String get shareLifeAspectText => '✨ जीवन पहलू — Jyotishasha ऐप द्वारा उत्पन्न';
 
   @override
   String get currentMahadasha => 'वर्तमान महादशा';
@@ -392,7 +392,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get detailedInterpretation => 'विस्तृत व्याख्या';
 
   @override
-  String get generatedByApp => 'ज्योतिषाशा ऐप द्वारा निर्मित';
+  String get generatedByApp => 'Jyotishasha ऐप द्वारा निर्मित';
 
   @override
   String get yogDoshTitleFallback => 'योग / दोष विश्लेषण';
@@ -455,10 +455,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get yogDoshFooterNote => 'नोट: उपरोक्त बिंदु आपकी कुंडली और इंजन लॉजिक पर आधारित हैं।';
 
   @override
-  String get yogDoshShareSuffix => '— ज्योतिषाशा विश्लेषण';
+  String get yogDoshShareSuffix => '— Jyotishasha विश्लेषण';
 
   @override
-  String get loginWelcomeTitle => 'ज्योतिषाशा में आपका स्वागत है';
+  String get loginWelcomeTitle => 'Jyotishasha में आपका स्वागत है';
 
   @override
   String get loginWelcomeSubtitle => 'अपना व्यक्तिगत ज्योतिषीय मार्ग खोजें';
@@ -509,7 +509,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get yourKundali => 'आपकी कुंडली';
 
   @override
-  String get myKundaliShareText => 'मेरी कुंडली — ज्योतिषाशा ✨';
+  String get myKundaliShareText => 'मेरी कुंडली — Jyotishasha ✨';
 
   @override
   String get shubhMuhurth => '🕉️ शुभ मुहूर्त';
@@ -931,7 +931,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get yogDoshRemedies => 'अनुशंसित उपाय और फोकस पॉइंट';
 
   @override
-  String get yogDoshFooter => 'नोट: ऊपर दिए गए बिंदु आपकी वर्तमान कुंडली और ज्योतिषाशा इंजन में कॉन्फ़िगर किए गए योग/दोष नियमों पर आधारित हैं।';
+  String get yogDoshFooter => 'नोट: ऊपर दिए गए बिंदु आपकी वर्तमान कुंडली और Jyotishasha इंजन में कॉन्फ़िगर किए गए योग/दोष नियमों पर आधारित हैं।';
 
   @override
   String get dashboard_home => 'होम';
@@ -1027,23 +1027,179 @@ class AppLocalizationsHi extends AppLocalizations {
   String get panchang_error => 'पंचांग डेटा प्राप्त नहीं हो सका।';
 
   @override
-  String get panchang_sunrise => 'सूर्योदय';
-
-  @override
-  String get panchang_sunset => 'सूर्यास्त';
-
-  @override
-  String get panchang_rahu => 'राहुकाल';
-
-  @override
   String get panchang_viewFull => 'पूरा पंचांग देखें →';
-
-  @override
-  String get panchang_panchak => 'Panchak';
 
   @override
   String get panchang_yes => 'Yes';
 
   @override
   String get panchang_no => 'No';
+
+  @override
+  String get panchang_title => 'आज का पंचांग';
+
+  @override
+  String get panchang_sunrise => 'सूर्योदय';
+
+  @override
+  String get panchang_sunset => 'सूर्यास्त';
+
+  @override
+  String get panchang_elements => 'मुख्य पंचांग तत्व';
+
+  @override
+  String get panchang_tithi => 'तिथि';
+
+  @override
+  String get panchang_nakshatra => 'नक्षत्र';
+
+  @override
+  String get panchang_yoga => 'योग';
+
+  @override
+  String get panchang_karana => 'करण';
+
+  @override
+  String get panchang_vaar => 'वार';
+
+  @override
+  String get panchang_panchak => 'पंचक';
+
+  @override
+  String get panchang_highlights => 'विशेष जानकारी';
+
+  @override
+  String get panchang_abhijit => 'अभिजीत मुहूर्त';
+
+  @override
+  String get panchang_rahu => 'राहु काल';
+
+  @override
+  String get change_location => 'बदलें';
+
+  @override
+  String get luckyColorLabel => 'शुभ रंग';
+
+  @override
+  String get luckyNumberLabel => 'शुभ अंक';
+
+  @override
+  String get favourableDirectionLabel => 'शुभ दिशा';
+
+  @override
+  String get location => 'स्थान';
+
+  @override
+  String get changeLocationTitle => 'स्थान बदलें';
+
+  @override
+  String get selectedPlace => 'चयनित स्थान';
+
+  @override
+  String get dataSyncedText => '✨ डेटा Jyotishasha API से सिंक किया गया ✨';
+
+  @override
+  String get astrologyStudio => 'ज्योतिष स्टूडियो';
+
+  @override
+  String get astrologyStudioSubtitle => 'ग्रह, भाव, योग और दशा — सब कुछ सुंदर तरीके से व्यवस्थित।';
+
+  @override
+  String get studioProfile => 'ज्योतिष प्रोफ़ाइल';
+
+  @override
+  String get studioPlanets => 'कुंडली में ग्रह';
+
+  @override
+  String get studioBhava => 'कुंडली के घर';
+
+  @override
+  String get studioDasha => 'ग्रह दशा';
+
+  @override
+  String get studioLifeAspects => 'जीवन-आयाम';
+
+  @override
+  String get studioYogDosh => 'योग-दोष';
+
+  @override
+  String get shubhUpcomingTitle => 'आगामी शुभ मुहूर्त';
+
+  @override
+  String get shubhSeeMore => 'और देखें →';
+
+  @override
+  String get shubhScoreSuffix => '/10';
+
+  @override
+  String get footerFeedbackHint => 'अपने सुझाव या विचार साझा करें...';
+
+  @override
+  String get footerFeedbackSend => 'भेजें';
+
+  @override
+  String get footerFeedbackThanks => 'आपके सुझाव के लिए धन्यवाद!';
+
+  @override
+  String get footerCopyright => '© 2025 Jyotishasha. सर्वाधिकार सुरक्षित.';
+
+  @override
+  String get footerPrivacyTerms => 'प्राइवेसी नीति  •  उपयोग की शर्तें';
+
+  @override
+  String get muhurthTitle => '🕉️ शुभ मुहूर्त';
+
+  @override
+  String get muhurthLocation => 'स्थान';
+
+  @override
+  String get muhurthChange => 'बदलें';
+
+  @override
+  String get muhurthSelectOccasion => 'अवसर चुनें';
+
+  @override
+  String get muhurthNoResults => 'कोई शुभ मुहूर्त नहीं मिला 😔';
+
+  @override
+  String get muhurthUpcoming => 'आगामी शुभ मुहूर्त तिथि';
+
+  @override
+  String get muhurthScore => 'स्कोर';
+
+  @override
+  String get muhurthWeekdayLabel => 'वार';
+
+  @override
+  String get muhurthNakshatraLabel => 'नक्षत्र';
+
+  @override
+  String get muhurthTithiLabel => 'तिथि';
+
+  @override
+  String get muhurthPickerComing => 'स्थान चयन जल्द उपलब्ध होगा';
+
+  @override
+  String get muhurthBannerTitle => 'इस महीने की सबसे शुभ तिथि जानें';
+
+  @override
+  String get muhurthBannerNamkaran => 'नामकरण';
+
+  @override
+  String get muhurthBannerMarriage => 'विवाह';
+
+  @override
+  String get muhurthBannerVehicle => 'वाहन खरीद';
+
+  @override
+  String get muhurthBannerGold => 'सोना खरीद';
+
+  @override
+  String get muhurthBannerMore => 'और भी शुभ कार्यों के लिए';
+
+  @override
+  String get muhurthBannerCta => 'अपने शुभ मुहूर्त देखने के लिए टैप करें';
+
+  @override
+  String get darshanInstruction => 'ॐ का स्‍पर्श — करें दर्शन और सुने मंत्र';
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AppFooterFeedbackWidget extends StatelessWidget {
   final TextEditingController _controller = TextEditingController();
@@ -7,6 +9,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
 
     // 🌈 Jyotishasha gradient (saffron → purple)
@@ -19,19 +22,19 @@ class AppFooterFeedbackWidget extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      color: Colors.grey.shade100, // soft neutral background
+      color: Colors.grey.shade100,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 💬 Feedback input box (centered)
+          // 💬 Feedback input box
           SizedBox(
             width: 300,
             child: TextField(
               controller: _controller,
               maxLines: 2,
-              style: const TextStyle(fontSize: 13),
+              style: GoogleFonts.montserrat(fontSize: 13),
               decoration: InputDecoration(
-                hintText: "Share your thoughts or suggestions...",
+                hintText: t.footerFeedbackHint,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 10,
@@ -45,12 +48,12 @@ class AppFooterFeedbackWidget extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // ✨ Gradient "Send" text button (See More style)
+          // ✨ Gradient Send Button
           GestureDetector(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Thanks for your feedback!")),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(t.footerFeedbackThanks)));
               _controller.clear();
             },
             child: ShaderMask(
@@ -59,19 +62,15 @@ class AppFooterFeedbackWidget extends StatelessWidget {
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
-                  Icon(
-                    Icons.send_rounded,
-                    size: 22, // 🔹 slightly bigger icon
-                    color: Colors.white, // placeholder for gradient
-                  ),
-                  SizedBox(width: 6),
+                children: [
+                  const Icon(Icons.send_rounded, size: 22, color: Colors.white),
+                  const SizedBox(width: 6),
                   Text(
-                    "Send",
-                    style: TextStyle(
+                    t.footerFeedbackSend,
+                    style: GoogleFonts.montserrat(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white, // needed for gradient
+                      color: Colors.white,
                     ),
                   ),
                 ],
@@ -81,23 +80,23 @@ class AppFooterFeedbackWidget extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // ⚖️ Copyright & Links
+          // ⚖️ Copyright
           Text(
-            "© 2025 Jyotishasha. All rights reserved.",
-            style: theme.textTheme.bodySmall?.copyWith(
-              fontSize: 12,
-              color: Colors.black54,
-            ),
+            t.footerCopyright,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.montserrat(fontSize: 12, color: Colors.black54),
           ),
+
           const SizedBox(height: 4),
+
           GestureDetector(
-            onTap: () {}, // TODO: open Privacy/Terms
-            child: const Text(
-              "Privacy Policy  •  Terms of Use",
-              style: TextStyle(
-                color: Colors.black54,
+            onTap: () {}, // TODO: open Privacy/Terms page
+            child: Text(
+              t.footerPrivacyTerms,
+              style: GoogleFonts.montserrat(
                 fontSize: 12,
                 decoration: TextDecoration.underline,
+                color: Colors.black54,
               ),
             ),
           ),

@@ -1,25 +1,38 @@
+// dart
+import 'dart:convert';
+
+// flutter
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+
+// third-party
 import 'package:google_fonts/google_fonts.dart';
-import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
+
+// localization
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+
+// core
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
 import 'package:jyotishasha_app/core/widgets/horoscope_card_widget.dart';
-import 'package:jyotishasha_app/core/widgets/shubh_muhurth_preview_widget.dart';
-import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
-import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
-import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
-import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
 import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
-import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/widgets/shubh_muhurth_banner_widget.dart';
+import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
+
+// features
+import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
+import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
+import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
+import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
+
+// providers
+import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
-import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
-import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 /// 🌟 Dashboard Home (Light, Elegant & Unified)
 class DashboardHomeSection extends StatelessWidget {
@@ -42,7 +55,26 @@ class DashboardHomeSection extends StatelessWidget {
               GreetingHeaderWidget(daily: daily),
               const SizedBox(height: 16),
 
-              // 🌞 Darshan Button (Premium Minimal Divine Style)
+              // 🌞 Darshan Instruction + Button
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 2,
+                ),
+                child: Center(
+                  child: Text(
+                    t.darshanInstruction,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.montserrat(
+                      fontSize: 15, // same as banner
+                      fontWeight: FontWeight.w600, // same as banner
+                      color: AppColors.textPrimary, // same as banner
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
+
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: GestureDetector(
@@ -131,23 +163,10 @@ class DashboardHomeSection extends StatelessWidget {
               const PanchangCardWidget(),
               const SizedBox(height: 12),
 
-              _buildHoroscopeSection(context),
-              const SizedBox(height: 24),
-
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: ShubhMuhurthPreviewWidget(
-                  muhurthList: [
-                    {"date": "Nov 5", "event": "Griha Pravesh", "score": "9"},
-                    {"date": "Nov 8", "event": "Marriage", "score": "8"},
-                    {
-                      "date": "Nov 12",
-                      "event": "🚗 Vehicle Purchase",
-                      "score": "8",
-                    },
-                    {"date": "Nov 15", "event": "Naamkaran", "score": "7"},
-                  ],
-                  onSeeMore: () {
+                child: ShubhMuhurthBannerWidget(
+                  onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(builder: (_) => const MuhurthPage()),
@@ -155,6 +174,7 @@ class DashboardHomeSection extends StatelessWidget {
                   },
                 ),
               ),
+
               const SizedBox(height: 20),
 
               // 🔮 Manual Kundali CTA

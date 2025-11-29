@@ -2075,35 +2075,11 @@ abstract class AppLocalizations {
   /// **'Unable to fetch Panchang data.'**
   String get panchang_error;
 
-  /// No description provided for @panchang_sunrise.
-  ///
-  /// In en, this message translates to:
-  /// **'Sunrise'**
-  String get panchang_sunrise;
-
-  /// No description provided for @panchang_sunset.
-  ///
-  /// In en, this message translates to:
-  /// **'Sunset'**
-  String get panchang_sunset;
-
-  /// No description provided for @panchang_rahu.
-  ///
-  /// In en, this message translates to:
-  /// **'Rahu Kaal'**
-  String get panchang_rahu;
-
   /// No description provided for @panchang_viewFull.
   ///
   /// In en, this message translates to:
   /// **'View Full Panchang →'**
   String get panchang_viewFull;
-
-  /// No description provided for @panchang_panchak.
-  ///
-  /// In en, this message translates to:
-  /// **'Panchak'**
-  String get panchang_panchak;
 
   /// No description provided for @panchang_yes.
   ///
@@ -2116,6 +2092,342 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No'**
   String get panchang_no;
+
+  /// No description provided for @panchang_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Today\'s Panchang'**
+  String get panchang_title;
+
+  /// No description provided for @panchang_sunrise.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get panchang_sunrise;
+
+  /// No description provided for @panchang_sunset.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get panchang_sunset;
+
+  /// No description provided for @panchang_elements.
+  ///
+  /// In en, this message translates to:
+  /// **'Main Panchang Elements'**
+  String get panchang_elements;
+
+  /// No description provided for @panchang_tithi.
+  ///
+  /// In en, this message translates to:
+  /// **'Tithi'**
+  String get panchang_tithi;
+
+  /// No description provided for @panchang_nakshatra.
+  ///
+  /// In en, this message translates to:
+  /// **'Nakshatra'**
+  String get panchang_nakshatra;
+
+  /// No description provided for @panchang_yoga.
+  ///
+  /// In en, this message translates to:
+  /// **'Yoga'**
+  String get panchang_yoga;
+
+  /// No description provided for @panchang_karana.
+  ///
+  /// In en, this message translates to:
+  /// **'Karana'**
+  String get panchang_karana;
+
+  /// No description provided for @panchang_vaar.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday'**
+  String get panchang_vaar;
+
+  /// No description provided for @panchang_panchak.
+  ///
+  /// In en, this message translates to:
+  /// **'Panchak'**
+  String get panchang_panchak;
+
+  /// No description provided for @panchang_highlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Highlights'**
+  String get panchang_highlights;
+
+  /// No description provided for @panchang_abhijit.
+  ///
+  /// In en, this message translates to:
+  /// **'Abhijit Muhurta'**
+  String get panchang_abhijit;
+
+  /// No description provided for @panchang_rahu.
+  ///
+  /// In en, this message translates to:
+  /// **'Rahu Kaal'**
+  String get panchang_rahu;
+
+  /// No description provided for @change_location.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get change_location;
+
+  /// No description provided for @luckyColorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lucky Color'**
+  String get luckyColorLabel;
+
+  /// No description provided for @luckyNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lucky Number'**
+  String get luckyNumberLabel;
+
+  /// No description provided for @favourableDirectionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Favourable Direction'**
+  String get favourableDirectionLabel;
+
+  /// No description provided for @location.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get location;
+
+  /// No description provided for @changeLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Location'**
+  String get changeLocationTitle;
+
+  /// No description provided for @selectedPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected Place'**
+  String get selectedPlace;
+
+  /// No description provided for @dataSyncedText.
+  ///
+  /// In en, this message translates to:
+  /// **'✨ Data synced from Jyotishasha API ✨'**
+  String get dataSyncedText;
+
+  /// No description provided for @astrologyStudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Astrology Studio'**
+  String get astrologyStudio;
+
+  /// No description provided for @astrologyStudioSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Explore planets, houses, yogas and dasha — beautifully organized for you.'**
+  String get astrologyStudioSubtitle;
+
+  /// No description provided for @studioProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Astro Profile'**
+  String get studioProfile;
+
+  /// No description provided for @studioPlanets.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Planets'**
+  String get studioPlanets;
+
+  /// No description provided for @studioBhava.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Bhava'**
+  String get studioBhava;
+
+  /// No description provided for @studioDasha.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahadasha'**
+  String get studioDasha;
+
+  /// No description provided for @studioLifeAspects.
+  ///
+  /// In en, this message translates to:
+  /// **'Life Aspects'**
+  String get studioLifeAspects;
+
+  /// No description provided for @studioYogDosh.
+  ///
+  /// In en, this message translates to:
+  /// **'Yog & Dosh'**
+  String get studioYogDosh;
+
+  /// No description provided for @shubhUpcomingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming Shubh Muhurth'**
+  String get shubhUpcomingTitle;
+
+  /// No description provided for @shubhSeeMore.
+  ///
+  /// In en, this message translates to:
+  /// **'See More →'**
+  String get shubhSeeMore;
+
+  /// No description provided for @shubhScoreSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'/10'**
+  String get shubhScoreSuffix;
+
+  /// No description provided for @footerFeedbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Share your thoughts or suggestions...'**
+  String get footerFeedbackHint;
+
+  /// No description provided for @footerFeedbackSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send'**
+  String get footerFeedbackSend;
+
+  /// No description provided for @footerFeedbackThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks for your feedback!'**
+  String get footerFeedbackThanks;
+
+  /// No description provided for @footerCopyright.
+  ///
+  /// In en, this message translates to:
+  /// **'© 2025 Jyotishasha. All rights reserved.'**
+  String get footerCopyright;
+
+  /// No description provided for @footerPrivacyTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy  •  Terms of Use'**
+  String get footerPrivacyTerms;
+
+  /// No description provided for @muhurthTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🕉️ Shubh Muhurth'**
+  String get muhurthTitle;
+
+  /// No description provided for @muhurthLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get muhurthLocation;
+
+  /// No description provided for @muhurthChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get muhurthChange;
+
+  /// No description provided for @muhurthSelectOccasion.
+  ///
+  /// In en, this message translates to:
+  /// **'Select Occasion'**
+  String get muhurthSelectOccasion;
+
+  /// No description provided for @muhurthNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No Shubh Muhurth found 😔'**
+  String get muhurthNoResults;
+
+  /// No description provided for @muhurthUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming Muhurth Dates'**
+  String get muhurthUpcoming;
+
+  /// No description provided for @muhurthScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get muhurthScore;
+
+  /// No description provided for @muhurthWeekdayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekday'**
+  String get muhurthWeekdayLabel;
+
+  /// No description provided for @muhurthNakshatraLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Nakshatra'**
+  String get muhurthNakshatraLabel;
+
+  /// No description provided for @muhurthTithiLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Tithi'**
+  String get muhurthTithiLabel;
+
+  /// No description provided for @muhurthPickerComing.
+  ///
+  /// In en, this message translates to:
+  /// **'Location picker coming soon'**
+  String get muhurthPickerComing;
+
+  /// No description provided for @muhurthBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Get the best date of this month for'**
+  String get muhurthBannerTitle;
+
+  /// No description provided for @muhurthBannerNamkaran.
+  ///
+  /// In en, this message translates to:
+  /// **'Naamkaran'**
+  String get muhurthBannerNamkaran;
+
+  /// No description provided for @muhurthBannerMarriage.
+  ///
+  /// In en, this message translates to:
+  /// **'Marriage'**
+  String get muhurthBannerMarriage;
+
+  /// No description provided for @muhurthBannerVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle purchase'**
+  String get muhurthBannerVehicle;
+
+  /// No description provided for @muhurthBannerGold.
+  ///
+  /// In en, this message translates to:
+  /// **'Gold purchase'**
+  String get muhurthBannerGold;
+
+  /// No description provided for @muhurthBannerMore.
+  ///
+  /// In en, this message translates to:
+  /// **'and more auspicious events'**
+  String get muhurthBannerMore;
+
+  /// No description provided for @muhurthBannerCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to see your Shubh Muhurth'**
+  String get muhurthBannerCta;
+
+  /// No description provided for @darshanInstruction.
+  ///
+  /// In en, this message translates to:
+  /// **'Touch ॐ for Darshan & Mantra'**
+  String get darshanInstruction;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

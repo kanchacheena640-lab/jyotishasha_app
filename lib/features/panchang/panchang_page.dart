@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
-const String kGoogleApiKey = "YOUR_GOOGLE_API_KEY";
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
+
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class PanchangPage extends StatefulWidget {
   const PanchangPage({super.key});
@@ -26,43 +29,50 @@ class _PanchangPageState extends State<PanchangPage> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      final panchang = context.read<PanchangProvider>();
-      panchang.loadPanchang();
+      final lang = context.read<LanguageProvider>().currentLang;
+      context.read<PanchangProvider>().loadPanchang(lang: lang);
     });
   }
 
+  // 🔄 Change Location
   void _changeLocation(double lat, double lng, String name) {
+    final lang = context.read<LanguageProvider>().currentLang;
     final p = context.read<PanchangProvider>();
+
     setState(() => locationName = name);
-    p.fetchPanchang(lat: lat, lng: lng);
+    p.fetchPanchang(lat: lat, lng: lng, lang: lang);
   }
 
+  // 🌍 Place Picker Dialog
   void _openPlacePickerDialog() {
+    final t = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Change Location"),
+        title: Text(t.changeLocationTitle),
         content: KeyboardDismissOnTap(
           child: GooglePlaceAutoCompleteTextField(
             textEditingController: _searchController,
-            googleAPIKey: kGoogleApiKey,
+            googleAPIKey: "YOUR_GOOGLE_API_KEY",
             debounceTime: 800,
-            countries: const ["in"],
             isLatLngRequired: true,
+            countries: const ["in"],
             getPlaceDetailWithLatLng: (Prediction p) {
               final lat = double.tryParse(p.lat ?? '') ?? 26.8467;
               final lng = double.tryParse(p.lng ?? '') ?? 80.9462;
+
               Navigator.pop(context);
-              _changeLocation(lat, lng, p.description ?? "Selected Place");
-            },
-            itemClick: (Prediction p) {
-              _searchController.text = p.description ?? "";
+              _changeLocation(lat, lng, p.description ?? t.selectedPlace);
             },
             itemBuilder: (context, index, Prediction p) {
               return ListTile(
                 leading: const Icon(Icons.location_on_outlined),
                 title: Text(p.description ?? ""),
               );
+            },
+            itemClick: (Prediction p) {
+              _searchController.text = p.description ?? "";
             },
           ),
         ),
@@ -72,8 +82,10 @@ class _PanchangPageState extends State<PanchangPage> {
 
   @override
   Widget build(BuildContext context) {
-    final provider = context.watch<PanchangProvider>();
-    final d = provider.fullPanchang;
+    final p = context.watch<PanchangProvider>();
+    final d = p.fullPanchang;
+
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -81,15 +93,15 @@ class _PanchangPageState extends State<PanchangPage> {
         backgroundColor: AppColors.primary,
         centerTitle: true,
         title: Text(
-          "Today's Panchang",
+          t.panchang,
           style: GoogleFonts.montserrat(
-            fontWeight: FontWeight.w600,
             color: Colors.white,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
 
-      body: provider.isLoading
+      body: p.isLoading
           ? const Center(child: CircularProgressIndicator())
           : d == null
           ? _buildError()
@@ -97,11 +109,16 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
+  // ⚠ ERROR UI
   Widget _buildError() {
-    return Center(child: Text("⚠️ Unable to load Panchang data"));
+    final t = AppLocalizations.of(context)!;
+    return Center(child: Text(t.loadingError));
   }
 
+  // MAIN PANCHANG BODY UI
   Widget _buildContent(Map<String, dynamic> d) {
+    final t = AppLocalizations.of(context)!;
+
     final formattedDate = DateFormat(
       'dd-MM-yyyy',
     ).format(DateTime.parse(d['date']));
@@ -111,7 +128,7 @@ class _PanchangPageState extends State<PanchangPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DATE + LOCATION
+          // 📅 DATE + LOCATION
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -137,14 +154,14 @@ class _PanchangPageState extends State<PanchangPage> {
               TextButton.icon(
                 onPressed: _openPlacePickerDialog,
                 icon: const Icon(Icons.location_on_outlined, size: 18),
-                label: const Text("Change"),
+                label: Text(t.change),
               ),
             ],
           ),
 
           const SizedBox(height: 16),
 
-          // SUNRISE + SUNSET
+          // 🌞 SURRISE + SUNSET
           Card(
             elevation: 2,
             color: AppColors.surface,
@@ -156,8 +173,8 @@ class _PanchangPageState extends State<PanchangPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoTile("Sunrise", d['sunrise']),
-                  _infoTile("Sunset", d['sunset']),
+                  _infoTile(t.panchang_sunrise, d['sunrise']),
+                  _infoTile(t.panchang_sunset, d['sunset']),
                 ],
               ),
             ),
@@ -165,8 +182,9 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 24),
 
+          // MAIN ELEMENTS
           Text(
-            "Main Panchang Elements",
+            t.panchang_elements,
             style: GoogleFonts.montserrat(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -175,22 +193,23 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 12),
           _dataRow(
-            "Tithi",
+            t.panchang_tithi,
             "${d['tithi']?['name']} (${d['tithi']?['paksha']})",
           ),
           _dataRow(
-            "Nakshatra",
+            t.panchang_nakshatra,
             "${d['nakshatra']?['name']} (Pada ${d['nakshatra']?['pada']})",
           ),
-          _dataRow("Yoga", d['yoga']?['name']),
-          _dataRow("Karana", d['karan']?['name']),
-          _dataRow("Vaar", d['weekday']),
-          _dataRow("Panchak", d['panchak']?['message']),
+          _dataRow(t.panchang_yoga, d['yoga']?['name']),
+          _dataRow(t.panchang_karana, d['karan']?['name']),
+          _dataRow(t.panchang_vaar, d['weekday']),
+          _dataRow(t.panchang_panchak, d['panchak']?['message']),
 
           const SizedBox(height: 24),
 
+          // ⭐ HIGHLIGHTS
           Text(
-            "Highlights",
+            t.panchang_highlights,
             style: GoogleFonts.montserrat(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -198,19 +217,19 @@ class _PanchangPageState extends State<PanchangPage> {
           ),
 
           _highlight(
-            "Abhijit Muhurta",
+            t.panchang_abhijit,
             "${d['abhijit_muhurta']?['start']} – ${d['abhijit_muhurta']?['end']}",
           ),
           _highlight(
-            "Rahu Kaal",
-            "${d['rahu_kaal']?['start']} – "
-                "${d['rahu_kaal']?['end']}",
+            t.panchang_rahu,
+            "${d['rahu_kaal']?['start']} – ${d['rahu_kaal']?['end']}",
           ),
 
           const SizedBox(height: 32),
+
           Center(
             child: Text(
-              "✨ Data synced from Jyotishasha API ✨",
+              t.dataSyncedText,
               style: GoogleFonts.montserrat(
                 color: AppColors.textSecondary,
                 fontSize: 13,
@@ -225,44 +244,51 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  Widget _dataRow(String k, String? v) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 6),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(k, style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
-        Flexible(
-          child: Text(
-            v ?? '--',
-            textAlign: TextAlign.end,
-            style: GoogleFonts.montserrat(color: AppColors.textSecondary),
+  // ROW TILE
+  Widget _dataRow(String k, String? v) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(k, style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
+          Flexible(
+            child: Text(
+              v ?? '--',
+              textAlign: TextAlign.end,
+              style: GoogleFonts.montserrat(color: AppColors.textSecondary),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // STAR HIGHLIGHT
+  Widget _highlight(String title, String value) {
+    return Card(
+      color: AppColors.surface,
+      elevation: 1,
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(
+          Icons.star_border_outlined,
+          color: AppColors.primary.withOpacity(0.9),
         ),
-      ],
-    ),
-  );
+        title: Text(
+          title,
+          style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+        ),
+        subtitle: Text(
+          value,
+          style: GoogleFonts.montserrat(color: AppColors.textSecondary),
+        ),
+      ),
+    );
+  }
 
-  Widget _highlight(String title, String value) => Card(
-    color: AppColors.surface,
-    elevation: 1,
-    margin: const EdgeInsets.symmetric(vertical: 6),
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: ListTile(
-      leading: Icon(
-        Icons.star_border_outlined,
-        color: AppColors.primary.withOpacity(0.9),
-      ),
-      title: Text(
-        title,
-        style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Text(
-        value,
-        style: GoogleFonts.montserrat(color: AppColors.textSecondary),
-      ),
-    ),
-  );
-
+  // INFO TILE
   Widget _infoTile(String title, String value) {
     return Column(
       children: [

@@ -1,8 +1,14 @@
-/// Represents a spiritually meaningful highlight for the day.
+/// Bilingual Panchang Event Engine
+/// ---------------------------------------------------------------
+/// This file converts backend Panchang JSON → Hindi/English summary,
+/// vrat suggestion, and special event titles.
+/// ---------------------------------------------------------------
+library;
+
 class PanchangEvent {
-  final String id; // e.g. "ekadashi", "pradosh", "akshaya_tritiya"
-  final String title; // Short label to show in UI
-  final String description; // 1–2 line user-friendly copy
+  final String id;
+  final String title;
+  final String description;
   final bool isFastingDay;
   final bool isMajorFestival;
 
@@ -15,98 +21,90 @@ class PanchangEvent {
   });
 }
 
-/// Utility to derive daily highlights from Panchang API response.
-///
-/// Input shape expected (from /api/panchang):
-/// {
-///   "selected_date": {
-///     "tithi": { "name": "...", "number": 11, "paksha": "Shukla" },
-///     "nakshatra": { "name": "..." },
-///     "weekday": "Thursday",
-///     "month_name": "Vaishakha",
-///     "sunrise": "06:12",
-///     "sunset": "18:22",
-///     "rahu_kaal": { "start": "15:02", "end": "16:30" },
-///     ...
-///   }
-/// }
 class PanchangEventMarkup {
-  /// Main entry:
-  /// Pass full API JSON, returns list of detected events for that day.
-  static List<PanchangEvent> detectEvents(Map<String, dynamic> panchangJson) {
-    final day = _selected(panchangJson);
+  // ---------------------------------------------------------------------------
+  // PUBLIC: Detect Events
+  // ---------------------------------------------------------------------------
+  static List<PanchangEvent> detectEvents(Map<String, dynamic> json) {
+    final day = _selected(json);
     if (day == null) return const [];
 
+    final lang = (day["language"] ?? "en").toString().substring(0, 2);
+
     final tithiName = _getNestedString(day, "tithi", "name");
-    final tithiNum = _getNestedInt(day, "tithi", "number");
-    final paksha = _getNestedString(day, "tithi", "paksha");
-    final nakshatra = _getNestedString(day, "nakshatra", "name");
+    final paksha = _normalize(_getNestedString(day, "tithi", "paksha"));
     final weekday = _normalize(_getString(day, "weekday"));
+    final nakshatra = _normalize(_getNestedString(day, "nakshatra", "name"));
     final month = _normalize(_getString(day, "month_name"));
 
-    final List<PanchangEvent> events = [];
+    final List<PanchangEvent> ev = [];
 
-    // ---------- Core fasts / vrats ----------
+    // ------------------ Helper: Bilingual Texts --------------------
+    String t(String en, String hi) => lang == "hi" ? hi : en;
 
-    // Ekadashi (all types)
-    if (tithiName.toLowerCase().contains("ekadashi")) {
-      events.add(
+    // ----------------------------------------------------------------
+    // EKADASHI
+    // ----------------------------------------------------------------
+    if (tithiName.toLowerCase().contains("ekadashi") ||
+        tithiName.contains("एकादशी")) {
+      ev.add(
         PanchangEvent(
           id: "ekadashi",
-          title: "Ekadashi Vrat",
-          description:
-              "Auspicious day for Lord Vishnu's worship, light food or fasting and mantra-jap.",
+          title: t("Ekadashi Vrat", "एकादशी व्रत"),
+          description: t(
+            "Auspicious for devotion, light fasting and mantra chanting.",
+            "भक्ति, हल्का उपवास और मंत्र-जप के लिए शुभ दिन।",
+          ),
           isFastingDay: true,
         ),
       );
     }
 
-    // Sankashti Chaturthi (Krishna Paksha Chaturthi)
-    if (_is(tithiName, "Chaturthi") && _is(paksha, "Krishna")) {
-      events.add(
-        const PanchangEvent(
-          id: "sankashti_chaturthi",
-          title: "Sankashti Chaturthi",
-          description:
-              "Favourable for worship of Shri Ganesh for removal of obstacles and mental clarity.",
-          isFastingDay: true,
-        ),
-      );
-    }
-
+    // ----------------------------------------------------------------
     // Purnima
-    if (tithiName.toLowerCase().contains("purnima")) {
-      events.add(
-        const PanchangEvent(
+    // ----------------------------------------------------------------
+    if (tithiName.toLowerCase().contains("purnima") ||
+        tithiName.contains("पूर्णिमा")) {
+      ev.add(
+        PanchangEvent(
           id: "purnima",
-          title: "Purnima",
-          description:
-              "Full Moon energies support pooja, daan, meditation and family rituals.",
+          title: t("Purnima", "पूर्णिमा"),
+          description: t(
+            "Good for meditation, charity and peaceful rituals.",
+            "ध्यान, दान और शांत आध्यात्मिक कार्यों के लिए उत्तम।",
+          ),
           isFastingDay: true,
         ),
       );
     }
 
+    // ----------------------------------------------------------------
     // Amavasya
-    if (tithiName.toLowerCase().contains("amavasya")) {
-      events.add(
-        const PanchangEvent(
+    // ----------------------------------------------------------------
+    if (tithiName.toLowerCase().contains("amavasya") ||
+        tithiName.contains("अमावस्या")) {
+      ev.add(
+        PanchangEvent(
           id: "amavasya",
-          title: "Amavasya",
-          description:
-              "Suitable for introspection, pitru-tarpan and quiet spiritual practices.",
+          title: t("Amavasya", "अमावस्या"),
+          description: t(
+            "Ideal for introspection and spiritual cleansing.",
+            "आत्म-चिंतन और आध्यात्मिक शुद्धि के लिए शुभ।",
+          ),
           isFastingDay: true,
         ),
       );
 
-      // Somvati Amavasya (special)
-      if (_is(weekday, "monday")) {
-        events.add(
-          const PanchangEvent(
+      // Somvati Amavasya
+      if (_is(weekday, "monday") || weekday == "सोमवार") {
+        ev.add(
+          PanchangEvent(
             id: "somvati_amavasya",
-            title: "Somvati Amavasya",
-            description:
-                "Rare and powerful day for punya-karma, pitru-tarpan and satvik vrat.",
+            title: t("Somvati Amavasya", "सोमवती अमावस्या"),
+            description: t(
+              "Powerful day for punya and spiritual merit.",
+              "पुण्य और आध्यात्मिक लाभ के लिए अत्यंत शुभ।",
+            ),
             isFastingDay: true,
             isMajorFestival: true,
           ),
@@ -114,278 +112,140 @@ class PanchangEventMarkup {
       }
     }
 
-    // Masik Shivratri (Krishna Paksha Chaturdashi)
-    if (_is(tithiName, "Chaturdashi") && _is(paksha, "Krishna")) {
-      events.add(
-        const PanchangEvent(
-          id: "masik_shivratri",
-          title: "Masik Shivratri",
-          description:
-              "Night favourable for Lord Shiva's upasana, dhyaan and mantrajap.",
-          isFastingDay: true,
-        ),
-      );
-    }
-
-    // Pradosh Vrat (Trayodashi, sandhya focus)
-    if (_is(tithiName, "Trayodashi")) {
-      String label = "Pradosh Vrat";
-      if (_is(weekday, "monday")) {
-        label = "Som Pradosh Vrat";
-      } else if (_is(weekday, "tuesday")) {
-        label = "Bhaum Pradosh Vrat";
-      }
-      events.add(
+    // ----------------------------------------------------------------
+    // Masik Shivratri
+    // ----------------------------------------------------------------
+    if ((_is(tithiName, "Chaturdashi") && _is(paksha, "krishna")) ||
+        (tithiName.contains("चतुर्दशी") && paksha.contains("कृष्ण"))) {
+      ev.add(
         PanchangEvent(
-          id: "pradosh_vrat",
-          title: label,
-          description:
-              "Evening period is auspicious for Shiva-puja, especially during pradosh kaal.",
+          id: "masik_shivratri",
+          title: t("Masik Shivratri", "मासिक शिवरात्रि"),
+          description: t(
+            "Good for Shiva upasana and night meditation.",
+            "शिव उपासना और रात्रि-ध्यान के लिए शुभ।",
+          ),
           isFastingDay: true,
         ),
       );
     }
 
-    // ---------- Yoga-based combos ----------
-
-    // Ravi Pushya / Guru Pushya (highly auspicious for new beginnings)
-    if (_is(nakshatra, "Pushya")) {
-      if (_is(weekday, "sunday")) {
-        events.add(
-          const PanchangEvent(
+    // ----------------------------------------------------------------
+    // Ravi / Guru Pushya
+    // ----------------------------------------------------------------
+    if (_is(nakshatra, "pushya") || nakshatra == "पुष्य") {
+      if (_is(weekday, "sunday") || weekday == "रविवार") {
+        ev.add(
+          PanchangEvent(
             id: "ravi_pushya",
-            title: "Ravi Pushya Yoga",
-            description:
-                "Auspicious for starting important tasks, investments and sacred purchases.",
+            title: t("Ravi Pushya Yoga", "रवि पुष्य योग"),
+            description: t(
+              "Great for new beginnings and auspicious purchases.",
+              "नए काम और शुभ खरीदारी के लिए सर्वोत्तम।",
+            ),
             isMajorFestival: true,
           ),
         );
-      } else if (_is(weekday, "thursday")) {
-        events.add(
-          const PanchangEvent(
+      } else if (_is(weekday, "thursday") || weekday == "गुरुवार") {
+        ev.add(
+          PanchangEvent(
             id: "guru_pushya",
-            title: "Guru Pushya Yoga",
-            description:
-                "Very favourable for education, wealth planning and spiritual initiations.",
+            title: t("Guru Pushya Yoga", "गुरु पुष्य योग"),
+            description: t(
+              "Favourable for education, wealth planning and good deeds.",
+              "शिक्षा, धन-योजना और शुभ कार्यों के लिए उत्तम।",
+            ),
             isMajorFestival: true,
           ),
         );
       }
     }
 
-    // ---------- Big calendar markers (rule-based, approx, only if match) ----------
-
-    // Akshaya Tritiya: Vaishakha Shukla Tritiya
-    if (_is(month, "vaishakha") &&
-        _is(paksha, "Shukla") &&
-        _is(tithiName, "Tritiya")) {
-      events.add(
-        const PanchangEvent(
-          id: "akshaya_tritiya",
-          title: "Akshaya Tritiya",
-          description:
-              "Sacred for daan, dhan, gold/property purchase and starting long-term ventures.",
-          isMajorFestival: true,
-        ),
-      );
-    }
-
-    // Maha Shivratri: Phalguna Krishna Chaturdashi
-    if (_is(month, "phalguna") &&
-        _is(paksha, "Krishna") &&
-        _is(tithiName, "Chaturdashi")) {
-      events.add(
-        const PanchangEvent(
-          id: "maha_shivratri",
-          title: "Maha Shivratri",
-          description:
-              "Powerful night-long upasana of Lord Shiva for inner strength and grace.",
-          isMajorFestival: true,
-          isFastingDay: true,
-        ),
-      );
-    }
-
-    // Karwa Chauth: Kartika Krishna Chaturthi (North tradition)
+    // ----------------------------------------------------------------
+    // Dhanteras
+    // ----------------------------------------------------------------
     if (_is(month, "kartika") &&
-        _is(paksha, "Krishna") &&
-        _is(tithiName, "Chaturthi")) {
-      events.add(
-        const PanchangEvent(
-          id: "karwa_chauth",
-          title: "Karwa Chauth",
-          description:
-              "Vrat observed (mainly by married women) for harmony, longevity and prosperity.",
-          isMajorFestival: true,
-          isFastingDay: true,
-        ),
-      );
-    }
-
-    // Dhanteras: Kartika Krishna Trayodashi
-    if (_is(month, "kartika") &&
-        _is(paksha, "Krishna") &&
-        _is(tithiName, "Trayodashi")) {
-      events.add(
-        const PanchangEvent(
+        (_is(tithiName, "Trayodashi") || tithiName.contains("त्रयोदशी"))) {
+      ev.add(
+        PanchangEvent(
           id: "dhanteras",
-          title: "Dhanteras",
-          description:
-              "Auspicious for Dhanvantri, Kubera, Lakshmi worship and mindful purchases.",
+          title: t("Dhanteras", "धनतेरस"),
+          description: t(
+            "Auspicious for health rituals and sacred purchases.",
+            "आरोग्य, लक्ष्मी-पूजन और शुभ खरीदारी के लिए उत्तम।",
+          ),
           isMajorFestival: true,
         ),
       );
     }
 
-    // Diwali (Lakshmi Puja): Kartika Amavasya
-    if (_is(month, "kartika") && tithiName.toLowerCase().contains("amavasya")) {
-      events.add(
-        const PanchangEvent(
-          id: "diwali",
-          title: "Deepawali (Lakshmi Pujan)",
-          description:
-              "Evening suited for Deepdaan, Mahalakshmi and Ganesh puja with family.",
-          isMajorFestival: true,
-        ),
-      );
-    }
-
-    // Holika Dahan: Phalguna Purnima
-    if (_is(month, "phalguna") && tithiName.toLowerCase().contains("purnima")) {
-      events.add(
-        const PanchangEvent(
-          id: "holika_dahan",
-          title: "Holika Dahan",
-          description:
-              "Symbolic burning of negativity; good for cleansing and fresh intentions.",
-          isMajorFestival: true,
-        ),
-      );
-    }
-
-    // Ram Navami: Chaitra Shukla Navami
-    if (_is(month, "chaitra") &&
-        _is(paksha, "Shukla") &&
-        _is(tithiName, "Navami")) {
-      events.add(
-        const PanchangEvent(
-          id: "ram_navami",
-          title: "Ram Navami",
-          description:
-              "Day to honour Shri Ram through paath, bhajan and satvik discipline.",
-          isMajorFestival: true,
-        ),
-      );
-    }
-
-    // Krishna Janmashtami: Shravana / Bhadrapada Krishna Ashtami
-    if (_is(paksha, "Krishna") &&
-        _is(tithiName, "Ashtami") &&
-        (_is(month, "shravana") || _is(month, "bhadrapada"))) {
-      events.add(
-        const PanchangEvent(
-          id: "janmashtami",
-          title: "Krishna Janmashtami",
-          description:
-              "Midnight upasana of Shri Krishna, great for bhakti, mantra and sankalp.",
-          isMajorFestival: true,
-          isFastingDay: true,
-        ),
-      );
-    }
-
-    // Guru Purnima: Ashadha Purnima
-    if (_is(month, "ashadha") && tithiName.toLowerCase().contains("purnima")) {
-      events.add(
-        const PanchangEvent(
-          id: "guru_purnima",
-          title: "Guru Purnima",
-          description:
-              "Dedicated to Gurus; ideal for gratitude, seva and spiritual recommitment.",
-          isMajorFestival: true,
-        ),
-      );
-    }
-
-    // If you want: yahan aur festivals add kar sakte ho same pattern se.
-
-    return events;
-  }
-
-  /// User-facing one-line summary for Panchang card.
-  /// Example:
-  /// "Today is Tritiya (Krishna Paksha), Nakshatra Bharani. Special today: Ekadashi Vrat."
-  static String buildSummaryLine(Map<String, dynamic> panchangJson) {
-    final day = _selected(panchangJson);
-    if (day == null) return "";
-
-    final tithiName = _getNestedString(day, "tithi", "name");
-    final paksha = _getNestedString(day, "tithi", "paksha");
-    final nakshatra = _getNestedString(day, "nakshatra", "name");
-    final weekday = _getString(day, "weekday");
-    final month = _getString(day, "month_name");
-
-    final events = detectEvents(panchangJson);
-
-    final base = StringBuffer();
-
-    if (tithiName.isNotEmpty) {
-      base.write("Today is $tithiName");
-      if (paksha.isNotEmpty) {
-        base.write(" ($paksha Paksha)");
-      }
-      if (month.isNotEmpty) {
-        base.write(" in $month month");
-      }
-      base.write(".");
-    }
-
-    if (nakshatra.isNotEmpty) {
-      if (base.isNotEmpty) base.write(" ");
-      base.write("Nakshatra is $nakshatra.");
-    }
-
-    if (weekday.isNotEmpty) {
-      if (base.isNotEmpty) base.write(" ");
-      base.write("Day: $weekday.");
-    }
-
-    if (events.isNotEmpty) {
-      final label = events
-          .map((e) => e.title)
-          .toSet()
-          .join(", "); // unique titles
-      base.write(" Special today: $label.");
-    }
-
-    return base.toString();
-  }
-
-  /// Short line focused only on vrat suggestion:
-  /// e.g. "Today you can observe Ekadashi Vrat." or "" if none.
-  static String buildVratSuggestion(Map<String, dynamic> panchangJson) {
-    final events = detectEvents(
-      panchangJson,
-    ).where((e) => e.isFastingDay).toList();
-    if (events.isEmpty) return "";
-    final names = events.map((e) => e.title).toSet().join(", ");
-    return "Today you can observe $names.";
+    return ev;
   }
 
   // ---------------------------------------------------------------------------
-  // Helpers
+  // SUMMARY LINE  (Bilingual)
+  // ---------------------------------------------------------------------------
+  static String buildSummaryLine(Map<String, dynamic> json) {
+    final day = _selected(json);
+    if (day == null) return "";
+
+    final lang = (day["language"] ?? "en").toString().substring(0, 2);
+
+    final tithi = _getNestedString(day, "tithi", "name");
+    final paksha = _getNestedString(day, "tithi", "paksha");
+    final nak = _getNestedString(day, "nakshatra", "name");
+    final pad = day["nakshatra"]?["pada"]?.toString() ?? "";
+    final weekday = day["weekday"] ?? "";
+    final month = day["month_name"] ?? "";
+
+    final events = detectEvents(json);
+    final special = events.map((e) => e.title).join(", ");
+
+    if (lang == "hi") {
+      return "आज $tithi ($paksha), नक्षत्र $nak (पद $pad)। वार: $weekday। ${special.isNotEmpty ? "विशेष: $special।" : ""}";
+    }
+
+    return "Today is $tithi ($paksha), Nakshatra $nak (Pada $pad). Day: $weekday. ${special.isNotEmpty ? "Special today: $special." : ""}";
+  }
+
+  // ---------------------------------------------------------------------------
+  // VRAT LINE (Bilingual)
+  // ---------------------------------------------------------------------------
+  static String buildVratSuggestion(Map<String, dynamic> json) {
+    final day = _selected(json);
+    if (day == null) return "";
+
+    final lang = (day["language"] ?? "en").toString().substring(0, 2);
+
+    final vrats = detectEvents(
+      json,
+    ).where((e) => e.isFastingDay).map((e) => e.title).join(", ");
+
+    if (vrats.isEmpty) return "";
+
+    return lang == "hi"
+        ? "आज आप $vrats कर सकते हैं।"
+        : "Today you can observe $vrats.";
+  }
+
+  // ---------------------------------------------------------------------------
+  // HELPERS
   // ---------------------------------------------------------------------------
 
   static Map<String, dynamic>? _selected(Map<String, dynamic> json) {
     final sel = json["selected_date"];
-    if (sel is Map<String, dynamic>) return sel;
-    return json;
+
+    if (sel is Map) {
+      // Ensure type safety
+      return Map<String, dynamic>.from(sel);
+    }
+
+    return Map<String, dynamic>.from(json);
   }
 
   static String _getString(Map<String, dynamic> map, String key) {
     final v = map[key];
-    if (v == null) return "";
-    return v.toString();
+    return v?.toString() ?? "";
   }
 
   static String _getNestedString(
@@ -408,14 +268,15 @@ class PanchangEventMarkup {
     final p = map[parent];
     if (p is Map && p[key] != null) {
       final v = p[key];
-      if (v is int) return v;
-      if (v is num) return v.toInt();
-      if (v is String) return int.tryParse(v);
+      // Safe parse (covers int, num, double, string)
+      return int.tryParse(v.toString());
     }
     return null;
   }
 
-  static String _normalize(String s) => s.trim().toLowerCase();
+  static String _normalize(String s) {
+    return s.trim().toLowerCase();
+  }
 
   static bool _is(String actual, String expected) {
     if (actual.isEmpty || expected.isEmpty) return false;

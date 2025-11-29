@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class ShubhMuhurthPreviewWidget extends StatelessWidget {
   final List<Map<String, String>> muhurthList;
@@ -11,18 +12,22 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
     this.onSeeMore,
   });
 
+  // Emoji mapping
   String _getEmoji(String event) {
     event = event.toLowerCase();
     if (event.contains('marriage')) return '💍';
-    if (event.contains('griha')) return '🏠';
-    if (event.contains('vehicle')) return '🚗';
+    if (event.contains('vivah')) return '💍';
+    if (event.contains('griha') || event.contains('grah')) return '🏠';
+    if (event.contains('vehicle') || event.contains('car')) return '🚗';
     if (event.contains('naam') || event.contains('naming')) return '👶';
     return '🌸';
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🌈 Jyotishasha Gradient for Heading Text
+    final t = AppLocalizations.of(context)!;
+
+    // Gradient
     const jyotishashaGradient = LinearGradient(
       colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
       begin: Alignment.centerLeft,
@@ -34,19 +39,19 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 🔹 Centered Gradient Heading
+          // 🌈 Localized Gradient Heading
           ShaderMask(
             shaderCallback: (bounds) => jyotishashaGradient.createShader(
               Rect.fromLTWH(0, 0, bounds.width, bounds.height),
             ),
             child: Text(
-              "Upcoming Shubh Muhurth",
+              t.shubhUpcomingTitle,
               textAlign: TextAlign.center,
               style: GoogleFonts.playfairDisplay(
                 textStyle: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white, // placeholder for gradient
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -54,9 +59,9 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // 🔹 Horizontal Cards (smaller boxes)
+          // ⭐ Compact Horizontal Cards
           SizedBox(
-            height: 110, // reduced height
+            height: 110,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: muhurthList.length,
@@ -65,11 +70,10 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                 final emoji = _getEmoji(item['event'] ?? '');
 
                 return Container(
-                  width: 145, // reduced width
+                  width: 150,
                   margin: const EdgeInsets.only(right: 10),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    // 🌸 Lavender–bluish gradient like greeting section
                     gradient: const LinearGradient(
                       colors: [Color(0xFFEDE7FF), Color(0xFFD6CCFF)],
                       begin: Alignment.topLeft,
@@ -87,6 +91,7 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Date + Emoji
                       Text(
                         "$emoji  ${item['date'] ?? ''}",
                         style: const TextStyle(
@@ -95,7 +100,10 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                           color: Color(0xFF3A0CA3),
                         ),
                       ),
+
                       const SizedBox(height: 6),
+
+                      // Event name (already localized by backend)
                       Text(
                         item['event'] ?? '',
                         maxLines: 1,
@@ -106,13 +114,16 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
                           color: Color(0xFF240046),
                         ),
                       ),
+
                       const Spacer(),
+
+                      // ⭐ Score
                       Row(
                         children: [
                           const Icon(Icons.star, size: 14, color: Colors.amber),
                           const SizedBox(width: 4),
                           Text(
-                            "${item['score'] ?? ''}/10",
+                            "${item['score'] ?? ''}${t.shubhScoreSuffix}",
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF3C096C),
@@ -129,11 +140,11 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // 🔹 "See More" below cards, slightly bigger font
+          // ⭐ Localized "See More"
           GestureDetector(
             onTap: onSeeMore,
             child: Text(
-              "See More →",
+              t.shubhSeeMore,
               style: GoogleFonts.montserrat(
                 textStyle: const TextStyle(
                   fontSize: 15,

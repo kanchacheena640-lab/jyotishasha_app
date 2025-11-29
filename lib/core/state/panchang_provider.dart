@@ -15,13 +15,20 @@ class PanchangProvider extends ChangeNotifier {
   double savedLat = 26.8467;
   double savedLng = 80.9462;
 
+  /// user's language
+  String savedLang = "en";
+
   /// Reset after 4 AM
   final int cacheResetHour = 4;
 
   // ------------------------------------------------------------
   // SMART LOAD — Call anywhere (Dashboard, Greeting, etc)
   // ------------------------------------------------------------
-  Future<void> loadPanchang({double? lat, double? lng}) async {
+  Future<void> loadPanchang({
+    double? lat,
+    double? lng,
+    required String lang, // ⭐ NEW: language required
+  }) async {
     final now = DateTime.now();
     final today = DateFormat('yyyy-MM-dd').format(now);
 
@@ -31,31 +38,45 @@ class PanchangProvider extends ChangeNotifier {
       lastFetchDate = null;
     }
 
-    // same location + same date → no API call
+    // STORE LANGUAGE ALWAYS
+    savedLang = lang;
+
+    // same location + same date + same language → no API call
     if (lastFetchDate == today &&
         fullPanchang != null &&
+        savedLang == lang &&
         (lat == null || lat == savedLat) &&
         (lng == null || lng == savedLng)) {
       return;
     }
 
-    await fetchPanchang(lat: lat ?? savedLat, lng: lng ?? savedLng);
+    await fetchPanchang(lat: lat ?? savedLat, lng: lng ?? savedLng, lang: lang);
   }
 
   // ------------------------------------------------------------
   // REAL API CALL
   // ------------------------------------------------------------
-  Future<void> fetchPanchang({required double lat, required double lng}) async {
+  Future<void> fetchPanchang({
+    required double lat,
+    required double lng,
+    required String lang,
+  }) async {
     isLoading = true;
     notifyListeners();
 
     savedLat = lat;
     savedLng = lng;
+    savedLang = lang;
 
     const endpoint = "https://jyotishasha-backend.onrender.com/api/panchang";
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    final body = {"latitude": lat, "longitude": lng, "date": today};
+    final body = {
+      "latitude": lat,
+      "longitude": lng,
+      "date": today,
+      "language": lang, // ⭐ SEND LANGUAGE TO BACKEND
+    };
 
     try {
       final res = await http.post(
@@ -89,7 +110,6 @@ class PanchangProvider extends ChangeNotifier {
     final last = DateTime.parse(lastFetchDate!);
     final today = DateTime(now.year, now.month, now.day);
 
-    // New day after 4 AM
     if (now.isAfter(
           DateTime(today.year, today.month, today.day, cacheResetHour),
         ) &&

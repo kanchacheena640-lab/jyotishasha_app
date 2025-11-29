@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/features/astrology/astrology_page.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AstrologyStudioWidget extends StatelessWidget {
   final Map<String, dynamic> kundali;
@@ -9,13 +10,15 @@ class AstrologyStudioWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!; // localization
+
     final List<Map<String, String>> categories = [
-      {"title": "Your Astro Profile", "key": "profile", "icon": "🌟"},
-      {"title": "Your Planets", "key": "planets", "icon": "🪐"},
-      {"title": "Your Bhava", "key": "bhava", "icon": "🏛️"},
-      {"title": "Mahadasha", "key": "dasha", "icon": "⏳"},
-      {"title": "Life Aspects", "key": "life", "icon": "💫"},
-      {"title": "Yog & Dosh", "key": "yog", "icon": "🔱"},
+      {"title": t.studioProfile, "key": "profile", "icon": "🌟"},
+      {"title": t.studioPlanets, "key": "planets", "icon": "🪐"},
+      {"title": t.studioBhava, "key": "bhava", "icon": "🏛️"},
+      {"title": t.studioDasha, "key": "dasha", "icon": "⏳"},
+      {"title": t.studioLifeAspects, "key": "life", "icon": "💫"},
+      {"title": t.studioYogDosh, "key": "yog", "icon": "🔱"},
     ];
 
     return Container(
@@ -38,7 +41,7 @@ class AstrologyStudioWidget extends StatelessWidget {
         children: [
           // 🔮 HEADER
           Text(
-            "Astrology Studio",
+            t.astrologyStudio,
             style: GoogleFonts.playfairDisplay(
               fontSize: 24,
               fontWeight: FontWeight.w700,
@@ -49,7 +52,7 @@ class AstrologyStudioWidget extends StatelessWidget {
           const SizedBox(height: 6),
 
           Text(
-            "Explore planets, houses, yogas and dasha — beautifully organized for you.",
+            t.astrologyStudioSubtitle,
             style: GoogleFonts.montserrat(
               fontSize: 13.8,
               height: 1.4,

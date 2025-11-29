@@ -3,8 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:google_places_flutter/model/prediction.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+
+// GLOBAL CACHE
+Map<String, List<dynamic>> muhurthCache = {};
 
 class MuhurthPage extends StatefulWidget {
   const MuhurthPage({super.key});
@@ -14,6 +22,18 @@ class MuhurthPage extends StatefulWidget {
 }
 
 class _MuhurthPageState extends State<MuhurthPage> {
+  // Hindi labels (UI only)
+  final Map<String, String> activityLabelsHi = {
+    "naamkaran": "नामकरण",
+    "marriage": "विवाह",
+    "grah_pravesh": "गृह प्रवेश",
+    "property": "संपत्ति क्रय",
+    "gold": "सोना खरीद",
+    "vehicle": "वाहन खरीद",
+    "travel": "यात्रा प्रारंभ",
+    "childbirth": "शिशु जन्म",
+  };
+
   final List<String> activities = [
     "naamkaran",
     "marriage",
@@ -29,19 +49,40 @@ class _MuhurthPageState extends State<MuhurthPage> {
   bool isLoading = false;
   List<dynamic> muhurthResults = [];
 
-  // 🗺️ Location state
+  // First load guard
+  bool _initialLoad = false;
+
+  // Default Location
   String cityName = "New Delhi, India";
   double latitude = 28.6139;
   double longitude = 77.2090;
 
+  final TextEditingController _locationController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
-    _fetchMuhurth();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMuhurth(); // Only once, after page fully builds
+    });
   }
 
+  // MAIN API with CACHE
   Future<void> _fetchMuhurth() async {
+    final lang = AppLocalizations.of(context)!.localeName;
+    final cacheKey = "$selectedActivity|$latitude|$longitude|$lang";
+
+    // Use cache first
+    if (muhurthCache.containsKey(cacheKey)) {
+      setState(() {
+        muhurthResults = muhurthCache[cacheKey]!;
+        isLoading = false;
+      });
+      return;
+    }
+
     setState(() => isLoading = true);
+
     const baseUrl = "https://jyotishasha-backend.onrender.com/api/muhurth/list";
 
     final body = {
@@ -50,6 +91,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
       "longitude": longitude,
       "days": 45,
       "top_k": 5,
+      "language": lang,
     };
 
     try {
@@ -61,22 +103,105 @@ class _MuhurthPageState extends State<MuhurthPage> {
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
+        muhurthCache[cacheKey] = data["results"] ?? [];
+
         setState(() {
-          muhurthResults = data["results"] ?? [];
-          isLoading = false;
+          muhurthResults = muhurthCache[cacheKey]!;
         });
-      } else {
-        setState(() => isLoading = false);
       }
     } catch (e) {
       debugPrint("Error fetching muhurth: $e");
-      setState(() => isLoading = false);
     }
+
+    setState(() => isLoading = false);
+  }
+
+  // LOCATION PICKER
+  Future<void> _openLocationPicker() async {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.55,
+          minChildSize: 0.40,
+          maxChildSize: 0.95,
+          builder: (_, controller) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SingleChildScrollView(
+                  controller: controller,
+                  child: Column(
+                    children: [
+                      Text(
+                        AppLocalizations.of(context)!.muhurthChange,
+                        style: GoogleFonts.montserrat(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      GooglePlaceAutoCompleteTextField(
+                        textEditingController: _locationController,
+                        googleAPIKey: dotenv.env["GOOGLE_MAPS_API_KEY"]!,
+                        inputDecoration: InputDecoration(
+                          hintText: "Search location",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        debounceTime: 600,
+                        isLatLngRequired: true,
+
+                        getPlaceDetailWithLatLng: (Prediction prediction) {
+                          try {
+                            final lat = double.parse(prediction.lat!);
+                            final lng = double.parse(prediction.lng!);
+
+                            setState(() {
+                              cityName = prediction.description ?? "Location";
+                              latitude = lat;
+                              longitude = lng;
+                            });
+
+                            Navigator.pop(context);
+                            _initialLoad = false; // reset guard
+                            _fetchMuhurth();
+                          } catch (e) {
+                            debugPrint("Location parse error: $e");
+                          }
+                        },
+
+                        itemClick: (Prediction prediction) {
+                          _locationController.text = prediction.description!;
+                        },
+                      ),
+
+                      const SizedBox(height: 36),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context)!;
+    final lang = t.localeName;
     final theme = Theme.of(context);
+
     return KeyboardDismissOnTap(
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -84,19 +209,20 @@ class _MuhurthPageState extends State<MuhurthPage> {
           backgroundColor: AppColors.primary,
           centerTitle: true,
           title: Text(
-            "🕉️ Shubh Muhurth",
+            t.muhurthTitle,
             style: GoogleFonts.playfairDisplay(
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
         ),
+
         body: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🌍 Location and Change Button
+              // LOCATION ROW
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -107,31 +233,28 @@ class _MuhurthPageState extends State<MuhurthPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
+
                   TextButton.icon(
-                    onPressed: () async {
-                      // TODO: integrate PlaceAutocomplete
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text("Location picker coming soon"),
-                        ),
-                      );
-                    },
+                    onPressed: _openLocationPicker,
                     icon: const Icon(Icons.location_on_outlined, size: 18),
-                    label: const Text("Change"),
+                    label: Text(t.muhurthChange),
                   ),
                 ],
               ),
+
               const SizedBox(height: 8),
 
               Text(
-                "Select Occasion",
+                t.muhurthSelectOccasion,
                 style: GoogleFonts.montserrat(
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
               ),
+
               const SizedBox(height: 8),
 
+              // ACTIVITY DROPDOWN
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 decoration: BoxDecoration(
@@ -144,17 +267,23 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     value: selectedActivity,
                     isExpanded: true,
                     icon: const Icon(Icons.arrow_drop_down),
+
                     onChanged: (val) {
                       setState(() => selectedActivity = val!);
+
+                      if (_initialLoad) {
+                        _initialLoad = false;
+                        return; // avoid double fetch
+                      }
+
                       _fetchMuhurth();
                     },
+
                     items: activities.map((a) {
-                      final title = a
-                          .replaceAll("_", " ")
-                          .replaceAllMapped(
-                            RegExp(r'(^|\s)([a-z])'),
-                            (m) => m.group(0)!.toUpperCase(),
-                          );
+                      final title = (lang == "hi")
+                          ? activityLabelsHi[a]!
+                          : a.replaceAll("_", " ").toUpperCase();
+
                       return DropdownMenuItem(
                         value: a,
                         child: Text(
@@ -168,15 +297,17 @@ class _MuhurthPageState extends State<MuhurthPage> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 16),
 
+              // RESULTS
               Expanded(
                 child: isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : muhurthResults.isEmpty
                     ? Center(
                         child: Text(
-                          "No Shubh Muhurth found 😔",
+                          t.muhurthNoResults,
                           style: GoogleFonts.montserrat(
                             color: AppColors.textSecondary,
                           ),
@@ -185,8 +316,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     : ListView.builder(
                         itemCount: muhurthResults.length,
                         itemBuilder: (context, index) {
-                          final item = muhurthResults[index];
-                          return _buildMuhurthCard(item);
+                          return _buildMuhurthCard(muhurthResults[index], t);
                         },
                       ),
               ),
@@ -197,16 +327,12 @@ class _MuhurthPageState extends State<MuhurthPage> {
     );
   }
 
-  Widget _buildMuhurthCard(dynamic item) {
+  // MUHURTH CARD
+  Widget _buildMuhurthCard(dynamic item, AppLocalizations t) {
     final rawDate = item["date"] ?? "--";
     final formattedDate = rawDate != "--"
         ? DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate))
         : "--";
-    final weekday = item["weekday"] ?? "--";
-    final nakshatra = item["nakshatra"] ?? "--";
-    final tithi = item["tithi"] ?? "--";
-    final score = item["score"]?.toString() ?? "--";
-    final reasons = List<String>.from(item["reasons"] ?? []);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -217,6 +343,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // DATE + SCORE
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -228,6 +355,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     color: AppColors.primary,
                   ),
                 ),
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -240,7 +368,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    "Score: $score/5",
+                    "${t.muhurthScore}: ${item["score"]}/5",
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -250,16 +378,22 @@ class _MuhurthPageState extends State<MuhurthPage> {
                 ),
               ],
             ),
+
             const SizedBox(height: 8),
+
             Text(
-              "🪔 $weekday  •  Nakshatra: $nakshatra  •  Tithi: $tithi",
+              "🪔 ${t.muhurthWeekdayLabel}: ${item["weekday"]}  •  "
+              "${t.muhurthNakshatraLabel}: ${item["nakshatra"]}  •  "
+              "${t.muhurthTithiLabel}: ${item["tithi"]}",
               style: GoogleFonts.montserrat(
                 color: AppColors.textPrimary,
                 fontSize: 13,
               ),
             ),
+
             const SizedBox(height: 10),
-            ...reasons.map(
+
+            ...List<String>.from(item["reasons"] ?? []).map(
               (r) => Padding(
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(

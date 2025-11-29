@@ -42,7 +42,10 @@ class FirebaseKundaliProvider extends ChangeNotifier {
   // ---------------------------------------------------------
   // MAIN FUNCTION
   // ---------------------------------------------------------
-  Future<void> loadFromFirebaseProfile(BuildContext context) async {
+  Future<void> loadFromFirebaseProfile(
+    BuildContext context, {
+    required String lang,
+  }) async {
     print("--------------------------------------------------");
     print("🔮 FirebaseKundaliProvider → START");
     print("--------------------------------------------------");
@@ -98,10 +101,9 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       final lng = profileData?["lng"];
 
       // language सिर्फ backend को भेजने के लिए
-      final selectedLang = (profileData?["language"] ?? "en")
-          .toString()
-          .toLowerCase()
-          .substring(0, 2);
+      final selectedLang = lang.toLowerCase().substring(0, 2);
+
+      print("🌐 Language sent by Dashboard = $selectedLang");
 
       print("🌐 User Language from Firebase = $selectedLang");
 

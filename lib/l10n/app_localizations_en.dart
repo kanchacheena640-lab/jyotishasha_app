@@ -1027,23 +1027,179 @@ class AppLocalizationsEn extends AppLocalizations {
   String get panchang_error => 'Unable to fetch Panchang data.';
 
   @override
-  String get panchang_sunrise => 'Sunrise';
-
-  @override
-  String get panchang_sunset => 'Sunset';
-
-  @override
-  String get panchang_rahu => 'Rahu Kaal';
-
-  @override
   String get panchang_viewFull => 'View Full Panchang →';
-
-  @override
-  String get panchang_panchak => 'Panchak';
 
   @override
   String get panchang_yes => 'Yes';
 
   @override
   String get panchang_no => 'No';
+
+  @override
+  String get panchang_title => 'Today\'s Panchang';
+
+  @override
+  String get panchang_sunrise => 'Sunrise';
+
+  @override
+  String get panchang_sunset => 'Sunset';
+
+  @override
+  String get panchang_elements => 'Main Panchang Elements';
+
+  @override
+  String get panchang_tithi => 'Tithi';
+
+  @override
+  String get panchang_nakshatra => 'Nakshatra';
+
+  @override
+  String get panchang_yoga => 'Yoga';
+
+  @override
+  String get panchang_karana => 'Karana';
+
+  @override
+  String get panchang_vaar => 'Weekday';
+
+  @override
+  String get panchang_panchak => 'Panchak';
+
+  @override
+  String get panchang_highlights => 'Highlights';
+
+  @override
+  String get panchang_abhijit => 'Abhijit Muhurta';
+
+  @override
+  String get panchang_rahu => 'Rahu Kaal';
+
+  @override
+  String get change_location => 'Change';
+
+  @override
+  String get luckyColorLabel => 'Lucky Color';
+
+  @override
+  String get luckyNumberLabel => 'Lucky Number';
+
+  @override
+  String get favourableDirectionLabel => 'Favourable Direction';
+
+  @override
+  String get location => 'Location';
+
+  @override
+  String get changeLocationTitle => 'Change Location';
+
+  @override
+  String get selectedPlace => 'Selected Place';
+
+  @override
+  String get dataSyncedText => '✨ Data synced from Jyotishasha API ✨';
+
+  @override
+  String get astrologyStudio => 'Astrology Studio';
+
+  @override
+  String get astrologyStudioSubtitle => 'Explore planets, houses, yogas and dasha — beautifully organized for you.';
+
+  @override
+  String get studioProfile => 'Your Astro Profile';
+
+  @override
+  String get studioPlanets => 'Your Planets';
+
+  @override
+  String get studioBhava => 'Your Bhava';
+
+  @override
+  String get studioDasha => 'Mahadasha';
+
+  @override
+  String get studioLifeAspects => 'Life Aspects';
+
+  @override
+  String get studioYogDosh => 'Yog & Dosh';
+
+  @override
+  String get shubhUpcomingTitle => 'Upcoming Shubh Muhurth';
+
+  @override
+  String get shubhSeeMore => 'See More →';
+
+  @override
+  String get shubhScoreSuffix => '/10';
+
+  @override
+  String get footerFeedbackHint => 'Share your thoughts or suggestions...';
+
+  @override
+  String get footerFeedbackSend => 'Send';
+
+  @override
+  String get footerFeedbackThanks => 'Thanks for your feedback!';
+
+  @override
+  String get footerCopyright => '© 2025 Jyotishasha. All rights reserved.';
+
+  @override
+  String get footerPrivacyTerms => 'Privacy Policy  •  Terms of Use';
+
+  @override
+  String get muhurthTitle => '🕉️ Shubh Muhurth';
+
+  @override
+  String get muhurthLocation => 'Location';
+
+  @override
+  String get muhurthChange => 'Change';
+
+  @override
+  String get muhurthSelectOccasion => 'Select Occasion';
+
+  @override
+  String get muhurthNoResults => 'No Shubh Muhurth found 😔';
+
+  @override
+  String get muhurthUpcoming => 'Upcoming Muhurth Dates';
+
+  @override
+  String get muhurthScore => 'Score';
+
+  @override
+  String get muhurthWeekdayLabel => 'Weekday';
+
+  @override
+  String get muhurthNakshatraLabel => 'Nakshatra';
+
+  @override
+  String get muhurthTithiLabel => 'Tithi';
+
+  @override
+  String get muhurthPickerComing => 'Location picker coming soon';
+
+  @override
+  String get muhurthBannerTitle => 'Get the best date of this month for';
+
+  @override
+  String get muhurthBannerNamkaran => 'Naamkaran';
+
+  @override
+  String get muhurthBannerMarriage => 'Marriage';
+
+  @override
+  String get muhurthBannerVehicle => 'Vehicle purchase';
+
+  @override
+  String get muhurthBannerGold => 'Gold purchase';
+
+  @override
+  String get muhurthBannerMore => 'and more auspicious events';
+
+  @override
+  String get muhurthBannerCta => 'Tap to see your Shubh Muhurth';
+
+  @override
+  String get darshanInstruction => 'Touch ॐ for Darshan & Mantra';
 }

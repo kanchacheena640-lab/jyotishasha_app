@@ -34,6 +34,11 @@ class DailyProvider extends ChangeNotifier {
   double? tMoonDegree;
   String? tMoonMotion;
 
+  // ⭐ Added Lucky Fields
+  String? luckyColor;
+  String? luckyNumber;
+  String? luckyDirection;
+
   // ===========================================================
   // PRIVATE: COMMON API CALL
   // ===========================================================
@@ -42,11 +47,17 @@ class DailyProvider extends ChangeNotifier {
     Map<String, dynamic> payload,
   ) async {
     try {
+      print("🚀 API CALL → $url");
+      print("📦 PAYLOAD → $payload");
+
       final res = await http.post(
         Uri.parse(url),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
+
+      print("🌐 RESPONSE STATUS → ${res.statusCode}");
+      print("🌐 RAW RESPONSE → ${res.body}");
 
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
@@ -55,6 +66,7 @@ class DailyProvider extends ChangeNotifier {
         return null;
       }
     } catch (e) {
+      print("❌ API EXCEPTION → $e");
       errorMessage = "Error: $e";
       return null;
     }
@@ -73,7 +85,7 @@ class DailyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "language": lang};
+    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
 
     final data = await _callApi(
       "https://jyotishasha-backend.onrender.com/api/personalized/daily",
@@ -87,12 +99,19 @@ class DailyProvider extends ChangeNotifier {
       remedyLine = result["remedy_line"];
       combinedText = result["combined_text"];
 
+      // ⭐ ADD LUCKY VALUES HERE
+      luckyColor = result["lucky_color"];
+      luckyNumber = result["lucky_number"];
+      luckyDirection = result["lucky_direction"];
+
       final moon = data["moon"] ?? {};
       moonRashi = moon["rashi"];
       moonNakshatra = moon["nakshatra"];
       moonHouse = moon["house"];
       moonDegree = moon["degree"];
       moonMotion = moon["motion"];
+
+      print("🎉 DAILY UPDATED (lang = $lang)");
     }
 
     isLoading = false;
@@ -112,7 +131,7 @@ class DailyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "language": lang};
+    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
 
     final data = await _callApi(
       "https://jyotishasha-backend.onrender.com/api/personalized/tomorrow",
@@ -126,12 +145,19 @@ class DailyProvider extends ChangeNotifier {
       tRemedyLine = result["remedy_line"];
       tCombinedText = result["combined_text"];
 
+      // ⭐ TOMORROW LUCKY VALUES (OPTIONAL)
+      // luckyColor = result["lucky_color"];
+      // luckyNumber = result["lucky_number"];
+      // luckyDirection = result["lucky_direction"];
+
       final moon = data["moon"] ?? {};
       tMoonRashi = moon["rashi"];
       tMoonNakshatra = moon["nakshatra"];
       tMoonHouse = moon["house"];
       tMoonDegree = moon["degree"];
       tMoonMotion = moon["motion"];
+
+      print("🎉 TOMORROW UPDATED (lang = $lang)");
     }
 
     isLoading = false;

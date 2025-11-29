@@ -1,5 +1,3 @@
-// lib/features/dashboard/dashboard_page.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -10,6 +8,7 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/panchang_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 // Pages
@@ -30,8 +29,8 @@ class _DashboardPageState extends State<DashboardPage> {
   int _currentIndex = 0;
   DateTime? _lastPressed;
 
-  bool _initialized = false; // 🛑 Prevent double-init
-  bool _listenerAttached = false; // 🛑 Prevent multiple listeners
+  bool _initialized = false;
+  bool _listenerAttached = false;
 
   @override
   void initState() {
@@ -40,47 +39,66 @@ class _DashboardPageState extends State<DashboardPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_initialized) {
         _initialized = true;
+        print("🟣 DASHBOARD → initFlow()");
         _initFlow();
       }
 
-      _attachProfileSwitchListener(); // SAFE
+      _attachProfileSwitchListener();
     });
   }
 
   // --------------------------------------------------
-  // SAFE LISTENER: only attach once
+  // SAFE LISTENER
   // --------------------------------------------------
   void _attachProfileSwitchListener() {
     if (_listenerAttached) return;
     _listenerAttached = true;
 
-    final profileProvider = context.read<ProfileProvider>();
+    final p = context.read<ProfileProvider>();
 
-    profileProvider.addListener(() async {
+    p.addListener(() async {
       if (!mounted) return;
 
-      print("🔄 PROFILE SWITCH TRIGGER");
-
+      print("🔄 DASHBOARD LISTENER → Profile switched");
       await _loadAndRefreshAll();
     });
   }
 
   // --------------------------------------------------
-  // FULL LOAD SEQUENCE
+  // FULL EXPENSIVE LOAD
   // --------------------------------------------------
   Future<void> _loadAndRefreshAll() async {
+    print("⚡ DASHBOARD → Loading Kundali & Daily");
+
     final firebaseKundali = context.read<FirebaseKundaliProvider>();
-    await firebaseKundali.loadFromFirebaseProfile(context);
+    final lang = context.read<LanguageProvider>().currentLang; // ⭐ FINAL FIXED
+
+    // --------------------------------------------------------
+    // STEP 1: Load Kundali with language
+    // --------------------------------------------------------
+    await firebaseKundali.loadFromFirebaseProfile(context, lang: lang);
 
     final kd = firebaseKundali.kundaliData;
-    if (kd == null) return;
+    if (kd == null) {
+      print("❌ DASHBOARD → kundaliData = NULL, skipping daily");
+      return;
+    }
 
-    final lang = (kd['language'] ?? "en").substring(0, 2);
+    // --------------------------------------------------------
+    // Extract values
+    // --------------------------------------------------------
     final lagna = kd['lagna_sign'] ?? '';
     final lat = kd['location']?['lat'] ?? 26.8467;
     final lng = kd['location']?['lng'] ?? 80.9462;
 
-    // DAILY
+    print("🌍 DASHBOARD → Sending Daily Request:");
+    print("   - lagna: $lagna");
+    print("   - lang:  $lang");
+    print("   - lat/lng: $lat, $lng");
+
+    // --------------------------------------------------------
+    // STEP 2: Load Daily (language must match)
+    // --------------------------------------------------------
     await context.read<DailyProvider>().fetchDaily(
       lagna: lagna,
       lat: lat,
@@ -88,19 +106,32 @@ class _DashboardPageState extends State<DashboardPage> {
       lang: lang,
     );
 
-    // PANCHANG
-    await context.read<PanchangProvider>().loadPanchang(lat: lat, lng: lng);
+    print("📅 DASHBOARD → Loading Panchang");
+
+    // --------------------------------------------------------
+    // STEP 3: Load Panchang (language must match)
+    // --------------------------------------------------------
+    await context.read<PanchangProvider>().fetchPanchang(
+      lat: lat,
+      lng: lng,
+      lang: lang, // force new API always
+    );
+
+    print("✅ DASHBOARD → All refreshed.\n\n");
   }
 
   // --------------------------------------------------
-  // FIRST BOOT LOAD
+  // FIRST BOOT
   // --------------------------------------------------
   Future<void> _initFlow() async {
     try {
       print("🟣 Dashboard INIT START");
 
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        print("❌ No Firebase User");
+        return;
+      }
 
       await _loadAndRefreshAll();
 
@@ -132,6 +163,7 @@ class _DashboardPageState extends State<DashboardPage> {
     if (_lastPressed == null ||
         now.difference(_lastPressed!) > const Duration(seconds: 2)) {
       _lastPressed = now;
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Press back again to minimize app"),

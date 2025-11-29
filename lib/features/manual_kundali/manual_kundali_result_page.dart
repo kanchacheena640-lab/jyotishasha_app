@@ -9,7 +9,7 @@ import 'package:flutter/rendering.dart';
 
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_profile_card.dart';
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
-import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
+import 'package:jyotishasha_app/features/astrology/widgets/manual_astrology_tool_section.dart';
 
 class ManualKundaliResultPage extends StatefulWidget {
   const ManualKundaliResultPage({super.key});
@@ -98,7 +98,7 @@ class _ManualKundaliResultPageState extends State<ManualKundaliResultPage> {
             const SizedBox(height: 14),
 
             /// ⭐ Tools Section (Same as AstrologyPage)
-            AstrologyToolSection(kundali: kundali),
+            ManualAstrologyToolSection(kundali: kundali),
           ],
         ),
       ),
