@@ -35,7 +35,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ManualKundaliProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
-        ChangeNotifierProvider(create: (_) => AskNowProvider()),
+        ChangeNotifierProvider(lazy: false, create: (_) => AskNowProvider()),
       ],
       child: const JyotishashaApp(),
     ),

@@ -1,86 +1,102 @@
+// lib/services/asknow_service.dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AskNowService {
-  static Future<String> askQuestion({
+  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+
+  // ------------------------------
+  // Small helper
+  // ------------------------------
+  static Future<Map<String, dynamic>> _postJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final uri = Uri.parse('$_baseUrl$path');
+    final res = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(body),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } else {
+      throw Exception(
+        'AskNow API error ${res.statusCode}: ${res.body.toString()}',
+      );
+    }
+  }
+
+  // Build BIRTH block from profile map
+  static Map<String, dynamic> buildBirthFromProfile(
+    Map<String, dynamic> profile,
+  ) {
+    return {
+      "name": profile["name"] ?? "User",
+      "dob": profile["dob"] ?? "",
+      "tob": profile["tob"] ?? "",
+      "pob":
+          profile["pob"] ?? profile["place_name"] ?? profile["placeName"] ?? "",
+      "lat": profile["lat"] ?? profile["latitude"] ?? 0.0,
+      "lng": profile["lng"] ?? profile["longitude"] ?? 0.0,
+      "tz": profile["tz"] ?? "+05:30",
+    };
+  }
+
+  // --------------------------------
+  // 1) FREE QUESTION (once per day)
+  // --------------------------------
+  static Future<Map<String, dynamic>> askFreeQuestion({
+    required int userId,
     required String question,
     required Map<String, dynamic> profile,
   }) async {
-    // 🔍 Debug: incoming profile
-    print("🔍 ASK-NOW RAW PROFILE = $profile");
-    print("🔍 ASK-NOW QUESTION = $question");
+    final birth = buildBirthFromProfile(profile);
 
-    // ---- SAFE FIELD EXTRACTION ----
-    final String name = (profile["name"] ?? "").toString();
-    final String dob = (profile["dob"] ?? "").toString();
-    final String tob = (profile["tob"] ?? "").toString();
+    final payload = {"user_id": userId, "question": question, "birth": birth};
 
-    // pob can be "pob" or "place"
-    String pob = "";
-    if (profile["pob"] != null && profile["pob"].toString().trim().isNotEmpty) {
-      pob = profile["pob"].toString();
-    } else if (profile["place"] != null &&
-        profile["place"].toString().trim().isNotEmpty) {
-      pob = profile["place"].toString();
-    }
+    return _postJson("/api/chat/free", payload);
+  }
 
-    // timezone key fallback
-    final String tz = (profile["tz"] ?? profile["timezone"] ?? "+05:30")
-        .toString();
+  // --------------------------------
+  // 2) CREATE ₹51 PACK ORDER
+  // --------------------------------
+  static Future<Map<String, dynamic>> createPackOrder({
+    required int userId,
+  }) async {
+    final payload = {"user_id": userId};
+    return _postJson("/api/chat/pack/order", payload);
+  }
 
-    // lat / lng – profile me na mile to sensible defaults (Lucknow)
-    double lat = 0.0;
-    double lng = 0.0;
-
-    if (profile["lat"] != null) {
-      lat = (profile["lat"] as num).toDouble();
-    }
-    if (profile["lng"] != null) {
-      lng = (profile["lng"] as num).toDouble();
-    }
-
-    if (lat == 0.0) lat = 26.8467;
-    if (lng == 0.0) lng = 80.9462;
-
-    // 🔐 FINAL PAYLOAD (exact structure as backend)
+  // --------------------------------
+  // 3) VERIFY PAYMENT (Razorpay)
+  // --------------------------------
+  static Future<Map<String, dynamic>> verifyPayment({
+    required int userId,
+    required String orderId,
+    required String paymentId,
+  }) async {
     final payload = {
-      "question": question,
-      "birth": {
-        "name": name,
-        "dob": dob,
-        "tob": tob,
-        "pob": pob,
-        "lat": lat,
-        "lng": lng,
-        "tz": tz,
-      },
+      "user_id": userId,
+      "order_id": orderId,
+      "payment_id": paymentId,
     };
+    return _postJson("/asknow/verify", payload);
+  }
 
-    print("🚀 ASK-NOW FINAL PAYLOAD → ${jsonEncode(payload)}");
+  // --------------------------------
+  // 4) ASK USING PAID PACK (tokens)
+  // --------------------------------
+  static Future<Map<String, dynamic>> askPaidQuestion({
+    required int userId,
+    required String question,
+    required Map<String, dynamic> profile,
+  }) async {
+    final birth = buildBirthFromProfile(profile);
 
-    final url = Uri.parse(
-      "https://jyotishasha-backend.onrender.com/api/free-consult",
-    );
+    final payload = {"user_id": userId, "question": question, "birth": birth};
 
-    try {
-      final res = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-
-      print("📩 ASK-NOW RESPONSE STATUS = ${res.statusCode}");
-      print("📩 ASK-NOW RESPONSE BODY = ${res.body}");
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        return data["answer"] ?? "No answer received.";
-      } else {
-        return "Server error. Please try again.";
-      }
-    } catch (e) {
-      print("❌ ASK-NOW NETWORK EXCEPTION = $e");
-      return "Network error. Please try again later.";
-    }
+    return _postJson("/api/chat/pack", payload);
   }
 }
