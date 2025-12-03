@@ -93,10 +93,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
 
       profileData = profileDoc.data();
 
-      // ⭐ NEW: fetch backend_user_id from root user doc
-      final backendUserId = userDoc.data()?["backend_user_id"];
-      profileData = {...profileData!, "backend_user_id": backendUserId};
-
+      // PROFILE FIELDS
       final name = profileData?["name"];
       final dob = _fixDob(profileData?["dob"]);
       final tob = profileData?["tob"];
@@ -104,12 +101,9 @@ class FirebaseKundaliProvider extends ChangeNotifier {
       final lat = profileData?["lat"];
       final lng = profileData?["lng"];
 
-      // language सिर्फ backend को भेजने के लिए
       final selectedLang = lang.toLowerCase().substring(0, 2);
 
       print("🌐 Language sent by Dashboard = $selectedLang");
-
-      print("🌐 User Language from Firebase = $selectedLang");
 
       // BACKEND PAYLOAD
       final payload = {
@@ -147,6 +141,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         return;
       }
 
+      // SUCCESS
       kundaliData = jsonDecode(response.body);
 
       print("✅ Kundali Loaded, keys:");

@@ -4,16 +4,13 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:jyotishasha_app/services/backend_auth_service.dart';
-// 🔥 Backend se /api/auth/register ko call karega
-
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ======================================================
+  // ----------------------------------------------------------
   // 🔹 GOOGLE SIGN-IN
-  // ======================================================
+  // ----------------------------------------------------------
   Future<User?> signInWithGoogle() async {
     try {
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
@@ -30,7 +27,7 @@ class AuthService {
       final userCred = await _auth.signInWithCredential(credential);
       final user = userCred.user;
 
-      if (user != null) await _syncUser(user, "google");
+      if (user != null) await _createOrUpdateUser(user, "google");
       return user;
     } catch (e) {
       debugPrint("❌ Google sign-in error: $e");
@@ -38,9 +35,9 @@ class AuthService {
     }
   }
 
-  // ======================================================
+  // ----------------------------------------------------------
   // 🔹 FACEBOOK SIGN-IN
-  // ======================================================
+  // ----------------------------------------------------------
   Future<User?> signInWithFacebook() async {
     try {
       final LoginResult result = await FacebookAuth.instance.login();
@@ -53,7 +50,7 @@ class AuthService {
       final userCred = await _auth.signInWithCredential(credential);
       final user = userCred.user;
 
-      if (user != null) await _syncUser(user, "facebook");
+      if (user != null) await _createOrUpdateUser(user, "facebook");
       return user;
     } catch (e) {
       debugPrint("❌ Facebook sign-in error: $e");
@@ -61,19 +58,17 @@ class AuthService {
     }
   }
 
-  // ======================================================
-  // 🔥 MAIN SYNC FUNCTION (Firestore + Backend)
-  // ======================================================
-  Future<void> _syncUser(User user, String provider) async {
-    final docRef = _firestore.collection("users").doc(user.uid);
-    final snap = await docRef.get();
-    final now = DateTime.now().toIso8601String();
-
+  // ----------------------------------------------------------
+  // 🔥 CREATE / UPDATE ROOT USER (No backend calls here)
+  // ----------------------------------------------------------
+  Future<void> _createOrUpdateUser(User user, String provider) async {
     try {
-      // --------------------------------------------------
-      // 1) FIRESTORE SYNC
-      // --------------------------------------------------
+      final docRef = _firestore.collection("users").doc(user.uid);
+      final snap = await docRef.get();
+      final now = DateTime.now().toIso8601String();
+
       if (snap.exists) {
+        // Existing user → update login info
         await docRef.update({
           "name": user.displayName ?? "",
           "email": user.email ?? "",
@@ -83,6 +78,7 @@ class AuthService {
           "updatedAt": now,
         });
       } else {
+        // New user → create root doc
         await docRef.set({
           "uid": user.uid,
           "name": user.displayName ?? "",
@@ -93,41 +89,24 @@ class AuthService {
           "updatedAt": now,
           "lastLogin": now,
           "activeProfileId": null,
-          "backend_user_id": null, // yahin store hoga int id
+          "backend_user_id": null, // will be set after profile creation
         });
       }
 
-      debugPrint("✅ Firestore user synced");
-
-      // --------------------------------------------------
-      // 2) BACKEND SYNC
-      // --------------------------------------------------
-      final backendId = await BackendAuthService.registerFirebaseUser(
-        firebaseUid: user.uid,
-        email: user.email,
-        phone: user.phoneNumber,
-        name: user.displayName,
-      );
-
-      if (backendId != null) {
-        await docRef.update({"backend_user_id": backendId});
-        debugPrint("🔥 Backend user synced (id = $backendId)");
-      } else {
-        debugPrint("⚠️ Backend sync failed");
-      }
+      debugPrint("✅ Firestore user synced: ${user.email}");
     } catch (e) {
-      debugPrint("❌ User sync error: $e");
+      debugPrint("❌ Firestore sync error: $e");
     }
   }
 
-  // ======================================================
-  // 🔹 LOGOUT
-  // ======================================================
+  // ----------------------------------------------------------
+  // 🔹 LOGOUT (Google + Facebook Safe)
+  // ----------------------------------------------------------
   Future<void> signOut() async {
     try {
       await _auth.signOut();
 
-      // Safely logout from Google
+      // Google safe logout
       try {
         final googleSignIn = GoogleSignIn();
         if (await googleSignIn.isSignedIn()) {
@@ -138,14 +117,14 @@ class AuthService {
         debugPrint("⚠️ Google logout skipped: $e");
       }
 
-      // Safely logout from Facebook
+      // Facebook safe logout
       try {
         await FacebookAuth.instance.logOut();
       } catch (e) {
         debugPrint("⚠️ Facebook logout skipped: $e");
       }
 
-      debugPrint("✅ User logged out");
+      debugPrint("✅ User fully signed out");
     } catch (e) {
       debugPrint("❌ Logout error: $e");
       rethrow;
