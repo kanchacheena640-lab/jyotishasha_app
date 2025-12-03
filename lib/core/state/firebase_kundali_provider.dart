@@ -93,6 +93,10 @@ class FirebaseKundaliProvider extends ChangeNotifier {
 
       profileData = profileDoc.data();
 
+      // ⭐ NEW: fetch backend_user_id from root user doc
+      final backendUserId = userDoc.data()?["backend_user_id"];
+      profileData = {...profileData!, "backend_user_id": backendUserId};
+
       final name = profileData?["name"];
       final dob = _fixDob(profileData?["dob"]);
       final tob = profileData?["tob"];
