@@ -23,12 +23,15 @@ import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
 import 'package:jyotishasha_app/core/widgets/shubh_muhurth_banner_widget.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
+import 'package:jyotishasha_app/services/blog_service.dart';
 
 // features
 import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
 import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
 import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
 import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
+import 'package:jyotishasha_app/core/models/blog_models.dart';
+import 'package:jyotishasha_app/core/widgets/blog_carousel_widget.dart';
 
 // providers
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
@@ -285,8 +288,10 @@ class DashboardHomeSection extends StatelessWidget {
               ),
               const SizedBox(height: 28),
 
+              // ⭐ ADD BLOG SECTION HERE
               _buildBlogSection(context),
-              const SizedBox(height: 24),
+
+              const SizedBox(height: 28),
 
               KeyboardDismissOnTap(child: AppFooterFeedbackWidget()),
             ],
@@ -513,167 +518,39 @@ class DashboardHomeSection extends StatelessWidget {
     }
   }
 
-  // 📰 Blog Section (Dynamic from WordPress) -------------------------------
+  // 📰 App Blogs Section (AstroBlog.in)
   Widget _buildBlogSection(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = AppLocalizations.of(context)!;
-
     return FutureBuilder(
-      future: http.get(
-        Uri.parse(
-          "https://jyotishasha.com/wp-json/wp/v2/posts?_embed&per_page=5",
-        ),
-      ),
+      future: BlogService.fetchBlogs(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text(t.error_blog_failed));
+          return const Center(child: Text("Failed to load blogs"));
         }
 
-        final response = snapshot.data as http.Response;
-        if (response.statusCode != 200) {
-          return Center(child: Text(t.error_blog_none));
+        // Cast list safely
+        final List<BlogPost> posts = snapshot.data as List<BlogPost>? ?? [];
+
+        if (posts.isEmpty) {
+          return const Center(child: Text("No blogs available"));
         }
 
-        final List posts = jsonDecode(response.body);
+        // Convert BlogPost → Map<String, String>  (Widget expects Map list)
+        final mapped = posts.map((p) => p.toMap()).toList();
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                t.blog_highlights_title,
-                style: GoogleFonts.playfairDisplay(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                t.blog_highlights_subtitle,
-                style: theme.textTheme.bodyMedium?.copyWith(fontSize: 14),
-              ),
-              const SizedBox(height: 16),
-
-              SizedBox(
-                height: 200,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: posts.length,
-                  itemBuilder: (context, index) {
-                    final post = posts[index];
-                    final title = post["title"]["rendered"];
-                    final imageUrl =
-                        post["_embedded"]?["wp:featuredmedia"]?[0]?["source_url"] ??
-                        "https://jyotishasha.com/default-thumbnail.jpg";
-                    final tag =
-                        post["_embedded"]?["wp:term"]?[0]?[0]?["name"] ??
-                        "Astrology";
-
-                    return _blogCard(
-                      context,
-                      title,
-                      tag,
-                      imageUrl,
-                      post["link"],
-                    );
-                  },
-                ),
-              ),
-
-              const SizedBox(height: 16),
-              Center(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    launchUrl(Uri.parse("https://jyotishasha.com/blog"));
-                  },
-                  icon: const Icon(Icons.menu_book_rounded),
-                  label: Text(t.blog_explore_button),
-                ),
-              ),
-            ],
+          child: BlogCarouselWidget(
+            blogs: mapped,
+            onExplore: () {
+              launchUrl(Uri.parse("https://astroblog.in/category/app-blogs/"));
+            },
           ),
         );
       },
-    );
-  }
-
-  // 🧩 Blog Card -----------------------------------------------------------
-  Widget _blogCard(
-    BuildContext context,
-    String title,
-    String tag,
-    String imageUrl,
-    String link,
-  ) {
-    final theme = Theme.of(context);
-
-    return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(link)),
-      child: Container(
-        width: 220,
-        margin: const EdgeInsets.only(right: 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: AppColors.purpleGradient,
-          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
-              ),
-              child: Image.network(
-                imageUrl,
-                height: 100,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
-                  height: 100,
-                  color: Colors.grey[300],
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 40,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title, // 🟢 dynamic (no ARB)
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    tag, // 🟢 dynamic (no ARB)
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
