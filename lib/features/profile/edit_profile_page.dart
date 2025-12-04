@@ -1,3 +1,5 @@
+// lib/features/profile/edit_profile_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_places_flutter/google_places_flutter.dart';
@@ -98,10 +100,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!mounted) return;
 
     if (ok) {
-      // ⭐ 1 — update app language
       await context.read<LanguageProvider>().setLanguage(_selectedLanguage);
-
-      // ⭐ 2 — fire listeners (Dashboard will reload Kundali + Daily + Panchang)
       profileProvider.notifyListeners();
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,6 +112,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Failed to update profile ❌")),
       );
+    }
+  }
+
+  // ⭐ DELETE PROFILE HANDLER
+  Future<void> _deleteProfile() async {
+    final provider = context.read<ProfileProvider>();
+    final id = provider.activeProfileId;
+
+    if (id == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text("Delete Profile?"),
+        content: const Text(
+          "This action cannot be undone.\nAre you sure you want to delete this profile?",
+        ),
+        actions: [
+          TextButton(
+            child: const Text("Cancel"),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          TextButton(
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final ok = await provider.deleteProfile(id);
+
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.pop(context, true);
     }
   }
 
@@ -187,7 +224,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: 12),
 
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedLanguage,
+                  value: _selectedLanguage,
                   decoration: const InputDecoration(labelText: "Language"),
                   items: const [
                     DropdownMenuItem(value: "en", child: Text("English")),
@@ -212,6 +249,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),
                     ),
+                  ),
+                ),
+
+                const SizedBox(height: 30),
+
+                // ⭐ Small red delete button at bottom
+                TextButton.icon(
+                  onPressed: _deleteProfile,
+                  icon: const Icon(Icons.delete_forever, color: Colors.red),
+                  label: const Text(
+                    "Delete Profile",
+                    style: TextStyle(color: Colors.red),
                   ),
                 ),
               ],

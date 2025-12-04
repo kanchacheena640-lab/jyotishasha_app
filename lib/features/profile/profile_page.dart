@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/features/profile/add_profile_page.dart';
@@ -24,111 +26,140 @@ class _ProfilePageState extends State<ProfilePage> {
     });
   }
 
+  // ⭐ Logout with message + clean redirect
+  Future<void> _logout() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text("Logout Successfully"),
+        duration: Duration(milliseconds: 800),
+      ),
+    );
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {}
+
+    try {
+      await FirebaseAuth.instance.signOut();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(context, "/login", (_) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProfileProvider>();
     final theme = Theme.of(context);
 
-    if (provider.isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFFEEFF5),
-      appBar: AppBar(title: Text("Profile", style: GoogleFonts.montserrat())),
 
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ⭐ SHOW LOADER WHEN SWITCHING ACTIVE PROFILE
-            if (provider.isSwitching)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Center(child: CircularProgressIndicator()),
-              ),
+      appBar: AppBar(
+        title: Text("Profile", style: GoogleFonts.montserrat()),
+        backgroundColor: theme.colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
 
-            // ⭐ ACTIVE PROFILE CARD + EDIT BUTTON
-            if (provider.activeProfile != null)
-              Column(
+      // ⭐ Add Profile Button
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: theme.colorScheme.primary,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text("Add Profile"),
+        onPressed: () async {
+          final res = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AddProfilePage()),
+          );
+          if (res == true) provider.loadProfiles();
+        },
+      ),
+
+      body: provider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _activeCard(provider.activeProfile!, theme),
+                  // ⭐ ACTIVE PROFILE
+                  if (provider.activeProfile != null)
+                    Column(
+                      children: [
+                        _activeCard(provider.activeProfile!, theme),
 
-                  const SizedBox(height: 8),
+                        const SizedBox(height: 12),
 
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                      icon: const Icon(Icons.edit, size: 18),
-                      label: const Text("Edit Profile"),
-                      onPressed: () async {
-                        final res = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => EditProfilePage(
-                              profile: provider.activeProfile!,
+                        // ⭐ Edit + Logout Row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            TextButton.icon(
+                              icon: const Icon(Icons.edit),
+                              label: const Text("Edit"),
+                              onPressed: () async {
+                                final res = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => EditProfilePage(
+                                      profile: provider.activeProfile!,
+                                    ),
+                                  ),
+                                );
+                                if (res == true) provider.loadProfiles();
+                              },
+                            ),
+
+                            TextButton.icon(
+                              icon: const Icon(Icons.logout),
+                              label: const Text("Logout"),
+                              onPressed: _logout,
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                  const SizedBox(height: 20),
+
+                  // ⭐ Other Profiles heading
+                  Text(
+                    "Other Profiles",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  // ⭐ OTHER PROFILES LIST
+                  Expanded(
+                    child: provider.otherProfiles.isEmpty
+                        ? const Center(child: Text("No other profiles"))
+                        : ListView.builder(
+                            itemCount: provider.otherProfiles.length,
+                            itemBuilder: (_, i) => _profileTile(
+                              context,
+                              provider.otherProfiles[i],
+                              provider,
+                              theme,
                             ),
                           ),
-                        );
-                        if (res == true) provider.loadProfiles();
-                      },
-                    ),
                   ),
                 ],
               ),
-
-            const SizedBox(height: 20),
-
-            Text(
-              "Other Profiles",
-              style: GoogleFonts.montserrat(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
             ),
-
-            const SizedBox(height: 10),
-
-            Expanded(
-              child: provider.otherProfiles.isEmpty
-                  ? const Center(child: Text("No other profiles"))
-                  : ListView.builder(
-                      itemCount: provider.otherProfiles.length,
-                      itemBuilder: (_, i) {
-                        return _profileTile(
-                          context,
-                          provider.otherProfiles[i],
-                          provider,
-                          theme,
-                        );
-                      },
-                    ),
-            ),
-
-            const SizedBox(height: 10),
-
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text("Add Profile"),
-                onPressed: () async {
-                  final res = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const AddProfilePage()),
-                  );
-                  if (res == true) provider.loadProfiles();
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  // ⭐ ACTIVE PROFILE CARD
-
+  // ⭐ ACTIVE CARD
   Widget _activeCard(Map<String, dynamic> p, ThemeData theme) {
     return Card(
       color: theme.colorScheme.primary.withOpacity(0.08),
@@ -139,11 +170,11 @@ class _ProfilePageState extends State<ProfilePage> {
           child: const Icon(Icons.person, color: Colors.black87),
         ),
         title: Text(
-          p["name"] ?? "",
+          p["name"],
           style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "${p["dob"] ?? ""}  •  ${p["pob"] ?? ""}",
+          "${p["dob"]}  •  ${p["pob"]}",
           style: GoogleFonts.montserrat(fontSize: 13),
         ),
         trailing: Icon(Icons.check_circle, color: theme.colorScheme.primary),
@@ -151,7 +182,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // ⭐ OTHER PROFILES TILE
+  // ⭐ OTHER PROFILE TILE
   Widget _profileTile(
     BuildContext context,
     Map<String, dynamic> p,
@@ -162,28 +193,28 @@ class _ProfilePageState extends State<ProfilePage> {
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: ListTile(
-        leading: CircleAvatar(
+        leading: const CircleAvatar(
           backgroundColor: Colors.white,
-          child: const Icon(Icons.person_outline),
+          child: Icon(Icons.person_outline),
         ),
-        title: Text(p["name"] ?? "", style: GoogleFonts.montserrat()),
+        title: Text(p["name"], style: GoogleFonts.montserrat()),
         subtitle: Text(
           "${p["dob"]} • ${p["pob"]}",
           style: GoogleFonts.montserrat(fontSize: 12),
         ),
-
         trailing: PopupMenuButton<String>(
-          onSelected: (value) async {
-            if (value == "activate") {
-              await provider.setActive(p["id"]);
-            } else if (value == "edit") {
+          onSelected: (v) async {
+            if (v == "activate") {
+              await provider.setActiveProfile(p["id"]);
+            } else if (v == "edit") {
               final res = await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => EditProfilePage(profile: p)),
               );
               if (res == true) provider.loadProfiles();
-            } else if (value == "delete") {
-              await provider.removeProfile(p["id"]);
+            } else if (v == "delete") {
+              await provider.deleteProfile(p["id"]);
+              provider.loadProfiles();
             }
           },
           itemBuilder: (context) => [

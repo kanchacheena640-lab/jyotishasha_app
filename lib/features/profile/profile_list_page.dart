@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/features/profile/add_profile_page.dart';
 import 'package:jyotishasha_app/features/profile/edit_profile_page.dart';
+import 'package:jyotishasha_app/core/widgets/bottom_nav_bar_widget.dart';
 
 class ProfileListPage extends StatefulWidget {
   const ProfileListPage({super.key});
@@ -35,6 +36,19 @@ class _ProfileListPageState extends State<ProfileListPage> {
         ),
         backgroundColor: theme.colorScheme.primary,
       ),
+
+      // ⭐ ADD THIS
+      bottomNavigationBar: BottomNavBarWidget(
+        currentIndex: 4, // Profile tab
+        onTap: (index) {
+          if (index == 0) Navigator.pushReplacementNamed(context, "/home");
+          if (index == 1) Navigator.pushReplacementNamed(context, "/panchang");
+          if (index == 2) Navigator.pushReplacementNamed(context, "/astrology");
+          if (index == 3) Navigator.pushReplacementNamed(context, "/asknow");
+          if (index == 4) return; // already here
+        },
+      ),
+      // ⭐ END
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           final result = await Navigator.push(
@@ -169,6 +183,7 @@ class _ProfileListPageState extends State<ProfileListPage> {
               onPressed: () async {
                 final ok = await provider.deleteProfile(p["id"]);
                 if (ok && mounted) {
+                  provider.loadProfiles(); // ⭐ refresh list
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text("Profile deleted")),
                   );
