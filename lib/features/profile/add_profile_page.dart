@@ -82,6 +82,11 @@ class _AddProfilePageState extends State<AddProfilePage> {
     final id = await provider.addProfile(data);
 
     if (id != null) {
+      // ⭐ If no active profile, set this as active
+      if (provider.activeProfileId == null) {
+        await provider.setActiveProfile(id);
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,11 +94,13 @@ class _AddProfilePageState extends State<AddProfilePage> {
       );
 
       Navigator.pop(context, true);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("❌ Failed to save profile")));
+      return;
     }
+
+    // ❌ Failed case
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("❌ Failed to save profile")));
   }
 
   @override
