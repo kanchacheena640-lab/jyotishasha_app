@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AskNowHeaderStatusWidget extends StatelessWidget {
   final int freeQ; // 0 or 1
-  final int earnedQ; // 0–8
+  final int earnedQ; // loaded from backend
   final VoidCallback onBuy;
 
   const AskNowHeaderStatusWidget({
@@ -34,7 +34,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // LEFT → FREE Q
+          // ---------------- LEFT : FREE QUESTION ----------------
           Row(
             children: [
               Text(
@@ -65,7 +65,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
             ],
           ),
 
-          // RIGHT → EARNED Q + BUY BUTTON IF ZERO
+          // ---------------- RIGHT : EARNED QUESTION ----------------
           Row(
             children: [
               Text(
@@ -75,46 +75,50 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              earnedQ > 0
-                  ? Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.purple,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        "$earnedQ",
-                        style: GoogleFonts.montserrat(
-                          fontSize: 14,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    )
-                  : GestureDetector(
-                      onTap: onBuy,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          "Get 8 Q @ ₹51",
-                          style: GoogleFonts.montserrat(
-                            fontSize: 13,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+
+              // ⭐ THIS IS THE FIX: earnedQ > 0 ALWAYS SHOW CORRECT VALUE
+              if (earnedQ > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.purple,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "$earnedQ",
+                    style: GoogleFonts.montserrat(
+                      fontSize: 14,
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              else
+                // Show Buy button only if earnedQ == 0
+                GestureDetector(
+                  onTap: onBuy,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      "Get 8 Q @ ₹51",
+                      style: GoogleFonts.montserrat(
+                        fontSize: 13,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                  ),
+                ),
             ],
           ),
         ],

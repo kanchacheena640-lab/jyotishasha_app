@@ -2428,6 +2428,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Touch ॐ for Darshan & Mantra'**
   String get darshanInstruction;
+
+  /// No description provided for @asknowEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your consultation by typing your question below 💬'**
+  String get asknowEmptyHint;
+
+  /// No description provided for @asknowInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your question...'**
+  String get asknowInputHint;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

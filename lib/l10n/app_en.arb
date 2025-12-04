@@ -459,7 +459,9 @@
   "muhurthBannerGold": "Gold purchase",
   "muhurthBannerMore": "and more auspicious events",
   "muhurthBannerCta": "Tap to see your Shubh Muhurth",
-  "darshanInstruction": "Touch ॐ for Darshan & Mantra"
+  "darshanInstruction": "Touch ॐ for Darshan & Mantra",
+  "asknowEmptyHint": "Start your consultation by typing your question below 💬",
+  "asknowInputHint": "Type your question..."
 
 
 }

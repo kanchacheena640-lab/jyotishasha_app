@@ -241,29 +241,6 @@ class _AskNowIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        const Icon(Icons.chat_bubble_outline),
-        Positioned(
-          right: -10,
-          top: -4,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Text(
-              "FREE",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 8,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
+    return Stack(children: [const Icon(Icons.chat_bubble_outline)]);
   }
 }

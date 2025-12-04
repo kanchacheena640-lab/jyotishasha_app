@@ -1202,4 +1202,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get darshanInstruction => 'Touch ॐ for Darshan & Mantra';
+
+  @override
+  String get asknowEmptyHint => 'Start your consultation by typing your question below 💬';
+
+  @override
+  String get asknowInputHint => 'Type your question...';
 }

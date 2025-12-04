@@ -6,9 +6,9 @@ class AskNowService {
   static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
 
   // ------------------------------
-  // Small helper
+  // Small helper (ONLY for chat answers)
   // ------------------------------
-  static Future<Map<String, dynamic>> _postJson(
+  static Future<Map<String, dynamic>> _postJsonCleanAnswer(
     String path,
     Map<String, dynamic> body,
   ) async {
@@ -19,16 +19,28 @@ class AskNowService {
       body: jsonEncode(body),
     );
 
-    if (res.statusCode >= 200 && res.statusCode < 300) {
-      return jsonDecode(res.body) as Map<String, dynamic>;
-    } else {
-      throw Exception(
-        'AskNow API error ${res.statusCode}: ${res.body.toString()}',
-      );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception('AskNow API error ${res.statusCode}: ${res.body}');
     }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+
+    // Cleaned answer for chat endpoints only
+    final clean = <String, dynamic>{
+      "success": decoded["success"] ?? true,
+      "answer": decoded["answer"] ?? "",
+      "remaining_tokens":
+          decoded["remaining_tokens"] ??
+          decoded["remaining"] ??
+          decoded["remaining_questions"] ??
+          decoded["tokens_left"],
+      "message": decoded["message"],
+    };
+
+    return clean;
   }
 
-  // Build BIRTH block from profile map
+  // Build BIRTH block
   static Map<String, dynamic> buildBirthFromProfile(
     Map<String, dynamic> profile,
   ) {
@@ -40,12 +52,12 @@ class AskNowService {
           profile["pob"] ?? profile["place_name"] ?? profile["placeName"] ?? "",
       "lat": profile["lat"] ?? profile["latitude"] ?? 0.0,
       "lng": profile["lng"] ?? profile["longitude"] ?? 0.0,
-      "tz": profile["tz"] ?? "+05:30",
+      "timezone": profile["timezone"] ?? profile["tz"] ?? "+05:30",
     };
   }
 
   // --------------------------------
-  // 1) FREE QUESTION (once per day)
+  // 1) FREE QUESTION  (CLEANED ANSWER)
   // --------------------------------
   static Future<Map<String, dynamic>> askFreeQuestion({
     required int userId,
@@ -56,21 +68,37 @@ class AskNowService {
 
     final payload = {"user_id": userId, "question": question, "birth": birth};
 
-    return _postJson("/api/chat/free", payload);
+    // ✅ Free chat bhi ab paid jaisa cleaned JSON hi dega
+    return _postJsonCleanAnswer("/api/chat/free", payload);
   }
 
   // --------------------------------
-  // 2) CREATE ₹51 PACK ORDER
+  // 2) CREATE PACK ORDER  (KEEP FULL ORDER JSON)
   // --------------------------------
   static Future<Map<String, dynamic>> createPackOrder({
     required int userId,
   }) async {
     final payload = {"user_id": userId};
-    return _postJson("/api/chat/pack/order", payload);
+
+    final uri = Uri.parse("$_baseUrl/api/chat/pack/order");
+
+    final res = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("Pack order API error ${res.statusCode}: ${res.body}");
+    }
+
+    // yahan nested "order" waala JSON chahiye as-is
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return decoded; // { success, order: {...} }
   }
 
   // --------------------------------
-  // 3) VERIFY PAYMENT (Razorpay)
+  // 3) VERIFY PAYMENT  (KEEP FULL RESULT JSON)
   // --------------------------------
   static Future<Map<String, dynamic>> verifyPayment({
     required int userId,
@@ -82,11 +110,25 @@ class AskNowService {
       "order_id": orderId,
       "payment_id": paymentId,
     };
-    return _postJson("/asknow/verify", payload);
+
+    final uri = Uri.parse("$_baseUrl/asknow/verify");
+
+    final res = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(payload),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception("Verify API error ${res.statusCode}: ${res.body}");
+    }
+
+    final decoded = jsonDecode(res.body) as Map<String, dynamic>;
+    return decoded; // { success, result: { success, total_tokens, ... } }
   }
 
   // --------------------------------
-  // 4) ASK USING PAID PACK (tokens)
+  // 4) ASK FROM PAID PACK (CLEANED ANSWER)
   // --------------------------------
   static Future<Map<String, dynamic>> askPaidQuestion({
     required int userId,
@@ -97,6 +139,25 @@ class AskNowService {
 
     final payload = {"user_id": userId, "question": question, "birth": birth};
 
-    return _postJson("/api/chat/pack", payload);
+    return _postJsonCleanAnswer("/api/chat/pack", payload);
+  }
+
+  // ------------------------------------------------------
+  // NEW: Get free + tokens status from backend
+  // ------------------------------------------------------
+  static Future<Map<String, dynamic>> fetchChatStatus(int userId) async {
+    final uri = Uri.parse("$_baseUrl/api/chat/status");
+
+    final res = await http.post(
+      uri,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"user_id": userId}),
+    );
+
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } else {
+      throw Exception("Status API error ${res.statusCode}: ${res.body}");
+    }
   }
 }

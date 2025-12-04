@@ -1202,4 +1202,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get darshanInstruction => 'ॐ का स्‍पर्श — करें दर्शन और सुने मंत्र';
+
+  @override
+  String get asknowEmptyHint => 'नीचे अपना प्रश्न लिखें और परामर्श प्राप्‍त करें 💬';
+
+  @override
+  String get asknowInputHint => 'अपना प्रश्न यहाँ लिखें...';
 }

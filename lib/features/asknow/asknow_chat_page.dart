@@ -1,20 +1,23 @@
+import 'dart:convert'; // for JSON parsing
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 // STATE
-import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/asknow_provider.dart';
 import 'package:jyotishasha_app/features/asknow/widgets/asknow_header_status_widget.dart';
 
 // SERVICES
 import 'package:jyotishasha_app/services/asknow_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-// If you already use razorpay_flutter elsewhere, keep this import.
-// Otherwise add dependency in pubspec: razorpay_flutter: ^1.3.5
+// RAZORPAY
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+// ⭐ NEW: localization import
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AskNowChatPage extends StatefulWidget {
   const AskNowChatPage({super.key});
@@ -32,15 +35,112 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   String? _pendingPaidQuestionText;
   Map<String, dynamic>? _pendingPaidProfile;
   int? _userIdForPayment;
-  String? _currentOrderId; // razorpay_order_id from backend
+  String? _currentOrderId;
+
+  // ---------------------------------------------------
+  // 🔧 CLEAN BOT ANSWER TEXT AT UI LEVEL
+  // ---------------------------------------------------
+  String _cleanBotText(String? raw) {
+    if (raw == null) return "";
+    String text = raw.trim();
+    if (text.isEmpty) return "";
+
+    // 1) Try if it's proper JSON → {"success":true, "answer":"..."}
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is Map) {
+        if (decoded["answer"] is String) {
+          return (decoded["answer"] as String).trim();
+        }
+        if (decoded["message"] is String) {
+          return (decoded["message"] as String).trim();
+        }
+      }
+    } catch (_) {
+      // Not JSON, ignore
+    }
+
+    // 2) Try if it's Dart Map.toString():
+    // {success: true, answer: Aaj ka din..., remaining_tokens: 7, message: null}
+    final lower = text.toLowerCase();
+    const key = "answer:";
+    final idx = lower.indexOf(key);
+    if (idx != -1) {
+      String rest = text.substring(idx + key.length).trim();
+
+      // Cut when next ", someKey:"
+      final reg = RegExp(r',\s*\w+\s*:');
+      final match = reg.firstMatch(rest);
+      if (match != null) {
+        rest = rest.substring(0, match.start).trim();
+      }
+
+      // Remove trailing brace
+      if (rest.endsWith('}')) {
+        rest = rest.substring(0, rest.length - 1).trim();
+      }
+
+      // Trim quotes if wrapped
+      if ((rest.startsWith("'") && rest.endsWith("'")) ||
+          (rest.startsWith('"') && rest.endsWith('"'))) {
+        rest = rest.substring(1, rest.length - 1);
+      }
+
+      if (rest.isNotEmpty) return rest;
+    }
+
+    // 3) Fallback → jo aaya hai wahi
+    return text;
+  }
+
+  // ---------------------------------------------------
+  // 🔥 SYNC CHAT STATUS FROM BACKEND
+  // ---------------------------------------------------
+  Future<void> _syncChatStatus() async {
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) return;
+
+    final userDoc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(firebaseUser.uid)
+        .get();
+
+    final rawId = userDoc.data()?["backend_user_id"];
+    final int userId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? "0") ?? 0;
+    if (userId == 0) return;
+
+    final status = await AskNowService.fetchChatStatus(userId);
+
+    final provider = context.read<AskNowProvider>();
+    provider.setFreeAvailable(status["free_available"] == true);
+
+    // 🔥 tokens ko hamesha INT bana do
+    final dynamic rawTokens =
+        status["remaining_tokens"] ??
+        status["remaining"] ??
+        status["remaining_questions"] ??
+        0;
+
+    final int tokens = int.tryParse(rawTokens.toString()) ?? 0;
+
+    provider.hasActivePack = tokens > 0;
+    provider.remainingTokens = tokens;
+    provider.statusLoaded = true;
+    provider.notifyListeners();
+  }
 
   @override
   void initState() {
     super.initState();
+
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+
+    _syncChatStatus();
   }
 
   @override
@@ -55,12 +155,11 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   // =====================================================
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
-    // Verify with backend
     if (_userIdForPayment == null || _currentOrderId == null) return;
 
-    final userId = _userIdForPayment!;
-    final paymentId = response.paymentId ?? "";
-    final orderId = _currentOrderId!;
+    final int userId = _userIdForPayment!;
+    final String paymentId = response.paymentId ?? "";
+    final String orderId = _currentOrderId!;
 
     try {
       final verifyRes = await AskNowService.verifyPayment(
@@ -88,7 +187,6 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           ),
         );
 
-        // If there was a pending question, ask it now from paid pack
         if (_pendingPaidQuestionText != null && _pendingPaidProfile != null) {
           await _askFromPaidPackAfterPayment();
         }
@@ -121,7 +219,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    // Optional: handle wallets
+    // Optional
   }
 
   // =====================================================
@@ -130,9 +228,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
   Future<void> _askFromPaidPackAfterPayment() async {
     final provider = context.read<AskNowProvider>();
-    final question = _pendingPaidQuestionText!;
-    final profile = _pendingPaidProfile!;
-    final userId = _userIdForPayment!;
+    final String question = _pendingPaidQuestionText!;
+    final Map<String, dynamic> profile = _pendingPaidProfile!;
+    final int userId = _userIdForPayment!;
 
     await provider.askFromPaidPack(
       question: question,
@@ -143,12 +241,14 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     if (!mounted) return;
 
     if (provider.pendingAnswer != null) {
-      await Future.delayed(const Duration(seconds: 2)); // ad delay feel
-      final ans = provider.pendingAnswer!;
+      await Future.delayed(const Duration(seconds: 2));
+
+      // ✅ CLEAN HERE
+      final String ansText = _cleanBotText(provider.pendingAnswer);
       provider.clearPending();
 
       setState(() {
-        chatMessages.add({"sender": "bot", "text": ans});
+        chatMessages.add({"sender": "bot", "text": ansText});
       });
     } else if (provider.lastErrorMessage != null &&
         provider.lastErrorMessage != "PAYMENT_REQUIRED") {
@@ -157,7 +257,6 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
       ).showSnackBar(SnackBar(content: Text(provider.lastErrorMessage!)));
     }
 
-    // Clear pending
     _pendingPaidQuestionText = null;
     _pendingPaidProfile = null;
   }
@@ -167,26 +266,57 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   // =====================================================
 
   Future<void> _sendQuestion() async {
-    final question = _questionController.text.trim();
+    final String question = _questionController.text.trim();
     if (question.isEmpty) return;
 
-    final kundaliProvider = context.read<FirebaseKundaliProvider>();
-    final profile =
-        kundaliProvider.kundaliData?["profile"] as Map<String, dynamic>? ?? {};
+    final provider = context.read<AskNowProvider>();
 
-    // ⚠️ Adjust this according to how you store backend user_id
-    final int userId = (profile["backend_user_id"] ?? 0) as int;
+    if (provider.statusLoaded &&
+        provider.freeUsedToday &&
+        !provider.hasActivePack) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("❗ You have already used your free question today."),
+        ),
+      );
+      return;
+    }
 
-    final askProvider = context.read<AskNowProvider>();
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) {
+      print("❌ No Firebase user found");
+      return;
+    }
 
-    // 1) Add user message bubble
+    final userDoc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(firebaseUser.uid)
+        .get();
+
+    final rawId = userDoc.data()?["backend_user_id"];
+    final int userId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? "0") ?? 0;
+    if (userId == 0) {
+      print("❌ backend_user_id missing in Firestore");
+      return;
+    }
+
+    final profileSnap = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(firebaseUser.uid)
+        .collection("profiles")
+        .doc("default")
+        .get();
+
+    final Map<String, dynamic> profile = profileSnap.data() ?? {};
+
     setState(() {
       chatMessages.add({"sender": "user", "text": question});
       _questionController.clear();
     });
 
-    // 2) Call provider (free OR tokens)
-    await askProvider.askFreeOrFromTokens(
+    await provider.askFreeOrFromTokens(
       question: question,
       profile: profile,
       userId: userId,
@@ -194,20 +324,22 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
     if (!mounted) return;
 
-    // 3) If answer available → show after small delay (ad / feel)
-    if (askProvider.pendingAnswer != null) {
+    // -------------- BOT ANSWER --------------
+    if (provider.pendingAnswer != null) {
       await Future.delayed(const Duration(seconds: 2));
-      final ans = askProvider.pendingAnswer!;
-      askProvider.clearPending();
+
+      // ✅ CLEAN HERE TOO
+      final String ansText = _cleanBotText(provider.pendingAnswer);
+      provider.clearPending();
 
       setState(() {
-        chatMessages.add({"sender": "bot", "text": ans});
+        chatMessages.add({"sender": "bot", "text": ansText});
       });
       return;
     }
 
-    // 4) If payment required → open pack purchase flow
-    if (askProvider.lastErrorMessage == "PAYMENT_REQUIRED") {
+    // -------------- PAYMENT REQUIRED --------------
+    if (provider.lastErrorMessage == "PAYMENT_REQUIRED") {
       _pendingPaidQuestionText = question;
       _pendingPaidProfile = profile;
       _userIdForPayment = userId;
@@ -215,11 +347,11 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
       return;
     }
 
-    // 5) Any other error
-    if (askProvider.lastErrorMessage != null) {
+    // -------------- ERROR HANDLING --------------
+    if (provider.lastErrorMessage != null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(askProvider.lastErrorMessage!)));
+      ).showSnackBar(SnackBar(content: Text(provider.lastErrorMessage!)));
     }
   }
 
@@ -249,6 +381,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
               ),
               const SizedBox(height: 16),
               Text(
+                // 👇 isko bhi baad me ARB se nikaal sakte ho chaaho to
                 "Unlock 8 Detailed Answers",
                 style: GoogleFonts.montserrat(
                   fontSize: 18,
@@ -303,24 +436,23 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
   Future<void> _startPackPayment() async {
     if (_userIdForPayment == null) return;
-    final userId = _userIdForPayment!;
+    final int userId = _userIdForPayment!;
 
     try {
-      final orderRes = await AskNowService.createPackOrder(
-        userId: userId,
-      ); // API call
+      final orderRes = await AskNowService.createPackOrder(userId: userId);
 
       final order = orderRes["order"] as Map<String, dynamic>?;
       if (order == null) throw Exception("Invalid order response");
 
-      final razorpayOrderId = order["razorpay_order_id"]?.toString() ?? "";
-      final amount = (order["amount"] ?? 51) as int;
+      final String razorpayOrderId =
+          order["razorpay_order_id"]?.toString() ?? "";
+      final int amount = (order["amount"] ?? 51) as int;
 
       _currentOrderId = razorpayOrderId;
 
       final options = {
-        "key": "RAZORPAY_KEY_ID", // 🔴 replace with your key
-        "amount": amount * 100, // in paise
+        "key": "RAZORPAY_KEY_ID", // TODO: replace with real key
+        "amount": amount * 100,
         "name": "Jyotishasha AskNow",
         "description": "ChatPack 8 Questions",
         "order_id": razorpayOrderId,
@@ -343,6 +475,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AskNowProvider>();
+    final loc = AppLocalizations.of(context)!; // ⭐ ARB localizations
 
     return KeyboardDismissOnTap(
       child: Scaffold(
@@ -355,14 +488,14 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
         ),
         body: Column(
           children: [
-            // -------------- TOP NOTE --------------
             AskNowHeaderStatusWidget(
-              freeQ: provider.freeUsedToday ? 0 : 1, // daily toggling
-              earnedQ: provider.remainingTokens, // backend tokens
+              freeQ: provider.statusLoaded
+                  ? (provider.freeUsedToday ? 0 : 1)
+                  : 0,
+              earnedQ: provider.remainingTokens, // ✅ int hi jaa raha hai
               onBuy: _showPackSheet,
             ),
-
-            // -------------- CHAT WINDOW --------------
+            const SizedBox(height: 12),
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -375,7 +508,6 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                 ),
                 child: Column(
                   children: [
-                    // Chat list
                     Expanded(
                       child: chatMessages.isEmpty
                           ? Center(
@@ -384,7 +516,8 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                   horizontal: 24,
                                 ),
                                 child: Text(
-                                  'Start your free consultation by typing your question below 💬',
+                                  // 🔁 ARB text: empty state hint
+                                  loc.asknowEmptyHint,
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.montserrat(
                                     fontSize: 14,
@@ -398,7 +531,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                               itemCount: chatMessages.length,
                               itemBuilder: (context, index) {
                                 final msg = chatMessages[index];
-                                final isUser = msg['sender'] == 'user';
+                                final bool isUser = msg['sender'] == 'user';
 
                                 return Align(
                                   alignment: isUser
@@ -416,7 +549,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Text(
-                                      msg['text']!,
+                                      msg['text'] ?? "",
                                       style: GoogleFonts.montserrat(
                                         color: isUser
                                             ? Colors.white
@@ -429,8 +562,6 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                               },
                             ),
                     ),
-
-                    // -------------- INPUT BAR --------------
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                       child: Row(
@@ -445,7 +576,8 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                 }
                               },
                               decoration: InputDecoration(
-                                hintText: 'Type your question...',
+                                // 🔁 ARB text: input hint
+                                hintText: loc.asknowInputHint,
                                 hintStyle: GoogleFonts.montserrat(),
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
