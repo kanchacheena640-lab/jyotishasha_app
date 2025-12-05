@@ -27,6 +27,17 @@ class ProfileProvider extends ChangeNotifier {
 
     final list = await _service.getProfiles();
 
+    // ⭐ AUTO-ACTIVATE IF ONLY ONE PROFILE EXISTS
+    if (list.length == 1) {
+      final only = list.first;
+
+      if (only["isActive"] != true) {
+        // Make single profile active automatically
+        await _service.setActiveProfile(only["id"]);
+        return loadProfiles(); // reload after update
+      }
+    }
+
     if (list.isEmpty) {
       activeProfile = null;
       otherProfiles = [];
@@ -35,7 +46,18 @@ class ProfileProvider extends ChangeNotifier {
       // active profile
       activeProfile = list.firstWhere(
         (p) => p["isActive"] == true,
-        orElse: () => {},
+        orElse: () => {
+          "id": "",
+          "name": "",
+          "dob": "",
+          "tob": "",
+          "pob": "",
+          "lat": 0.0,
+          "lng": 0.0,
+          "gender": "",
+          "language": "en",
+          "isActive": true,
+        },
       );
 
       // ⭐ FIX → Save active ID

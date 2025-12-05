@@ -170,11 +170,11 @@ class _ProfilePageState extends State<ProfilePage> {
           child: const Icon(Icons.person, color: Colors.black87),
         ),
         title: Text(
-          p["name"],
+          (p["name"] ?? "").toString(),
           style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
-          "${p["dob"]}  •  ${p["pob"]}",
+          "${(p["dob"] ?? "").toString()}  •  ${(p["pob"] ?? "").toString()}",
           style: GoogleFonts.montserrat(fontSize: 13),
         ),
         trailing: Icon(Icons.check_circle, color: theme.colorScheme.primary),
@@ -197,15 +197,18 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.white,
           child: Icon(Icons.person_outline),
         ),
-        title: Text(p["name"], style: GoogleFonts.montserrat()),
+        title: Text(
+          (p["name"] ?? "").toString(),
+          style: GoogleFonts.montserrat(),
+        ),
         subtitle: Text(
-          "${p["dob"]} • ${p["pob"]}",
+          "${(p["dob"] ?? "").toString()} • ${(p["pob"] ?? "").toString()}",
           style: GoogleFonts.montserrat(fontSize: 12),
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (v) async {
             if (v == "activate") {
-              await provider.setActiveProfile(p["id"]);
+              await provider.setActiveProfile((p["id"] ?? "").toString());
             } else if (v == "edit") {
               final res = await Navigator.push(
                 context,
@@ -213,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
               );
               if (res == true) provider.loadProfiles();
             } else if (v == "delete") {
-              await provider.deleteProfile(p["id"]);
+              await provider.deleteProfile((p["id"] ?? "").toString());
               provider.loadProfiles();
             }
           },

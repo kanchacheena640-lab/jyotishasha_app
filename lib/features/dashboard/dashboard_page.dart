@@ -30,7 +30,14 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime? _lastPressed;
 
   bool _initialized = false;
-  bool _listenerAttached = false;
+
+  // SAFE LISTENERS
+  bool _profileListenerAttached = false;
+  bool _languageListenerAttached = false;
+
+  // LAST KNOWN VALUES
+  String? _lastActiveId;
+  String? _lastLang;
 
   @override
   void initState() {
@@ -44,61 +51,79 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       _attachProfileSwitchListener();
+      _attachLanguageListener();
     });
   }
 
-  // --------------------------------------------------
-  // SAFE LISTENER
-  // --------------------------------------------------
+  // ------------------------------------------------------------------
+  // PROFILE SWITCH LISTENER (SAFE)
+  // ------------------------------------------------------------------
   void _attachProfileSwitchListener() {
-    if (_listenerAttached) return;
-    _listenerAttached = true;
+    if (_profileListenerAttached) return;
+    _profileListenerAttached = true;
 
-    final p = context.read<ProfileProvider>();
+    final profileProvider = context.read<ProfileProvider>();
 
-    p.addListener(() async {
+    profileProvider.addListener(() async {
+      if (!mounted) return;
+      final newId = profileProvider.activeProfileId;
+
+      if (newId != null && newId != _lastActiveId) {
+        print("👤 PROFILE SWITCH DETECTED → Reload all");
+        _lastActiveId = newId;
+        await _loadAndRefreshAll(); // safe, single call
+      }
+    });
+  }
+
+  // ------------------------------------------------------------------
+  // LANGUAGE CHANGE LISTENER (SAFE)
+  // ------------------------------------------------------------------
+  void _attachLanguageListener() {
+    if (_languageListenerAttached) return;
+    _languageListenerAttached = true;
+
+    final langProvider = context.read<LanguageProvider>();
+
+    langProvider.addListener(() async {
       if (!mounted) return;
 
-      print("🔄 DASHBOARD LISTENER → Profile switched");
-      await _loadAndRefreshAll();
+      final newLang = langProvider.currentLang;
+
+      if (newLang != _lastLang) {
+        print("🌐 LANGUAGE CHANGE DETECTED → Reload all");
+        _lastLang = newLang;
+
+        await _loadAndRefreshAll(); // safe, single call
+      }
     });
   }
 
-  // --------------------------------------------------
-  // FULL EXPENSIVE LOAD
-  // --------------------------------------------------
+  // ------------------------------------------------------------------
+  // MASTER REFRESH FUNCTION (SAFE, SEQUENTIAL)
+  // ------------------------------------------------------------------
   Future<void> _loadAndRefreshAll() async {
-    print("⚡ DASHBOARD → Loading Kundali & Daily");
+    print("⚡ DASHBOARD → START REFRESH");
 
-    final firebaseKundali = context.read<FirebaseKundaliProvider>();
-    final lang = context.read<LanguageProvider>().currentLang; // ⭐ FINAL FIXED
+    final kundaliProvider = context.read<FirebaseKundaliProvider>();
+    final lang = context.read<LanguageProvider>().currentLang;
 
-    // --------------------------------------------------------
-    // STEP 1: Load Kundali with language
-    // --------------------------------------------------------
-    await firebaseKundali.loadFromFirebaseProfile(context, lang: lang);
+    // LOAD KUNDALI
+    await kundaliProvider.loadFromFirebaseProfile(context, lang: lang);
 
-    final kd = firebaseKundali.kundaliData;
+    final kd = kundaliProvider.kundaliData;
     if (kd == null) {
-      print("❌ DASHBOARD → kundaliData = NULL, skipping daily");
+      print("❌ kundaliData NULL → Skip refresh");
       return;
     }
 
-    // --------------------------------------------------------
-    // Extract values
-    // --------------------------------------------------------
-    final lagna = kd['lagna_sign'] ?? '';
-    final lat = kd['location']?['lat'] ?? 26.8467;
-    final lng = kd['location']?['lng'] ?? 80.9462;
+    final lagna = kd["lagna_sign"] ?? "";
+    final lat = kd["location"]?["lat"] ?? 26.8467;
+    final lng = kd["location"]?["lng"] ?? 80.9462;
 
-    print("🌍 DASHBOARD → Sending Daily Request:");
-    print("   - lagna: $lagna");
-    print("   - lang:  $lang");
-    print("   - lat/lng: $lat, $lng");
+    print("➡ DAILY API CALL → lagna=$lagna lang=$lang");
 
-    // --------------------------------------------------------
-    // STEP 2: Load Daily (language must match)
-    // --------------------------------------------------------
+    // REFRESH DAILY
     await context.read<DailyProvider>().fetchDaily(
       lagna: lagna,
       lat: lat,
@@ -106,26 +131,22 @@ class _DashboardPageState extends State<DashboardPage> {
       lang: lang,
     );
 
-    print("📅 DASHBOARD → Loading Panchang");
-
-    // --------------------------------------------------------
-    // STEP 3: Load Panchang (language must match)
-    // --------------------------------------------------------
+    print("➡ PANCHANG API CALL");
     await context.read<PanchangProvider>().fetchPanchang(
       lat: lat,
       lng: lng,
-      lang: lang, // force new API always
+      lang: lang,
     );
 
-    print("✅ DASHBOARD → All refreshed.\n\n");
+    print("✅ DASHBOARD → REFRESH COMPLETE\n");
   }
 
-  // --------------------------------------------------
-  // FIRST BOOT
-  // --------------------------------------------------
+  // ------------------------------------------------------------------
+  // FIRST TIME BOOT
+  // ------------------------------------------------------------------
   Future<void> _initFlow() async {
     try {
-      print("🟣 Dashboard INIT START");
+      print("🟣 INIT START");
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -134,10 +155,9 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       await _loadAndRefreshAll();
-
-      print("🏁 Dashboard INIT DONE");
+      print("🏁 INIT DONE");
     } catch (e) {
-      print("❌ Dashboard init ERROR: $e");
+      print("❌ INIT ERROR: $e");
     }
   }
 
@@ -149,9 +169,9 @@ class _DashboardPageState extends State<DashboardPage> {
     ProfilePage(),
   ];
 
-  // --------------------------------------------------
-  // DOUBLE BACK EXIT HANDLER
-  // --------------------------------------------------
+  // ------------------------------------------------------------------
+  // DOUBLE BACK TO EXIT
+  // ------------------------------------------------------------------
   Future<void> _handleBackPress() async {
     final now = DateTime.now();
 
@@ -184,8 +204,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
-        if (didPop) return;
-        _handleBackPress();
+        if (!didPop) _handleBackPress();
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
@@ -217,7 +236,7 @@ class _DashboardPageState extends State<DashboardPage> {
               label: AppLocalizations.of(context)!.dashboard_reports,
             ),
             BottomNavigationBarItem(
-              icon: const _AskNowIcon(),
+              icon: const Icon(Icons.chat_bubble_outline),
               activeIcon: const Icon(Icons.chat),
               label: AppLocalizations.of(context)!.dashboard_ask_now,
             ),
@@ -230,17 +249,5 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     );
-  }
-}
-
-// --------------------------------------------------
-// ASK NOW ICON
-// --------------------------------------------------
-class _AskNowIcon extends StatelessWidget {
-  const _AskNowIcon();
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(children: [const Icon(Icons.chat_bubble_outline)]);
   }
 }

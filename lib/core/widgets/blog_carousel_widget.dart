@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:jyotishasha_app/features/blog/blog_reader_page.dart';
 
 class BlogCarouselWidget extends StatelessWidget {
   final List<Map<String, String>> blogs;
@@ -27,17 +27,14 @@ class BlogCarouselWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ShaderMask(
-                shaderCallback: (bounds) => jyotishashaGradient.createShader(
-                  Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                ),
+                shaderCallback: (bounds) =>
+                    jyotishashaGradient.createShader(bounds),
                 child: Text(
                   "Astrology Blog",
                   style: GoogleFonts.playfairDisplay(
-                    textStyle: const TextStyle(
-                      fontSize: 21,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                    fontSize: 21,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
               ),
@@ -45,17 +42,14 @@ class BlogCarouselWidget extends StatelessWidget {
               GestureDetector(
                 onTap: onExplore,
                 child: ShaderMask(
-                  shaderCallback: (bounds) => jyotishashaGradient.createShader(
-                    Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-                  ),
+                  shaderCallback: (bounds) =>
+                      jyotishashaGradient.createShader(bounds),
                   child: Text(
                     "Explore →",
                     style: GoogleFonts.montserrat(
-                      textStyle: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -67,7 +61,7 @@ class BlogCarouselWidget extends StatelessWidget {
 
           // 🔹 Horizontal Blog Cards
           SizedBox(
-            height: 185, // ✅ overflow fix
+            height: 190, // ⭐ FINAL PERFECT HEIGHT — no overflow
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: blogs.length,
@@ -78,9 +72,14 @@ class BlogCarouselWidget extends StatelessWidget {
                   onTap: () {
                     final url = blog["link"] ?? "";
                     if (url.isNotEmpty) {
-                      launchUrl(
-                        Uri.parse(url),
-                        mode: LaunchMode.externalApplication,
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => BlogReaderPage(
+                            url: blog["link"] ?? "",
+                            title: blog["title"] ?? "Blog",
+                          ),
+                        ),
                       );
                     }
                   },
@@ -105,7 +104,7 @@ class BlogCarouselWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ⭐ IMAGE (95px)
+                        // ⭐ IMAGE
                         ClipRRect(
                           borderRadius: const BorderRadius.only(
                             topLeft: Radius.circular(16),
@@ -113,7 +112,7 @@ class BlogCarouselWidget extends StatelessWidget {
                           ),
                           child: Image.network(
                             blog["image"] ?? "",
-                            height: 95, // ⬅️ previous 100 → now perfect fit
+                            height: 95,
                             width: double.infinity,
                             fit: BoxFit.cover,
                             errorBuilder: (context, _, __) => Container(
@@ -129,12 +128,15 @@ class BlogCarouselWidget extends StatelessWidget {
                           ),
                         ),
 
+                        // TEXT CONTENT
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 6,
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // TITLE
                               Text(
                                 blog["title"] ?? "",
                                 maxLines: 2,
@@ -148,7 +150,6 @@ class BlogCarouselWidget extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
 
-                              // TAG
                               Text(
                                 blog["tag"] ?? "Astrology",
                                 style: const TextStyle(
@@ -156,10 +157,6 @@ class BlogCarouselWidget extends StatelessWidget {
                                   color: Color(0xFF5A189A),
                                 ),
                               ),
-
-                              const SizedBox(
-                                height: 4,
-                              ), // ⭐ Small spacer to avoid overflow
                             ],
                           ),
                         ),

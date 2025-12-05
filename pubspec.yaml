@@ -35,6 +35,7 @@ dependencies:
   shared_preferences: ^2.5.3
   shimmer: ^3.0.0
   audioplayers: ^6.5.1
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
@@ -60,3 +61,4 @@ l10n:
   arb-dir: lib/l10n
   template-arb-file: app_en.arb
   output-localization-file: app_localizations.dart
+

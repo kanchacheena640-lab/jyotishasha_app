@@ -224,7 +224,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 const SizedBox(height: 12),
 
                 DropdownButtonFormField<String>(
-                  value: _selectedLanguage,
+                  initialValue: _selectedLanguage,
                   decoration: const InputDecoration(labelText: "Language"),
                   items: const [
                     DropdownMenuItem(value: "en", child: Text("English")),
