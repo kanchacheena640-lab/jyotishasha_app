@@ -12,10 +12,9 @@ class ProfileProvider extends ChangeNotifier {
   bool isLoading = false;
   bool isSwitching = false;
 
-  /// ⭐ NEW → Track Active Profile ID
+  /// ⭐ ACTIVE PROFILE ID
   String? activeProfileId;
 
-  /// ⭐ Getter for EditPage (easy access)
   String? get activeId => activeProfileId;
 
   // ---------------------------------------------------
@@ -27,14 +26,12 @@ class ProfileProvider extends ChangeNotifier {
 
     final list = await _service.getProfiles();
 
-    // ⭐ AUTO-ACTIVATE IF ONLY ONE PROFILE EXISTS
+    // Auto-activate if only one profile exists
     if (list.length == 1) {
       final only = list.first;
-
       if (only["isActive"] != true) {
-        // Make single profile active automatically
         await _service.setActiveProfile(only["id"]);
-        return loadProfiles(); // reload after update
+        return loadProfiles();
       }
     }
 
@@ -43,27 +40,19 @@ class ProfileProvider extends ChangeNotifier {
       otherProfiles = [];
       activeProfileId = null;
     } else {
-      // active profile
+      // FIND ACTIVE PROFILE
       activeProfile = list.firstWhere(
         (p) => p["isActive"] == true,
-        orElse: () => {
-          "id": "",
-          "name": "",
-          "dob": "",
-          "tob": "",
-          "pob": "",
-          "lat": 0.0,
-          "lng": 0.0,
-          "gender": "",
-          "language": "en",
-          "isActive": true,
-        },
+        orElse: () => {},
       );
 
-      // ⭐ FIX → Save active ID
+      // ⭐ FIX → Normalize Backend IDs
+      _normalizeBackendIds();
+
+      // SAVE ACTIVE ID
       activeProfileId = activeProfile?["id"];
 
-      // other profiles
+      // OTHER PROFILES
       otherProfiles = list.where((p) => p["isActive"] != true).toList();
     }
 
@@ -72,7 +61,33 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------
-  // ADD NEW PROFILE
+  // ⭐ NORMALIZE BACKEND IDs (FINAL WORKING VERSION)
+  // ---------------------------------------------------
+  void _normalizeBackendIds() {
+    if (activeProfile == null) return;
+
+    // backend_user_id
+    final buid =
+        activeProfile!["backend_user_id"] ??
+        activeProfile!["backendUserId"] ??
+        activeProfile!["backendUserID"];
+
+    activeProfile!["backend_user_id"] = buid;
+
+    // backend_profile_id
+    final bpid =
+        activeProfile!["backend_profile_id"] ??
+        activeProfile!["backendProfileId"] ??
+        activeProfile!["backendProfileID"];
+
+    activeProfile!["backend_profile_id"] = bpid;
+
+    // ⭐ Debug print
+    print("🔥 Normalized Backend IDs → user=$buid | profile=$bpid");
+  }
+
+  // ---------------------------------------------------
+  // ADD PROFILE
   // ---------------------------------------------------
   Future<String?> addProfile(Map<String, dynamic> data) async {
     final id = await _service.addProfile(data);
@@ -90,7 +105,7 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------
-  // DELETE PROFILE
+  // DELETE
   // ---------------------------------------------------
   Future<bool> deleteProfile(String id) async {
     final ok = await _service.deleteProfile(id);

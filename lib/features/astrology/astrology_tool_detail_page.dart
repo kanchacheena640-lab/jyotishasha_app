@@ -21,6 +21,7 @@ import 'package:jyotishasha_app/features/kundali/widgets/life_aspect_widget.dart
 import 'package:jyotishasha_app/features/kundali/widgets/yog_dosh_result_widget.dart';
 import 'package:jyotishasha_app/features/kundali/widgets/gemstone_result_widget.dart';
 import 'package:jyotishasha_app/features/kundali/widgets/saturn_today_widget.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 class AstrologyToolDetailPage extends StatefulWidget {
   final String title;
@@ -136,6 +137,11 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 20),
+
+                    // ⭐ GOOGLE AD BELOW KUNDALI BOX
+                    const BannerAdWidget(),
 
                     const SizedBox(height: 20),
 

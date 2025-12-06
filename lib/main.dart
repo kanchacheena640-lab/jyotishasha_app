@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // ⭐ IMPORTANT
 
 import 'package:jyotishasha_app/app/app.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
@@ -21,14 +22,15 @@ Future<void> main() async {
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp();
 
+  // ⭐ MUST-HAVE for ads
+  await MobileAds.instance.initialize();
+
   runApp(
     MultiProvider(
       providers: [
-        /// ⭐ Load saved language automatically
         ChangeNotifierProvider(
           create: (_) => LanguageProvider()..loadSavedLanguage(),
         ),
-
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => FirebaseKundaliProvider()),
         ChangeNotifierProvider(create: (_) => KundaliProvider()),

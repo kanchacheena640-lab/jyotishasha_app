@@ -36,6 +36,7 @@ dependencies:
   shimmer: ^3.0.0
   audioplayers: ^6.5.1
   webview_flutter: ^4.10.0
+  google_mobile_ads: ^5.0.0
 
 dev_dependencies:
   flutter_test:

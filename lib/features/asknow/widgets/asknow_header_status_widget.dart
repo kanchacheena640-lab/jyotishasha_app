@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AskNowHeaderStatusWidget extends StatelessWidget {
   final int freeQ; // 0 or 1
-  final int earnedQ; // loaded from backend
+  final int earnedQ; // pack + reward combined
   final VoidCallback onBuy;
 
   const AskNowHeaderStatusWidget({
@@ -25,33 +25,38 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
-
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // ---------------- LEFT : FREE QUESTION ----------------
+          // ---------------- LEFT: FREE QUESTION ----------------
           Row(
             children: [
               Text(
-                "Free Q = ",
+                "Free Q",
                 style: GoogleFonts.montserrat(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
               ),
+              const SizedBox(width: 8),
+
+              // Free Badge
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: freeQ > 0 ? Colors.green : Colors.grey,
-                  borderRadius: BorderRadius.circular(8),
+                  color: freeQ > 0
+                      ? Colors.green.shade600
+                      : Colors.grey.shade500,
+                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   "$freeQ",
@@ -65,52 +70,54 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
             ],
           ),
 
-          // ---------------- RIGHT : EARNED QUESTION ----------------
+          // ---------------- RIGHT: EARNED / PACK TOKEN SECTION ----------------
           Row(
             children: [
               Text(
-                "Earned Q = ",
+                "Earned Q",
                 style: GoogleFonts.montserrat(
                   fontSize: 14,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
                 ),
               ),
+              const SizedBox(width: 8),
 
-              // ⭐ THIS IS THE FIX: earnedQ > 0 ALWAYS SHOW CORRECT VALUE
+              // Tokens available → purple badge
               if (earnedQ > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.purple,
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF7C3AED), // Jyotishasha purple
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     "$earnedQ",
                     style: GoogleFonts.montserrat(
                       fontSize: 14,
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
                 )
               else
-                // Show Buy button only if earnedQ == 0
+                // No tokens → buy pack button
                 GestureDetector(
                   onTap: onBuy,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
+                      horizontal: 12,
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.orange,
-                      borderRadius: BorderRadius.circular(8),
+                      color: Colors.orange.shade700,
+                      borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      "Get 8 Q @ ₹51",
+                      "8Q @ ₹51",
                       style: GoogleFonts.montserrat(
                         fontSize: 13,
                         color: Colors.white,

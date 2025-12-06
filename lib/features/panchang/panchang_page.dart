@@ -8,6 +8,7 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
@@ -234,6 +235,16 @@ class _PanchangPageState extends State<PanchangPage> {
                 color: AppColors.textSecondary,
                 fontSize: 13,
               ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // ⭐ GOOGLE BANNER AD (footer ke upar) — CENTER FIX
+          Center(
+            child: SizedBox(
+              width: double.infinity, // Ensures full-width
+              child: const BannerAdWidget(),
             ),
           ),
 

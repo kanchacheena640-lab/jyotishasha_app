@@ -11,6 +11,7 @@ import 'widgets/astrology_profile_card.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 class AstrologyPage extends StatefulWidget {
   final String? selectedSection;
@@ -166,7 +167,12 @@ class _AstrologyPageState extends State<AstrologyPage> {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
+
+            /// ⭐ ASTROLOGY PAGE — ADS BELOW SHARE BUTTON
+            Center(child: BannerAdWidget()),
+
+            const SizedBox(height: 16),
 
             AstrologyToolSection(
               kundali: kundali,

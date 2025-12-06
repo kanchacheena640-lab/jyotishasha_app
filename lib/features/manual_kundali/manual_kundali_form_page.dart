@@ -9,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_result_page.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 class ManualKundaliFormPage extends StatefulWidget {
   const ManualKundaliFormPage({super.key});
@@ -293,6 +294,12 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
                           ),
                         ),
                 ),
+                const SizedBox(height: 20),
+
+                // ⭐ GOOGLE AD — Center aligned
+                const Center(child: BannerAdWidget()),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),

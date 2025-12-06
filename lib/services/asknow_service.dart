@@ -160,4 +160,19 @@ class AskNowService {
       throw Exception("Status API error ${res.statusCode}: ${res.body}");
     }
   }
+
+  // ⭐ ADD: Reward question API call
+  static Future<Map<String, dynamic>> addRewardQuestion(int userId) async {
+    try {
+      final res = await http.post(
+        Uri.parse("$_baseUrl/api/chat/reward"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"user_id": userId}),
+      );
+
+      return jsonDecode(res.body) as Map<String, dynamic>;
+    } catch (e) {
+      return {"success": false, "message": "Reward API error: $e"};
+    }
+  }
 }

@@ -11,6 +11,8 @@ import 'package:jyotishasha_app/features/asknow/widgets/asknow_header_status_wid
 import 'package:jyotishasha_app/services/asknow_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/core/ads/rewarded_ad_manager.dart';
 
 // RAZORPAY
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -30,12 +32,164 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   final TextEditingController _questionController = TextEditingController();
   final List<Map<String, String>> chatMessages = [];
 
+  final ScrollController _scrollController = ScrollController();
+
   late Razorpay _razorpay;
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      });
+    }
+  }
+
+  // ⭐ REWARD FLOW STARTER — (2 ads → 1 reward)
+  int _adsWatched = 0; // <-- add this above startRewardFlow()
+
+  void _startRewardFlow() {
+    RewardedAdManager.show(
+      onAdCompleted: () async {
+        _adsWatched++;
+
+        if (_adsWatched < 2) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Ad $_adsWatched/2 completed. Watch one more!"),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          return;
+        }
+
+        _adsWatched = 0;
+
+        final provider = context.read<AskNowProvider>();
+        final firebaseUser = FirebaseAuth.instance.currentUser;
+        if (firebaseUser == null) return;
+
+        final doc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(firebaseUser.uid)
+            .get();
+
+        final rawId = doc.data()?["backend_user_id"];
+        final int userId = rawId is int
+            ? rawId
+            : int.tryParse(rawId?.toString() ?? "0") ?? 0;
+
+        if (userId == 0) return;
+
+        await provider.earnedReward(userId);
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("🎉 You earned 1 Free Question!"),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+
+      onFailed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Ad not ready. Try again..."),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      },
+    );
+  }
 
   String? _pendingPaidQuestionText;
   Map<String, dynamic>? _pendingPaidProfile;
   int? _userIdForPayment;
   String? _currentOrderId;
+
+  // ⭐ BOTTOM SHEET — EARN FREE QUESTION (Watch Ads)
+  void _showEarnFreeQuestionSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // ⭐ Heading
+              const Text(
+                "Earn 1 Free Question",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                "Watch 2 short ads and instantly get 1 free question added to your account.",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+
+              const SizedBox(height: 20),
+
+              // ⭐ WATCH ADS BUTTON
+              ElevatedButton.icon(
+                icon: const Icon(Icons.play_circle_fill, color: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _startRewardFlow();
+                },
+                label: const Text(
+                  "Watch Ads",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                "Complete both ads to unlock the reward.",
+                style: TextStyle(fontSize: 11, color: Colors.black45),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   // ---------------------------------------------------
   // 🔧 CLEAN BOT ANSWER TEXT AT UI LEVEL
@@ -134,6 +288,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   @override
   void initState() {
     super.initState();
+    RewardedAdManager.load();
 
     _razorpay = Razorpay();
     _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
@@ -250,6 +405,8 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
       setState(() {
         chatMessages.add({"sender": "bot", "text": ansText});
       });
+
+      _scrollToBottom();
     } else if (provider.lastErrorMessage != null &&
         provider.lastErrorMessage != "PAYMENT_REQUIRED") {
       ScaffoldMessenger.of(
@@ -262,29 +419,23 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   // =====================================================
-  // MAIN SEND QUESTION
+  // ⭐ FIXED MAIN SEND QUESTION — 100% CORRECT FLOW
   // =====================================================
-
   Future<void> _sendQuestion() async {
     final String question = _questionController.text.trim();
     if (question.isEmpty) return;
 
     final provider = context.read<AskNowProvider>();
 
-    if (provider.statusLoaded &&
-        provider.freeUsedToday &&
-        !provider.hasActivePack) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("❗ You have already used your free question today."),
-        ),
-      );
-      return;
-    }
+    // ⛔ Prevent double-send
+    if (provider.isLoading) return;
 
+    // -------------------------------
+    // 1) FETCH USER + BACKEND ID
+    // -------------------------------
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) {
-      print("❌ No Firebase user found");
+      debugPrint("❌ No Firebase user");
       return;
     }
 
@@ -297,8 +448,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     final int userId = rawId is int
         ? rawId
         : int.tryParse(rawId?.toString() ?? "0") ?? 0;
+
     if (userId == 0) {
-      print("❌ backend_user_id missing in Firestore");
+      debugPrint("❌ backend_user_id missing");
       return;
     }
 
@@ -311,11 +463,46 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
     final Map<String, dynamic> profile = profileSnap.data() ?? {};
 
+    // -------------------------------
+    // 2) SHOW IMMEDIATELY IN UI
+    // -------------------------------
     setState(() {
       chatMessages.add({"sender": "user", "text": question});
       _questionController.clear();
     });
 
+    _scrollToBottom();
+
+    // -------------------------------------------------------------------
+    // ⭐ NEW PRIORITY LOGIC (THE REAL FIX)
+    //
+    // 1️⃣ If free question available → use free
+    // 2️⃣ Else if pack tokens > 0 → use tokens
+    // 3️⃣ Else → NO free + NO tokens → show reward + pack sheet
+    // -------------------------------------------------------------------
+
+    bool useFree = provider.freeAvailable == true; // free not used today
+    bool usePack = !useFree && provider.remainingTokens > 0; // pack available
+    bool needPayment = !useFree && !usePack; // nothing available
+
+    // -------------------------------
+    // ⭐ 3) NOTHING AVAILABLE → SHOW OPTIONS
+    // -------------------------------
+    if (needPayment) {
+      // Save question for after-payment if user chooses pack
+      _pendingPaidQuestionText = question;
+      _pendingPaidProfile = profile;
+      _userIdForPayment = userId;
+
+      // ⭐ Show bottom sheet: Buy Pack OR Watch Reward Ads
+      _showPackSheet();
+
+      return;
+    }
+
+    // -------------------------------
+    // ⭐ 4) USE FREE OR PACK — MAKE API CALL
+    // -------------------------------
     await provider.askFreeOrFromTokens(
       question: question,
       profile: profile,
@@ -324,30 +511,36 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
     if (!mounted) return;
 
-    // -------------- BOT ANSWER --------------
+    // -------------------------------
+    // ⭐ 5) GOT BOT ANSWER
+    // -------------------------------
     if (provider.pendingAnswer != null) {
       await Future.delayed(const Duration(seconds: 2));
-
-      // ✅ CLEAN HERE TOO
       final String ansText = _cleanBotText(provider.pendingAnswer);
       provider.clearPending();
 
       setState(() {
         chatMessages.add({"sender": "bot", "text": ansText});
       });
+
       return;
     }
 
-    // -------------- PAYMENT REQUIRED --------------
+    // -------------------------------
+    // ⭐ 6) PAYMENT NEEDED (Pack Required)
+    // -------------------------------
     if (provider.lastErrorMessage == "PAYMENT_REQUIRED") {
       _pendingPaidQuestionText = question;
       _pendingPaidProfile = profile;
       _userIdForPayment = userId;
+
       _showPackSheet();
       return;
     }
 
-    // -------------- ERROR HANDLING --------------
+    // -------------------------------
+    // ⭐ 7) ANY OTHER ERROR
+    // -------------------------------
     if (provider.lastErrorMessage != null) {
       ScaffoldMessenger.of(
         context,
@@ -356,76 +549,165 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   // =====================================================
-  // BOTTOM SHEET — BUY PACK
+  // ⭐ UPGRADED PACK + REWARD COMBINED BOTTOM SHEET
   // =====================================================
-
   void _showPackSheet() {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (ctx) {
         return Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // Drag handle
               Container(
-                width: 48,
+                width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: Colors.grey.shade400,
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
+
+              // Title
               Text(
-                // 👇 isko bhi baad me ARB se nikaal sakte ho chaaho to
-                "Unlock 8 Detailed Answers",
-                style: GoogleFonts.montserrat(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
+                "You’ve used your free question today",
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 12),
+
               Text(
-                "You’ve used your free question for today.\nGet a question pack for just ₹51 and ask 8 questions anytime.",
+                "Choose how you want to continue asking:",
                 textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: 13,
-                  color: Colors.black54,
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+
+              const SizedBox(height: 26),
+
+              // --------------------------------------------------
+              // 1️⃣ OPTION: WATCH ADS FOR 1 FREE QUESTION
+              // --------------------------------------------------
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Watch 2 Ads → Get 1 Free Question",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.orange,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "No payment needed. Complete both ads and get 1 instant free question added.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      icon: const Icon(
+                        Icons.play_circle_fill,
+                        color: Colors.white,
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _startRewardFlow();
+                      },
+                      label: const Text(
+                        "Watch Ads",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _startPackPayment,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
+
+              const SizedBox(height: 26),
+
+              // --------------------------------------------------
+              // 2️⃣ OPTION: BUY PACK (₹51 → 8 QUESTIONS)
+              // --------------------------------------------------
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.purple.shade50,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.purple.shade200),
                 ),
-                child: Text(
-                  "Pay ₹51 & Unlock 8 Questions",
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Buy Pack – ₹51",
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF7C3AED),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "Get 8 premium questions you can use anytime. No expiry.",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _startPackPayment();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: const Text(
+                        "Pay ₹51 & Get 8 Questions",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
+
               const SizedBox(height: 8),
-              Text(
-                "Pack has no expiry – valid until all 8 questions are used.",
-                textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: 11,
-                  color: Colors.black45,
-                ),
+              const Text(
+                "Pack questions never expire.",
+                style: TextStyle(fontSize: 11, color: Colors.black45),
               ),
             ],
           ),
@@ -486,16 +768,55 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           elevation: 0,
           centerTitle: true,
         ),
+
         body: Column(
           children: [
             AskNowHeaderStatusWidget(
-              freeQ: provider.statusLoaded
-                  ? (provider.freeUsedToday ? 0 : 1)
-                  : 0,
+              freeQ: provider.statusLoaded && provider.freeAvailable ? 1 : 0,
               earnedQ: provider.remainingTokens, // ✅ int hi jaa raha hai
               onBuy: _showPackSheet,
             ),
             const SizedBox(height: 12),
+
+            // ⭐ FREE QUESTION UNLOCK BUTTON ⭐
+            if (provider.statusLoaded &&
+                provider.freeAvailable == false && // free NOT available
+                provider.freeUsedToday == true && // free USED TODAY
+                provider.remainingTokens == 0) // no pack tokens
+              Center(
+                child: GestureDetector(
+                  onTap: () => _showEarnFreeQuestionSheet(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 22,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange,
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.play_circle_fill,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Unlock 1 Free Question",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             Expanded(
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
@@ -527,37 +848,56 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                               ),
                             )
                           : ListView.builder(
+                              controller: _scrollController,
                               padding: const EdgeInsets.all(16),
                               itemCount: chatMessages.length,
                               itemBuilder: (context, index) {
                                 final msg = chatMessages[index];
                                 final bool isUser = msg['sender'] == 'user';
 
-                                return Align(
-                                  alignment: isUser
-                                      ? Alignment.centerRight
-                                      : Alignment.centerLeft,
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 4,
-                                    ),
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: isUser
-                                          ? const Color(0xFF7C3AED)
-                                          : const Color(0xFFF6F6F6),
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                    child: Text(
-                                      msg['text'] ?? "",
-                                      style: GoogleFonts.montserrat(
+                                List<Widget> items = [];
+
+                                // ⭐ 1. Normal Chat Bubble
+                                items.add(
+                                  Align(
+                                    alignment: isUser
+                                        ? Alignment.centerRight
+                                        : Alignment.centerLeft,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 4,
+                                      ),
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
                                         color: isUser
-                                            ? Colors.white
-                                            : Colors.black87,
-                                        fontSize: 14,
+                                            ? const Color(0xFF7C3AED)
+                                            : const Color(0xFFF6F6F6),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Text(
+                                        msg['text'] ?? "",
+                                        style: GoogleFonts.montserrat(
+                                          color: isUser
+                                              ? Colors.white
+                                              : Colors.black87,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
                                   ),
+                                );
+
+                                // ⭐ 2. Ad Insert — हर bot message के बाद ad दिखे
+                                if (!isUser) {
+                                  items.add(const SizedBox(height: 10));
+                                  items.add(const BannerAdWidget());
+                                  items.add(const SizedBox(height: 10));
+                                }
+
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: items,
                                 );
                               },
                             ),

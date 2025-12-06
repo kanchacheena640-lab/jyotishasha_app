@@ -31,8 +31,7 @@ class PanchangCardWidget extends StatelessWidget {
     final sunset = p.sunset;
 
     // 🟣 Panchak
-    final panchakMessage = p.panchakMessage.toString().toLowerCase();
-    final bool panchakActive = !panchakMessage.contains("no");
+    final bool panchakActive = p.fullPanchang?["panchak"]?["active"] == true;
 
     final String panchakLabel = panchakActive ? t.panchang_yes : t.panchang_no;
 

@@ -11,6 +11,8 @@ import 'package:jyotishasha_app/features/astrology/widgets/astrology_profile_car
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/manual_astrology_tool_section.dart';
 
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+
 class ManualKundaliResultPage extends StatefulWidget {
   const ManualKundaliResultPage({super.key});
 
@@ -72,6 +74,11 @@ class _ManualKundaliResultPageState extends State<ManualKundaliResultPage> {
               key: _shareKey,
               child: AstrologyProfileCard(kundali: kundali),
             ),
+
+            const SizedBox(height: 16),
+
+            // ⭐ GOOGLE AD BELOW KUNDALI IMAGE
+            const BannerAdWidget(),
 
             const SizedBox(height: 20),
 

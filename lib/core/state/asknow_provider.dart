@@ -180,4 +180,27 @@ class AskNowProvider extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // ⭐ ADD 1 QUESTION WHEN USER WATCHES 2 ADS
+  Future<void> earnedReward(int userId) async {
+    try {
+      final res = await AskNowService.addRewardQuestion(userId);
+
+      if (res["success"] == true) {
+        final int newTotal =
+            int.tryParse(res["total_tokens"].toString()) ?? remainingTokens;
+
+        remainingTokens = newTotal;
+        hasActivePack = remainingTokens > 0;
+
+        // ⭐ FREE KO TOUCH MAT KARNA
+        freeAvailable = false;
+        freeUsedToday = true;
+
+        notifyListeners();
+      }
+    } catch (e) {
+      print("Reward error: $e");
+    }
+  }
 }

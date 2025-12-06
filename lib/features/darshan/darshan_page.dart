@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:intl/intl.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 class DarshanPage extends StatefulWidget {
   const DarshanPage({super.key});
@@ -146,67 +147,20 @@ class _DarshanPageState extends State<DarshanPage>
             ),
           ),
 
-          // 🔔 Text info section
-          Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-              border: Border.all(color: Colors.deepOrange, width: 1.2),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 🔱 Mini mantra icon
-                const Icon(
-                  Icons.auto_awesome,
-                  color: Colors.deepOrange,
-                  size: 22,
-                ),
-
-                const SizedBox(width: 10),
-
-                // 🔊 Animated mantra text
-                AnimatedBuilder(
-                  animation: _scaleAnim,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: 1 + (_scaleAnim.value - 1) * 0.4,
-                      child: const Text(
-                        "Mantra is Playing...",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.deepOrange,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-
-          // 📺 Silent ad section
-          Container(
-            height: 60,
-            margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: const [
-                BoxShadow(color: Colors.black12, blurRadius: 6),
-              ],
-            ),
-            child: const Center(
-              child: Text(
-                "Ad space (silent)",
-                style: TextStyle(color: Colors.black54),
+          // ⭐ AD INSIDE CONTENT (Safe from navigation overlap)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 6),
+                ],
+                border: Border.all(color: Colors.deepOrange, width: 1.0),
               ),
+              child: const BannerAdWidget(),
             ),
           ),
         ],

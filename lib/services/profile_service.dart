@@ -7,7 +7,7 @@ class ProfileService {
   final _auth = FirebaseAuth.instance;
   final _db = FirebaseFirestore.instance;
 
-  /// 🔹 Add New Profile
+  /// 🔹 Add New Profile (FIXED)
   Future<String?> addProfile(Map<String, dynamic> data) async {
     final uid = _auth.currentUser?.uid;
     if (uid == null) return null;
@@ -15,15 +15,19 @@ class ProfileService {
     final userRef = _db.collection('users').doc(uid);
     final profiles = userRef.collection('profiles');
 
-    // check number of profiles
+    /// ⭐ AUTO-ACTIVATE FIRST PROFILE
     final existing = await profiles.get();
-
-    // If no profiles exist, set this as active
     data['isActive'] = existing.docs.isEmpty;
+
+    /// ⭐ FIX → Always store backend_profile_id (snake_case)
+    if (data.containsKey('backendProfileId')) {
+      data['backend_profile_id'] = data['backendProfileId'];
+      data.remove('backendProfileId');
+    }
 
     final doc = await profiles.add(data);
 
-    // If active, also update root user doc
+    /// ⭐ Update root user doc
     if (data['isActive'] == true) {
       await userRef.update({'activeProfileId': doc.id});
     }
@@ -74,15 +78,15 @@ class ProfileService {
 
     final all = await profiles.get();
 
-    // 1) Set all inactive
+    // Set all inactive
     for (final p in all.docs) {
       await profiles.doc(p.id).update({'isActive': false});
     }
 
-    // 2) Set selected active
+    // Activate selected
     await profiles.doc(profileId).update({'isActive': true});
 
-    // 3) Store in root user document
+    // Store in root document
     await userRef.update({'activeProfileId': profileId});
   }
 
@@ -96,7 +100,7 @@ class ProfileService {
 
     await profiles.doc(profileId).delete();
 
-    // If active → remove from root
+    // Remove active id if deleted
     final userDoc = await userRef.get();
     if (userDoc.data()?['activeProfileId'] == profileId) {
       await userRef.update({'activeProfileId': null});
@@ -105,7 +109,7 @@ class ProfileService {
     return true;
   }
 
-  /// 🔹 UPDATE PROFILE  ⭐ (YAHI MISSING THA)
+  /// 🔹 UPDATE PROFILE (FIXED)
   Future<bool> updateProfile(
     String profileId,
     Map<String, dynamic> data,
@@ -115,6 +119,12 @@ class ProfileService {
 
     final userRef = _db.collection('users').doc(uid);
     final profiles = userRef.collection('profiles');
+
+    /// ⭐ FIX — convert camelCase → snake_case if needed
+    if (data.containsKey('backendProfileId')) {
+      data['backend_profile_id'] = data['backendProfileId'];
+      data.remove('backendProfileId');
+    }
 
     await profiles.doc(profileId).update(data);
 

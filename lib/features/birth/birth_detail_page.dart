@@ -1,16 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:google_places_flutter/google_places_flutter.dart';
 
 class BirthDetailPage extends StatefulWidget {
   const BirthDetailPage({super.key});
@@ -26,60 +29,242 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
   final dobCtrl = TextEditingController();
   final tobCtrl = TextEditingController();
   final pobCtrl = TextEditingController();
+
   String selectedLang = 'English';
   bool _isSaving = false;
 
   double? latitude;
   double? longitude;
 
-  /// 🔹 Convert DD-MM-YYYY → YYYY-MM-DD
+  /// Convert DD-MM-YYYY → YYYY-MM-DD
   String _convertDob(String ddmmyyyy) {
     final parts = ddmmyyyy.split("-");
     return "${parts[2]}-${parts[1]}-${parts[0]}";
   }
 
-  /// 🔹 Date Picker
-  Future<void> _pickDate() async {
-    final date = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2000),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-      builder: (context, child) => Theme(
-        data: ThemeData.light().copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.primary),
+  // -------------------------------------------------------
+  // PREMIUM GLASS PICKER POPUP
+  // -------------------------------------------------------
+  Widget _glassTopBar() {
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          height: 55,
+          decoration: BoxDecoration(color: Colors.white.withOpacity(0.35)),
+          child: Center(
+            child: Container(
+              width: 40,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.black26,
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+          ),
         ),
-        child: child!,
       ),
     );
-    if (date != null) {
-      dobCtrl.text =
-          "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
-    }
   }
 
-  /// 🔹 Time Picker
-  Future<void> _pickTime() async {
-    final time = await showTimePicker(
+  Future<void> _pickDateCupertino() async {
+    DateTime selected = DateTime.now();
+
+    await showCupertinoModalPopup(
       context: context,
-      initialTime: const TimeOfDay(hour: 6, minute: 0),
-      builder: (context, child) => Theme(
-        data: ThemeData.light().copyWith(
-          colorScheme: ColorScheme.light(primary: AppColors.primary),
+      builder: (_) {
+        return Center(
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 240),
+            scale: 1.0,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.92,
+              height: 330,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.1),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _glassTopBar(),
+                  SizedBox(
+                    height: 200,
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.date,
+                      initialDateTime: DateTime(2000),
+                      minimumDate: DateTime(1900),
+                      maximumDate: DateTime.now(),
+                      onDateTimeChanged: (value) => selected = value,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton.filled(
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Text("Done"),
+                        onPressed: () {
+                          dobCtrl.text =
+                              "${selected.day.toString().padLeft(2, '0')}-${selected.month.toString().padLeft(2, '0')}-${selected.year}";
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickTimeCupertino() async {
+    TimeOfDay selected = TimeOfDay.now();
+
+    await showCupertinoModalPopup(
+      context: context,
+      builder: (_) {
+        return Center(
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 240),
+            scale: 1.0,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.92,
+              height: 300,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12.withOpacity(0.1),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _glassTopBar(),
+                  SizedBox(
+                    height: 180,
+                    child: CupertinoDatePicker(
+                      mode: CupertinoDatePickerMode.time,
+                      use24hFormat: true,
+                      onDateTimeChanged: (value) {
+                        selected = TimeOfDay.fromDateTime(value);
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: CupertinoButton.filled(
+                        borderRadius: BorderRadius.circular(12),
+                        child: const Text("Done"),
+                        onPressed: () {
+                          tobCtrl.text =
+                              "${selected.hour.toString().padLeft(2, '0')}:${selected.minute.toString().padLeft(2, '0')}";
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // -------------------------------------------------------
+  // PREMIUM GOOGLE PLACE FIELD
+  // -------------------------------------------------------
+  Widget _buildPlaceField() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: GooglePlaceAutoCompleteTextField(
+        textEditingController: pobCtrl,
+        googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
+        inputDecoration: const InputDecoration(
+          labelText: "Place of Birth",
+          prefixIcon: Icon(
+            Icons.location_on_outlined,
+            color: AppColors.primary,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-        child: child!,
+        debounceTime: 400,
+        countries: const ["in"],
+        isLatLngRequired: true,
+
+        getPlaceDetailWithLatLng: (Prediction prediction) async {
+          if (prediction.lat != null && prediction.lng != null) {
+            latitude = double.tryParse(prediction.lat!);
+            longitude = double.tryParse(prediction.lng!);
+          } else {
+            final loc = await locationFromAddress(prediction.description!);
+            latitude = loc.first.latitude;
+            longitude = loc.first.longitude;
+          }
+        },
+
+        itemClick: (Prediction prediction) {
+          pobCtrl.text = prediction.description ?? "";
+          FocusScope.of(context).unfocus();
+        },
+
+        itemBuilder: (context, index, Prediction p) {
+          return Container(
+            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12.withOpacity(0.05),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: ListTile(
+              leading: const Icon(Icons.location_on, color: AppColors.primary),
+              title: Text(p.description ?? ""),
+            ),
+          );
+        },
       ),
     );
-    if (time != null) {
-      tobCtrl.text = "${time.hour}:${time.minute.toString().padLeft(2, '0')}";
-    }
   }
 
-  /// 🔥 FINAL SAVE FLOW:
-  /// 1) Validate form
-  /// 2) Call Backend → /api/user/bootstrap
-  /// 3) Save to Firestore
-  /// 4) Go to Dashboard
+  // -------------------------------------------------------
+  // FINAL SAVE FLOW
+  // -------------------------------------------------------
   Future<void> _saveDetails() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isSaving = true);
@@ -90,16 +275,15 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
 
       final provider = context.read<KundaliProvider>();
 
-      // Step 1 — collect user input
       final name = nameCtrl.text.trim();
       final dob = _convertDob(dobCtrl.text.trim());
       final tob = tobCtrl.text.trim();
       final pob = pobCtrl.text.trim();
       final lat = latitude ?? 26.8467;
       final lng = longitude ?? 80.9462;
+
       final language = selectedLang == "English" ? "en" : "hi";
 
-      // Step 2 — backend bootstrap
       final result = await provider.bootstrapUserProfile(
         name: name,
         dob: dob,
@@ -118,7 +302,6 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
         return;
       }
 
-      // Step 3 — Save to Firestore
       final firestore = FirebaseFirestore.instance;
       final userRef = firestore.collection('users').doc(user.uid);
       const profileId = "default";
@@ -145,30 +328,27 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
         "updatedAt": DateTime.now().toIso8601String(),
       }, SetOptions(merge: true));
 
-      if (!mounted) return;
+      // ⭐ LANGUAGE SYNC
+      await context.read<LanguageProvider>().setLanguage(language);
 
-      // Step 4 — move to Dashboard
-      context.go('/dashboard');
-    } catch (e) {
-      debugPrint("❌ Error: $e");
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      context.go('/dashboard');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
   }
 
+  // -------------------------------------------------------
+  // UI
+  // -------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return KeyboardDismissOnTap(
       child: Scaffold(
         backgroundColor: AppColors.surface,
         appBar: AppBar(
           backgroundColor: AppColors.primary,
+          elevation: 0,
           title: Text(
             "Enter Birth Details",
             style: GoogleFonts.montserrat(
@@ -178,10 +358,11 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
           ),
           centerTitle: true,
         ),
+
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Container(
-            width: double.infinity,
+            padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -193,121 +374,47 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                 end: Alignment.bottomCenter,
               ),
             ),
-            padding: const EdgeInsets.all(20),
+
             child: Form(
               key: _formKey,
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 20),
+
                   Text(
                     "Tell us about yourself 🌞",
-                    textAlign: TextAlign.center,
                     style: GoogleFonts.montserrat(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,
                     ),
                   ),
+
                   const SizedBox(height: 30),
 
-                  // Name
-                  _buildTextField(
-                    controller: nameCtrl,
-                    label: "Full Name",
-                    icon: Icons.person_outline,
-                    validator: (v) => v == null || v.isEmpty
-                        ? "Please enter your name"
-                        : null,
-                  ),
+                  _buildField(nameCtrl, "Full Name", Icons.person_outline),
 
-                  // DOB
-                  _buildTextField(
-                    controller: dobCtrl,
-                    label: "Date of Birth (DD-MM-YYYY)",
-                    icon: Icons.cake_outlined,
+                  _buildField(
+                    dobCtrl,
+                    "Date of Birth",
+                    Icons.cake_outlined,
                     readOnly: true,
-                    onTap: _pickDate,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Please enter your DOB" : null,
+                    onTap: _pickDateCupertino,
                   ),
 
-                  // TOB
-                  _buildTextField(
-                    controller: tobCtrl,
-                    label: "Time of Birth (HH:MM)",
-                    icon: Icons.access_time,
+                  _buildField(
+                    tobCtrl,
+                    "Time of Birth",
+                    Icons.access_time,
                     readOnly: true,
-                    onTap: _pickTime,
-                    validator: (v) =>
-                        v == null || v.isEmpty ? "Please enter your TOB" : null,
+                    onTap: _pickTimeCupertino,
                   ),
 
-                  // POB
+                  _buildPlaceField(),
+
                   Container(
                     margin: const EdgeInsets.only(bottom: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black12.withOpacity(0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: GooglePlaceAutoCompleteTextField(
-                      textEditingController: pobCtrl,
-                      googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                      inputDecoration: const InputDecoration(
-                        labelText: "Place of Birth",
-                        prefixIcon: Icon(
-                          Icons.location_on_outlined,
-                          color: AppColors.primary,
-                        ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      debounceTime: 400,
-                      countries: const ["in"],
-                      isLatLngRequired: true,
-                      getPlaceDetailWithLatLng: (Prediction prediction) async {
-                        if (prediction.lat != null && prediction.lng != null) {
-                          latitude = double.tryParse(prediction.lat!);
-                          longitude = double.tryParse(prediction.lng!);
-                        } else {
-                          final locations = await locationFromAddress(
-                            prediction.description!,
-                          );
-                          if (locations.isNotEmpty) {
-                            latitude = locations.first.latitude;
-                            longitude = locations.first.longitude;
-                          }
-                        }
-                      },
-                      itemClick: (Prediction prediction) {
-                        pobCtrl.text = prediction.description ?? "";
-                        FocusScope.of(context).unfocus();
-                      },
-                      itemBuilder: (context, index, Prediction prediction) {
-                        return ListTile(
-                          leading: const Icon(
-                            Icons.location_on,
-                            color: AppColors.primary,
-                          ),
-                          title: Text(prediction.description ?? ""),
-                        );
-                      },
-                    ),
-                  ),
-
-                  // Language dropdown
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
@@ -320,43 +427,62 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                       decoration: const InputDecoration(
                         labelText: "Preferred Language",
                         border: InputBorder.none,
-                        prefixIcon: Icon(Icons.language),
                       ),
                       items: const [
                         DropdownMenuItem(
-                          value: 'English',
+                          value: "English",
                           child: Text("English"),
                         ),
-                        DropdownMenuItem(value: 'Hindi', child: Text("Hindi")),
+                        DropdownMenuItem(value: "Hindi", child: Text("Hindi")),
                       ],
-                      onChanged: (val) => setState(() => selectedLang = val!),
+                      onChanged: (v) => setState(() => selectedLang = v!),
                     ),
                   ),
 
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 30),
 
-                  // Continue Button
-                  ElevatedButton(
-                    onPressed: _isSaving ? null : _saveDetails,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                  // -------------------------------------------------------
+                  // PREMIUM CONTINUE BUTTON
+                  // -------------------------------------------------------
+                  Container(
+                    width: double.infinity,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.pinkAccent.withOpacity(0.25),
+                          blurRadius: 12,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
                     ),
-                    child: _isSaving
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : Text(
-                            "Continue",
-                            style: GoogleFonts.montserrat(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                    child: ElevatedButton(
+                      onPressed: _isSaving ? null : _saveDetails,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: _isSaving
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Text(
+                              "Continue",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
+                    ),
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
             ),
@@ -366,13 +492,12 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    String? Function(String?)? validator,
-    VoidCallback? onTap,
+  Widget _buildField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
     bool readOnly = false,
+    VoidCallback? onTap,
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -380,18 +505,15 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: Colors.black12.withOpacity(0.05), blurRadius: 4),
         ],
       ),
       child: TextFormField(
         controller: controller,
-        validator: validator,
-        onTap: onTap,
         readOnly: readOnly,
+        onTap: onTap,
+        validator: (v) =>
+            v == null || v.isEmpty ? "Please fill this field" : null,
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Icon(icon, color: AppColors.primary),

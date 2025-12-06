@@ -10,6 +10,21 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+
+Widget adCard() {
+  return Card(
+    margin: const EdgeInsets.only(bottom: 12),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    elevation: 3,
+    child: Padding(
+      padding: const EdgeInsets.all(8),
+      child: Center(
+        child: SizedBox(width: double.infinity, child: const BannerAdWidget()),
+      ),
+    ),
+  );
+}
 
 // GLOBAL CACHE
 Map<String, List<dynamic>> muhurthCache = {};
@@ -314,9 +329,20 @@ class _MuhurthPageState extends State<MuhurthPage> {
                         ),
                       )
                     : ListView.builder(
-                        itemCount: muhurthResults.length,
+                        itemCount:
+                            muhurthResults.length +
+                            (muhurthResults.length ~/ 3),
                         itemBuilder: (context, index) {
-                          return _buildMuhurthCard(muhurthResults[index], t);
+                          // after every 3rd item → insert ad
+                          if ((index + 1) % 3 == 0) {
+                            return adCard();
+                          }
+
+                          // map actual data index
+                          final dataIndex = index - (index ~/ 4);
+                          final item = muhurthResults[dataIndex];
+
+                          return _buildMuhurthCard(item, t);
                         },
                       ),
               ),

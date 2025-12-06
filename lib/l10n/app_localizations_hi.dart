@@ -1030,10 +1030,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get panchang_viewFull => 'पूरा पंचांग देखें →';
 
   @override
-  String get panchang_yes => 'Yes';
+  String get panchang_yes => 'हाँ';
 
   @override
-  String get panchang_no => 'No';
+  String get panchang_no => 'नहीं';
 
   @override
   String get panchang_title => 'आज का पंचांग';
