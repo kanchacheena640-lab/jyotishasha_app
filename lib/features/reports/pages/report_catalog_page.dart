@@ -9,9 +9,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
-import 'report_checkout_page.dart';
+// CHECKOUT PAGE IMPORT (IMPORTANT)
+import 'package:jyotishasha_app/features/reports/pages/report_checkout_page.dart';
 
 class ReportCatalogPage extends StatefulWidget {
   const ReportCatalogPage({super.key});
@@ -24,7 +26,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
   List<dynamic> reports = [];
   bool loading = true;
 
-  /// 🔹 Category slug: 'all', 'Finance', 'Self', 'Marriage', 'Transit' etc.
+  /// Category: all / Finance / Marriage / Love / Transit / Self
   String selectedCategory = 'all';
 
   @override
@@ -33,19 +35,19 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
     _loadReports();
   }
 
-  /// 🔥 Always load English JSON as base + merge Hindi text if available
+  // ------------------------------------------------------------
+  // LOAD REPORT JSON
+  // ------------------------------------------------------------
   Future<void> _loadReports() async {
     try {
       setState(() => loading = true);
 
-      // 1) Base EN data
-      final enData = await rootBundle.loadString('assets/data/reports.json');
+      final enData = await rootBundle.loadString("assets/data/reports.json");
       final List<dynamic> enList = jsonDecode(enData);
 
-      // 2) Optional HI overlay (only text fields)
       try {
         final hiData = await rootBundle.loadString(
-          'assets/data/reports_hi.json',
+          "assets/data/reports_hi.json",
         );
         final List<dynamic> hiList = jsonDecode(hiData);
 
@@ -55,21 +57,19 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
           final en = enList[i] as Map<String, dynamic>;
           final hi = hiList[i] as Map<String, dynamic>;
 
-          if (hi['title_hi'] != null) {
-            en['title_hi'] = hi['title_hi'];
+          if (hi["title_hi"] != null) en["title_hi"] = hi["title_hi"];
+          if (hi["description_hi"] != null) {
+            en["description_hi"] = hi["description_hi"];
           }
-          if (hi['description_hi'] != null) {
-            en['description_hi'] = hi['description_hi'];
+          if (hi["fullDescription_hi"] != null) {
+            en["fullDescription_hi"] = hi["fullDescription_hi"];
           }
-          if (hi['fullDescription_hi'] != null) {
-            en['fullDescription_hi'] = hi['fullDescription_hi'];
-          }
-          if (hi['category_hi'] != null) {
-            en['category_hi'] = hi['category_hi'];
-          }
+          if (hi["category_hi"] != null) en["category_hi"] = hi["category_hi"];
+
+          en["id"] = (en["slug"] ?? "").toString().trim().toLowerCase();
         }
-      } catch (e) {
-        debugPrint('⚠️ Could not load reports_hi.json: $e');
+      } catch (_) {
+        debugPrint("⚠️ reports_hi.json missing");
       }
 
       setState(() {
@@ -77,11 +77,14 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
         loading = false;
       });
     } catch (e) {
-      debugPrint("❌ Error loading reports JSON: $e");
+      debugPrint("❌ ERROR loading reports: $e");
       setState(() => loading = false);
     }
   }
 
+  // ------------------------------------------------------------
+  // UI
+  // ------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -93,7 +96,6 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
         title: Text(t.reports_title),
         centerTitle: true,
         backgroundColor: const Color(0xFF7C3AED),
-        elevation: 0,
       ),
       body: loading
           ? const Center(
@@ -101,7 +103,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
             )
           : Column(
               children: [
-                // 🔹 CATEGORY CHIPS
+                // Category chips
                 SizedBox(
                   height: 55,
                   child: ListView(
@@ -114,140 +116,27 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                   ),
                 ),
 
-                // 🔹 REPORT CARDS
+                // Report list
                 Expanded(
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
                     itemCount: _filteredReports().length,
-                    itemBuilder: (context, index) {
-                      final r = _filteredReports()[index];
+                    itemBuilder: (context, i) {
+                      final r = _filteredReports()[i];
 
-                      // ✅ Safe String casting
                       final String title =
                           (lang == "hi"
-                                  ? (r["title_hi"] ?? r["title"])
+                                  ? r["title_hi"] ?? r["title"]
                                   : r["title"])
                               .toString();
 
                       final String desc =
                           (lang == "hi"
-                                  ? (r["description_hi"] ?? r["description"])
+                                  ? r["description_hi"] ?? r["description"]
                                   : r["description"])
                               .toString();
 
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFF5F8), Color(0xFFFCEFF9)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 6,
-                              offset: Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () => _showReportDetails(context, r, lang, t),
-                          child: Row(
-                            children: [
-                              ClipRRect(
-                                borderRadius: const BorderRadius.only(
-                                  topLeft: Radius.circular(20),
-                                  bottomLeft: Radius.circular(20),
-                                ),
-                                child: Image.asset(
-                                  r["image"],
-                                  width: 110,
-                                  height: 110,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        title,
-                                        style: GoogleFonts.montserrat(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: const Color(0xFF4A148C),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Text(
-                                        desc,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.montserrat(
-                                          fontSize: 13,
-                                          color: Colors.black87,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Text(
-                                            "${t.reports_price_prefix}${r["price"]}",
-                                            style: GoogleFonts.montserrat(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                              color: const Color(0xFF7C3AED),
-                                            ),
-                                          ),
-                                          ElevatedButton(
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: const Color(
-                                                0xFF7C3AED,
-                                              ),
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                              ),
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 16,
-                                                    vertical: 8,
-                                                  ),
-                                            ),
-                                            onPressed: () => _showReportDetails(
-                                              context,
-                                              r,
-                                              lang,
-                                              t,
-                                            ),
-                                            child: Text(
-                                              t.reports_buy_now,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _buildReportCard(r, title, desc, t, lang);
                     },
                   ),
                 ),
@@ -256,127 +145,212 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
     );
   }
 
-  // 🔹 CATEGORY CHIPS
+  // ------------------------------------------------------------
+  // CATEGORY CHIPS
+  // ------------------------------------------------------------
   List<Widget> _buildCategoryChips(AppLocalizations t) {
-    // Unique category slugs from JSON
     final lang = context.read<LanguageProvider>().currentLang;
 
     final Set<String> categories = {
       for (final r in reports)
-        if (lang == "hi")
-          (r["category_hi"] ?? r["category"] ?? "").toString()
-        else
-          (r["category"] ?? "").toString(),
+        lang == "hi"
+            ? (r["category_hi"] ?? r["category"] ?? "")
+            : (r["category"] ?? ""),
     };
 
     return [
-      // "All" chip
-      Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(
-          label: Text(
-            t.reports_category_all,
-            style: GoogleFonts.montserrat(
-              color: selectedCategory == 'all'
-                  ? Colors.white
-                  : const Color(0xFF7C3AED),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          selected: selectedCategory == 'all',
-          selectedColor: const Color(0xFF7C3AED),
-          backgroundColor: Colors.white,
-          onSelected: (_) {
-            setState(() {
-              selectedCategory = 'all';
-            });
-          },
-        ),
-      ),
-      // Category chips from JSON (Finance, Love, Marriage...)
-      ...categories.map((cat) {
-        final isSelected = selectedCategory == cat;
-        return Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: ChoiceChip(
-            label: Text(
-              cat,
-              style: GoogleFonts.montserrat(
-                color: isSelected ? Colors.white : const Color(0xFF7C3AED),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            selected: isSelected,
-            selectedColor: const Color(0xFF7C3AED),
-            backgroundColor: Colors.white,
-            onSelected: (_) {
-              setState(() {
-                selectedCategory = cat;
-              });
-            },
-          ),
-        );
-      }),
+      _chip(t.reports_category_all, "all"),
+      ...categories.map((c) => _chip(c, c)),
     ];
   }
 
-  // 🔹 FILTERED REPORTS
+  Widget _chip(String label, String value) {
+    final selected = selectedCategory == value;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ChoiceChip(
+        label: Text(
+          label,
+          style: GoogleFonts.montserrat(
+            fontWeight: FontWeight.w500,
+            color: selected ? Colors.white : const Color(0xFF7C3AED),
+          ),
+        ),
+        selected: selected,
+        selectedColor: const Color(0xFF7C3AED),
+        backgroundColor: Colors.white,
+        onSelected: (_) => setState(() => selectedCategory = value),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // FILTER LOGIC
+  // ------------------------------------------------------------
   List<dynamic> _filteredReports() {
-    if (selectedCategory == 'all') return reports;
+    if (selectedCategory == "all") return reports;
 
     return reports.where((r) {
       final en = (r["category"] ?? "").toString().toLowerCase();
       final hi = (r["category_hi"] ?? "").toString().toLowerCase();
       final sel = selectedCategory.toLowerCase();
-
       return en == sel || hi == sel;
     }).toList();
   }
 
-  // 🔹 DETAILS POPUP
+  // ------------------------------------------------------------
+  // REPORT CARD
+  // ------------------------------------------------------------
+  Widget _buildReportCard(
+    dynamic r,
+    String title,
+    String desc,
+    AppLocalizations t,
+    String lang,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFF5F8), Color(0xFFFCEFF9)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(color: Colors.black12, blurRadius: 6, offset: Offset(0, 3)),
+        ],
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          final rootCtx = Navigator.of(context, rootNavigator: true).context;
+          _showReportDetails(rootCtx, r, lang, t);
+        },
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                bottomLeft: Radius.circular(20),
+              ),
+              child: Image.asset(
+                r["image"],
+                width: 110,
+                height: 110,
+                fit: BoxFit.cover,
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.montserrat(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: const Color(0xFF4A148C),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      desc,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${t.reports_price_prefix}${r["price"]}",
+                          style: GoogleFonts.montserrat(
+                            color: const Color(0xFF7C3AED),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF7C3AED),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () =>
+                              _showReportDetails(context, r, lang, t),
+                          child: Text(
+                            t.reports_buy_now,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------
+  // POPUP + CHECKOUT
+  // ------------------------------------------------------------
   void _showReportDetails(
     BuildContext context,
-    dynamic report,
+    dynamic r,
     String lang,
     AppLocalizations t,
   ) {
-    final String title =
-        (lang == "hi"
-                ? (report["title_hi"] ?? report["title"])
-                : report["title"])
-            .toString();
-
+    final String title = (lang == "hi"
+        ? r["title_hi"] ?? r["title"]
+        : r["title"]);
     final String desc =
         (lang == "hi"
-                ? (report["fullDescription_hi"] ?? report["fullDescription"])
-                : report["fullDescription"])
+                ? r["fullDescription_hi"] ?? r["fullDescription"]
+                : r["fullDescription"])
             .toString();
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '',
+      barrierLabel: 'Close',
       transitionDuration: const Duration(milliseconds: 300),
-      transitionBuilder: (context, animation, secondary, child) {
-        final curved = CurvedAnimation(
-          parent: animation,
-          curve: Curves.easeOutCubic,
-        );
-        return FadeTransition(
-          opacity: curved,
-          child: ScaleTransition(scale: curved, child: child),
-        );
-      },
-      pageBuilder: (context, _, __) {
+      transitionBuilder: (c, anim, __, child) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: child,
+        ),
+      ),
+      pageBuilder: (c, _, __) {
         return Center(
           child: Material(
             color: Colors.transparent,
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.9,
-              constraints: const BoxConstraints(maxHeight: 550),
+              width: MediaQuery.of(c).size.width * 0.9,
+              constraints: const BoxConstraints(maxHeight: 580),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black26,
@@ -386,19 +360,17 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                 ],
               ),
               child: SingleChildScrollView(
-                padding: EdgeInsets.zero,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20),
-                        topRight: Radius.circular(20),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(22),
                       ),
                       child: Image.asset(
-                        report["image"],
-                        height: 160,
+                        r["image"],
                         width: double.infinity,
+                        height: 170,
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -420,39 +392,59 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                             desc,
                             style: GoogleFonts.montserrat(
                               fontSize: 14,
-                              color: Colors.black87,
                               height: 1.5,
+                              color: Colors.black87,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 25),
+
+                          // BUY NOW BUTTON (FINAL PATCH)
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF7C3AED),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
                               onPressed: () {
-                                Navigator.pop(context);
-                                Navigator.push(
+                                // Proper dialog close
+                                Navigator.of(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ReportCheckoutPage(report: report),
-                                  ),
-                                );
+                                  rootNavigator: true,
+                                ).pop();
+
+                                final profile =
+                                    context
+                                        .read<ProfileProvider>()
+                                        .activeProfile ??
+                                    {};
+
+                                // Safe navigation post-frame
+                                WidgetsBinding.instance.addPostFrameCallback((
+                                  _,
+                                ) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ReportCheckoutPage(
+                                        selectedReport: r,
+                                        initialProfile: profile,
+                                      ),
+                                    ),
+                                  );
+                                });
                               },
                               child: Text(
-                                "${t.reports_buy_now} ${t.reports_price_prefix}${report["price"]}",
+                                "${t.reports_buy_now} ${t.reports_price_prefix}${r["price"]}",
                                 style: GoogleFonts.montserrat(
                                   fontSize: 16,
-                                  color: Colors.white,
                                   fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                 ),
                               ),
                             ),

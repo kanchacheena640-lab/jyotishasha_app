@@ -46,6 +46,9 @@ class _DashboardPageState extends State<DashboardPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_initialized) {
         _initialized = true;
+
+        context.read<ProfileProvider>().loadProfiles();
+
         _initFlow();
       }
 

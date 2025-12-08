@@ -11,6 +11,7 @@ import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
 
 Widget adCard() {
   return Card(
@@ -230,6 +231,11 @@ class _MuhurthPageState extends State<MuhurthPage> {
               color: Colors.white,
             ),
           ),
+          actions: const [
+            GlobalShareButton(
+              currentPage: "panchang",
+            ), // ⭐ Muhurtha = Panchang category
+          ],
         ),
 
         body: Padding(

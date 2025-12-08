@@ -12,6 +12,7 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
 
 class AstrologyPage extends StatefulWidget {
   final String? selectedSection;
@@ -35,7 +36,6 @@ class _AstrologyPageState extends State<AstrologyPage> {
   @override
   void initState() {
     super.initState();
-
     if (widget.selectedSection != null) {
       Future.delayed(const Duration(milliseconds: 400), () {
         _scrollToSection(widget.selectedSection!);
@@ -133,47 +133,139 @@ class _AstrologyPageState extends State<AstrologyPage> {
         centerTitle: true,
         backgroundColor: Colors.white,
       ),
+
+      /// ⭐ NORMAL CLEAN LAYOUT — NO STICKY, NO SCROLL BUGS
       body: SingleChildScrollView(
         controller: _scrollController,
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// ⭐ PROFILE CARD
+            /// ⭐ PROFILE CARD + SHARE TARGET
             RepaintBoundary(
-              key: profileKey,
-              child: AstrologyProfileCard(kundali: kundali),
+              key: profileKey, // scrolling ke liye REQUIRED
+              child: RepaintBoundary(
+                key: _shareKey, // sharing ke liye REQUIRED
+                child: AstrologyProfileCard(kundali: kundali),
+              ),
             ),
 
             const SizedBox(height: 20),
 
-            /// ⭐ SHARE BUTTON
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.share, color: Colors.white),
-                label: Text(
-                  t.astro_share_button,
-                  style: const TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF7C3AED),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+            /// ⭐ NEW PREMIUM ACTION ROW — Manual Kundali (Left) + Share (Right)
+            Row(
+              children: [
+                // ⭐ LEFT — Manual Kundali CTA
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.orangeAccent.withOpacity(0.22),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ManualKundaliFormPage(),
+                          ),
+                        );
+                      },
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(
+                            Icons.edit_calendar_rounded,
+                            color: Colors.white,
+                            size: 19,
+                          ),
+                          SizedBox(width: 6),
+                          Text(
+                            "Manual Kundali",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                onPressed: _shareAstrologyProfile,
-              ),
+
+                const SizedBox(width: 12),
+
+                // ⭐ RIGHT — Share Button
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.deepPurpleAccent.withOpacity(0.22),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        backgroundColor: const Color(0xFF7C3AED),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      onPressed: _shareAstrologyProfile,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.share, color: Colors.white, size: 18),
+                          SizedBox(width: 6),
+                          Text(
+                            "Share",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            /// ⭐ ASTROLOGY PAGE — ADS BELOW SHARE BUTTON
+            /// ⭐ ADS
             Center(child: BannerAdWidget()),
+            const SizedBox(height: 20),
 
-            const SizedBox(height: 16),
-
+            /// ⭐ TOOL SECTIONS
             AstrologyToolSection(
               kundali: kundali,
               initialSection: widget.selectedSection,

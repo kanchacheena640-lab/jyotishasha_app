@@ -9,6 +9,7 @@ import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
 
 import 'package:google_places_flutter/google_places_flutter.dart';
 import 'package:google_places_flutter/model/prediction.dart';
@@ -100,6 +101,7 @@ class _PanchangPageState extends State<PanchangPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
+        actions: const [GlobalShareButton(currentPage: "panchang")],
       ),
 
       body: p.isLoading

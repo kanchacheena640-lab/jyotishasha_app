@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:intl/intl.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
 
 class DarshanPage extends StatefulWidget {
   const DarshanPage({super.key});
@@ -27,7 +28,6 @@ class _DarshanPageState extends State<DarshanPage>
   void initState() {
     super.initState();
 
-    // 🎧 Ensure proper audio playback context
     AudioPlayer.global.setAudioContext(
       AudioContext(
         android: const AudioContextAndroid(
@@ -55,7 +55,6 @@ class _DarshanPageState extends State<DarshanPage>
       CurvedAnimation(parent: _animController, curve: Curves.easeInOut),
     );
 
-    // 🔊 Auto play mantra when page loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _autoPlayMantra();
     });
@@ -78,7 +77,6 @@ class _DarshanPageState extends State<DarshanPage>
     _deity = deityMap[_day] ?? 'shiva';
     _imagePath = 'assets/images/${_day}_$_deity.png';
 
-    // ✅ no 'assets/' prefix here
     _audioPath =
         'audio/${_day}_$_deity${_deity == "hanuman" ? "_chalisa" : "_aarti"}.mp3';
   }
@@ -88,13 +86,8 @@ class _DarshanPageState extends State<DarshanPage>
       await _player.stop();
       await _player.setVolume(1.0);
       await _player.setReleaseMode(ReleaseMode.loop);
-
-      debugPrint("🎧 Playing: $_audioPath");
-      // ✅ direct clean relative path
       await _player.play(AssetSource(_audioPath));
-    } catch (e) {
-      debugPrint("❌ Audio play error: $e");
-    }
+    } catch (e) {}
   }
 
   Future<void> _toggleMute() async {
@@ -121,6 +114,7 @@ class _DarshanPageState extends State<DarshanPage>
         ),
         centerTitle: true,
         actions: [
+          GlobalShareButton(currentPage: "darshan"), // ⭐ SHARE BUTTON ADDED
           IconButton(
             icon: Icon(
               _isMuted ? Icons.volume_off : Icons.volume_up,
@@ -130,9 +124,9 @@ class _DarshanPageState extends State<DarshanPage>
           ),
         ],
       ),
+
       body: Column(
         children: [
-          // 🕉️ Animated deity image
           Expanded(
             child: Center(
               child: AnimatedBuilder(
@@ -147,7 +141,7 @@ class _DarshanPageState extends State<DarshanPage>
             ),
           ),
 
-          // ⭐ AD INSIDE CONTENT (Safe from navigation overlap)
+          // ⭐ BANNER AD SAFE SPACE
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: Container(

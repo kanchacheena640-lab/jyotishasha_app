@@ -60,9 +60,24 @@ class KundaliChartNorthWidget extends StatelessWidget {
     };
 
     return Center(
-      child: SizedBox(
+      child: Container(
         width: size,
         height: size,
+        decoration: BoxDecoration(
+          color: Color(0xFFF7F3FF), // ⭐ Primary soft lavender background
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: Color(0xFFBFA8FF), // ⭐ Soft lavender border
+            width: 1.4,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 8,
+              offset: Offset(0, 3),
+            ),
+          ],
+        ),
         child: LayoutBuilder(
           builder: (context, c) {
             final sx = c.maxWidth / base;
@@ -151,7 +166,8 @@ class KundaliChartNorthWidget extends StatelessWidget {
   Offset planetShift(int h) {
     if ([1].contains(h)) return const Offset(0, -100);
     if ([2, 12].contains(h)) return const Offset(0, -55);
-    if ([3, 4, 5].contains(h)) return const Offset(-30, -30);
+    if ([3, 5].contains(h)) return const Offset(-50, -30);
+    if ([4].contains(h)) return const Offset(-50, -30);
     if ([7].contains(h)) return const Offset(0, 30);
     if ([6, 8].contains(h)) return const Offset(0, 15);
     if ([9, 11].contains(h)) return const Offset(50, -50);

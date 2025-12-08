@@ -48,7 +48,7 @@ class BlogPost {
   Map<String, String> toMap() {
     return {
       "title": title,
-      "imageUrl": imageUrl,
+      "image": imageUrl,
       "excerpt": excerpt,
       "link": link,
       "tag": "Astrology",

@@ -13,6 +13,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/ads/rewarded_ad_manager.dart';
+import 'package:jyotishasha_app/core/constants/razorpay_keys.dart';
 
 // RAZORPAY
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -126,6 +127,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Drag handle
               Container(
                 width: 40,
                 height: 4,
@@ -136,7 +138,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
               ),
               const SizedBox(height: 16),
 
-              // ⭐ Heading
+              // Heading
               const Text(
                 "Earn 1 Free Question",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -152,7 +154,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
               const SizedBox(height: 20),
 
-              // ⭐ WATCH ADS BUTTON
+              // ⭐ WATCH ADS BUTTON — CORRECT FLOW
               ElevatedButton.icon(
                 icon: const Icon(Icons.play_circle_fill, color: Colors.white),
                 style: ElevatedButton.styleFrom(
@@ -165,8 +167,13 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                onPressed: () {
+                onPressed: () async {
                   Navigator.pop(context);
+
+                  // Bottom sheet animation complete hone ka wait
+                  await Future.delayed(const Duration(milliseconds: 350));
+
+                  // 🔥 CORRECT ACTION — reward ads flow
                   _startRewardFlow();
                 },
                 label: const Text(
@@ -576,83 +583,21 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
               const SizedBox(height: 20),
 
               // Title
-              Text(
+              const Text(
                 "You’ve used your free question today",
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 12),
 
-              Text(
-                "Choose how you want to continue asking:",
+              const Text(
+                "To continue asking, buy a question pack:",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
 
               const SizedBox(height: 26),
 
-              // --------------------------------------------------
-              // 1️⃣ OPTION: WATCH ADS FOR 1 FREE QUESTION
-              // --------------------------------------------------
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Column(
-                  children: [
-                    const Text(
-                      "Watch 2 Ads → Get 1 Free Question",
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.orange,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      "No payment needed. Complete both ads and get 1 instant free question added.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 14),
-                    ElevatedButton.icon(
-                      icon: const Icon(
-                        Icons.play_circle_fill,
-                        color: Colors.white,
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _startRewardFlow();
-                      },
-                      label: const Text(
-                        "Watch Ads",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 26),
-
-              // --------------------------------------------------
-              // 2️⃣ OPTION: BUY PACK (₹51 → 8 QUESTIONS)
-              // --------------------------------------------------
+              // ✅ ONLY PACK OPTION (Reward block removed)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -678,8 +623,10 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                     ),
                     const SizedBox(height: 14),
                     ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
+                        // 👇 pehle sheet band, phir thoda delay, phir Razorpay open
                         Navigator.pop(context);
+                        await Future.delayed(const Duration(milliseconds: 200));
                         _startPackPayment();
                       },
                       style: ElevatedButton.styleFrom(
@@ -717,10 +664,44 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   Future<void> _startPackPayment() async {
-    if (_userIdForPayment == null) return;
-    final int userId = _userIdForPayment!;
-
     try {
+      // 1️⃣ userId ensure karo – ya to existing field se, ya Firebase/Firestore se
+      int userId;
+
+      if (_userIdForPayment != null) {
+        userId = _userIdForPayment!;
+      } else {
+        final firebaseUser = FirebaseAuth.instance.currentUser;
+        if (firebaseUser == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please login again to buy a pack.")),
+          );
+          return;
+        }
+
+        final userDoc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(firebaseUser.uid)
+            .get();
+
+        final rawId = userDoc.data()?["backend_user_id"];
+        userId = rawId is int
+            ? rawId
+            : int.tryParse(rawId?.toString() ?? "0") ?? 0;
+
+        if (userId == 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("User id missing. Please reopen the app."),
+            ),
+          );
+          return;
+        }
+
+        _userIdForPayment = userId;
+      }
+
+      // 2️⃣ Order create karo backend se
       final orderRes = await AskNowService.createPackOrder(userId: userId);
 
       final order = orderRes["order"] as Map<String, dynamic>?;
@@ -732,15 +713,22 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
       _currentOrderId = razorpayOrderId;
 
+      // 3️⃣ Razorpay options
       final options = {
-        "key": "RAZORPAY_KEY_ID", // TODO: replace with real key
-        "amount": amount * 100,
+        "key": RazorpayKeys.liveKey, // 🔥 common key file se
+        "amount": amount * 100, // paise
+        "currency": "INR",
         "name": "Jyotishasha AskNow",
         "description": "ChatPack 8 Questions",
         "order_id": razorpayOrderId,
-        "prefill": {"contact": "", "email": ""},
+        "prefill": {
+          "contact":
+              "", // chahe to yahan phone/email bhi auto fill kara sakte hain
+          "email": "",
+        },
       };
 
+      // 4️⃣ Razorpay popup open
       _razorpay.open(options);
     } catch (e) {
       if (!mounted) return;
