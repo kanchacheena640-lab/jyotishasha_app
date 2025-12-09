@@ -246,6 +246,34 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
       );
     }
 
+    // ⭐ SPECIAL FIX for Sadhesati & Manglik Dosh
+    if (data is Map && data["id"] != null) {
+      final yogas = (kundali["yogas"] ?? {}) as Map;
+      final id = data["id"].toString();
+
+      if (id == "yoga_sadhesati") {
+        final resolved = Map<String, dynamic>.from(yogas["sadhesati"] ?? data);
+
+        // ⭐ IMPORTANT: Remove summary_block before sending
+        resolved.remove("summary_block");
+
+        // ⭐ Also remove nested summary inside sadhesati_special (points)
+        if (resolved.containsKey("summary_block")) {
+          resolved.remove("summary_block");
+        }
+
+        return YogDoshResultWidget(data: resolved, kundali: kundali);
+      }
+
+      if (id == "yoga_manglik_dosh") {
+        final resolved = yogas["manglik_dosh"] ?? data;
+        return YogDoshResultWidget(
+          data: Map<String, dynamic>.from(resolved),
+          kundali: kundali,
+        );
+      }
+    }
+
     // ⭐ YOG DOSH
     if (data is Map && data["id"] != null) {
       final yogas = (kundali["yogas"] ?? {}) as Map;

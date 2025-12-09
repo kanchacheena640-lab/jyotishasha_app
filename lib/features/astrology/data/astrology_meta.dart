@@ -112,16 +112,102 @@ class AstrologyMeta {
   }
 
   // ---------------------------------------------------------------------------
-  // 5) YOG / DOSH — BILINGUAL (if backend sends *_hi)
+  // 5) YOG / DOSH / RAJYOG — Use heading only + 2-word short title
   // ---------------------------------------------------------------------------
   static List<Map<String, dynamic>> yogaCategory(Map yogas, BuildContext ctx) {
     if (yogas.isEmpty) return [];
 
-    return yogas.entries.map((e) {
-      final d = e.value is Map ? e.value : {};
-      final name = pickLang(ctx, d, "name");
+    final lang = Localizations.localeOf(ctx).languageCode; // "en" or "hi"
 
-      return {"id": "yoga_${e.key}", "name": name, "icon": "✨"};
+    return yogas.entries.map((e) {
+      final id = e.key.toString().trim();
+      final d = (e.value is Map) ? Map<String, dynamic>.from(e.value) : {};
+      final bool isActive = d["is_active"] == true;
+
+      // ⭐ SPECIAL CASE: SADHESATI
+      if (id == "sadhesati") {
+        final title = lang == "hi" ? "साढ़ेसाती" : "Sadhesati";
+
+        return {
+          "id": "yoga_$id",
+          "name": title,
+          "icon": "✨",
+          "is_active": isActive,
+        };
+      }
+
+      // ⭐ SPECIAL CASE: MANGLIK DOSH
+      if (id == "manglik_dosh") {
+        final title = lang == "hi" ? "मांगलिक दोष" : "Mangal Dosh";
+
+        return {
+          "id": "yoga_$id",
+          "name": title,
+          "icon": "✨",
+          "is_active": isActive,
+        };
+      }
+
+      // ------------------------------------------
+      // 1) PICK RAW TITLE
+      // ------------------------------------------
+      String raw = "";
+
+      if (d["heading"] != null && d["heading"].toString().trim().isNotEmpty) {
+        raw = d["heading"].toString().trim();
+      } else if (d["name"] != null && d["name"].toString().trim().isNotEmpty) {
+        raw = d["name"].toString().trim();
+      } else {
+        raw = id.replaceAll("_", " ");
+      }
+
+      // ------------------------------------------
+      // 2) CLEAN stop-words
+      // ------------------------------------------
+      final stopWords = [
+        "आपकी",
+        "आपके",
+        "आप",
+        "कुंडली",
+        "में",
+        "मौजूद",
+        "है",
+        "हैं",
+        "नहीं",
+        "पाया",
+        "गया",
+        "present",
+        "in",
+        "your",
+        "chart",
+      ];
+
+      List<String> words = raw
+          .split(" ")
+          .where((w) => w.trim().isNotEmpty && !stopWords.contains(w.trim()))
+          .toList();
+
+      // ------------------------------------------
+      // 3) FINAL 2 words
+      // ------------------------------------------
+      String shortTitle;
+
+      if (words.length >= 2) {
+        shortTitle = "${words[0]} ${words[1]}";
+      } else if (words.isNotEmpty) {
+        shortTitle = words[0];
+      } else {
+        shortTitle = raw.split(" ").take(2).join(" ");
+      }
+
+      final dot = isActive ? "🟢 " : "🔴 ";
+
+      return {
+        "id": "yoga_$id",
+        "name": dot + shortTitle, // ← dot + title
+        "icon": dot, // ← dot as icon
+        "is_active": isActive,
+      };
     }).toList();
   }
 

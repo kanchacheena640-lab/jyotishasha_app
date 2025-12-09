@@ -109,9 +109,16 @@ dynamic _resolveToolData(String id, Map k, AppLocalizations t) {
   if (id.startsWith("yoga_")) {
     final key = id.replaceFirst("yoga_", "");
     final yogas = k["yogas"] ?? {};
+
     if (yogas[key] is Map) {
       final d = Map<String, dynamic>.from(yogas[key]);
       d["id"] = key;
+
+      // ⭐ ONLY SADHESATI FIX — Remove summary_block
+      if (key == "sadhesati") {
+        d.remove("summary_block");
+      }
+
       return d;
     }
   }
@@ -243,10 +250,34 @@ class _ManualAstrologyToolSectionState
     required String icon,
     required AppLocalizations t,
   }) {
+    // ⭐ Detect yog/dosh card
+    final bool isYoga = id.startsWith("yoga_");
+
+    // ⭐ Extract actual yoga key (yoga_gajakesari → gajakesari)
+    String yogaKey = "";
+    bool? isActive;
+
+    if (isYoga) {
+      yogaKey = id.replaceFirst("yoga_", "");
+      final yogas = widget.kundali["yogas"] ?? {};
+      if (yogas[yogaKey] is Map) {
+        isActive = yogas[yogaKey]["is_active"] == true;
+      }
+    }
+
+    // Dot UI
+    Widget statusDot = Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: (isActive == true) ? Colors.green : Colors.red,
+      ),
+    );
+
     return InkWell(
       onTap: () {
         final current = widget.kundali;
-
         final data = _resolveToolData(id, current, t);
 
         context.push(
@@ -270,15 +301,23 @@ class _ManualAstrologyToolSectionState
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: const Color(0xFF2D1B69),
-                ),
+              child: Row(
+                children: [
+                  // ⭐ DOT ONLY FOR YOG/DOSH CARDS
+                  if (isYoga) ...[statusDot, const SizedBox(width: 6)],
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: const Color(0xFF2D1B69),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Text(icon, style: const TextStyle(fontSize: 22)),

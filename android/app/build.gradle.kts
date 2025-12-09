@@ -25,23 +25,9 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-    }
 
-    // ⭐ Required for splits (removes red underline)
-    bundle {
-        abi {
-            enableSplit = true
-        }
-    }
-
-    // ⭐ ENABLE SPLIT APK TO REDUCE SIZE
-    splits {
-        abi {
-            enable true
-            reset()
-            include "armeabi-v7a", "arm64-v8a"
-            universalApk false
-        }
+        // ❌ REMOVE THIS → ndk { abiFilters.clear() }
+        // Flutter automatically handles ABI splits.
     }
 
     buildTypes {
