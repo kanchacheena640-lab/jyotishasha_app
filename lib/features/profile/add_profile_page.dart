@@ -1,10 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:jyotishasha_app/core/state/profile_provider.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
 
 class AddProfilePage extends StatefulWidget {
   const AddProfilePage({super.key});
@@ -15,22 +17,26 @@ class AddProfilePage extends StatefulWidget {
 
 class _AddProfilePageState extends State<AddProfilePage> {
   final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _nameCtrl = TextEditingController();
   final TextEditingController _dobCtrl = TextEditingController();
   final TextEditingController _tobCtrl = TextEditingController();
   final TextEditingController _pobCtrl = TextEditingController();
 
-  double _lat = 0.0;
-  double _lng = 0.0;
+  double? _lat;
+  double? _lng;
+  String? _timezone;
 
-  String _selectedGender = 'Male';
-  String _selectedLanguage = 'English';
+  String _selectedGender = "Male";
+  String _selectedLanguage = "English";
 
-  // 📅 Date picker
+  // -------------------------------------------------------
+  // DATE PICKER
+  // -------------------------------------------------------
   Future<void> _pickDate() async {
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime(2000, 1, 1),
+      initialDate: DateTime(2000),
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -41,7 +47,9 @@ class _AddProfilePageState extends State<AddProfilePage> {
     }
   }
 
-  // 🕒 Time picker
+  // -------------------------------------------------------
+  // TIME PICKER
+  // -------------------------------------------------------
   Future<void> _pickTime() async {
     final time = await showTimePicker(
       context: context,
@@ -54,13 +62,74 @@ class _AddProfilePageState extends State<AddProfilePage> {
     }
   }
 
-  // 💾 Save profile via Provider
+  // -------------------------------------------------------
+  // REST GOOGLE PLACES AUTOCOMPLETE
+  // -------------------------------------------------------
+  List<Map<String, String>> _suggestions = [];
+  bool _loadingSuggestions = false;
+
+  Future<void> _onPlaceSearch(String input) async {
+    if (input.length < 3) {
+      setState(() => _suggestions = []);
+      return;
+    }
+
+    setState(() => _loadingSuggestions = true);
+
+    final key = dotenv.env["GOOGLE_MAPS_API_KEY"]!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        "?input=$input&components=country:in&key=$key";
+
+    try {
+      final res = await http.get(Uri.parse(url));
+      final data = jsonDecode(res.body);
+
+      if (data["status"] == "OK") {
+        _suggestions = (data["predictions"] as List).map<Map<String, String>>((
+          p,
+        ) {
+          return {"description": p["description"], "place_id": p["place_id"]};
+        }).toList();
+      } else {
+        _suggestions = [];
+      }
+    } catch (e) {
+      _suggestions = [];
+    }
+
+    setState(() => _loadingSuggestions = false);
+  }
+
+  // -------------------------------------------------------
+  // PLACE DETAILS → LAT/LNG + TIMEZONE
+  // -------------------------------------------------------
+  Future<void> _selectPlace(Map<String, String> p) async {
+    _pobCtrl.text = p["description"]!;
+    FocusScope.of(context).unfocus();
+
+    final details = await LocationService.fetchPlaceDetail(p["place_id"]!);
+
+    if (details != null) {
+      _lat = details["lat"];
+      _lng = details["lng"];
+
+      // ⭐ Auto timezone
+      _timezone = await LocationService.fetchTimeZone(_lat!, _lng!);
+    }
+
+    setState(() => _suggestions = []);
+  }
+
+  // -------------------------------------------------------
+  // SAVE PROFILE
+  // -------------------------------------------------------
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_pobCtrl.text.isEmpty) {
+    if (_lat == null || _lng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please enter Place of Birth")),
+        const SnackBar(content: Text("Please select a valid place")),
       );
       return;
     }
@@ -72,8 +141,9 @@ class _AddProfilePageState extends State<AddProfilePage> {
       "dob": _dobCtrl.text.trim(),
       "tob": _tobCtrl.text.trim(),
       "pob": _pobCtrl.text.trim(),
-      "lat": _lat,
-      "lng": _lng,
+      "lat": _lat!,
+      "lng": _lng!,
+      "timezone": _timezone ?? "Asia/Kolkata",
       "gender": _selectedGender,
       "language": _selectedLanguage,
       "createdAt": DateTime.now().toIso8601String(),
@@ -82,27 +152,28 @@ class _AddProfilePageState extends State<AddProfilePage> {
     final id = await provider.addProfile(data);
 
     if (id != null) {
-      // ⭐ If no active profile, set this as active
       if (provider.activeProfileId == null) {
         await provider.setActiveProfile(id);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("✅ Profile saved successfully")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile created")));
 
       Navigator.pop(context, true);
       return;
     }
 
-    // ❌ Failed case
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("❌ Failed to save profile")));
+    ).showSnackBar(const SnackBar(content: Text("Failed to save profile")));
   }
 
+  // -------------------------------------------------------
+  // UI
+  // -------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -113,7 +184,6 @@ class _AddProfilePageState extends State<AddProfilePage> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
-
       body: KeyboardDismissOnTap(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -121,105 +191,119 @@ class _AddProfilePageState extends State<AddProfilePage> {
             key: _formKey,
             child: Column(
               children: [
-                // 👤 Full Name
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: const InputDecoration(labelText: "Full Name"),
-                  validator: (v) => v!.isEmpty ? "Enter name" : null,
+                  validator: (v) =>
+                      v == null || v.trim().isEmpty ? "Enter name" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 📅 DOB
+                // DOB
                 TextFormField(
                   controller: _dobCtrl,
                   readOnly: true,
+                  onTap: _pickDate,
                   decoration: const InputDecoration(
                     labelText: "Date of Birth",
                     suffixIcon: Icon(Icons.calendar_today),
                   ),
-                  onTap: _pickDate,
-                  validator: (v) => v!.isEmpty ? "Select DOB" : null,
+                  validator: (v) =>
+                      v == null || v.isEmpty ? "Select DOB" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 🕒 TOB
+                // TOB
                 TextFormField(
                   controller: _tobCtrl,
                   readOnly: true,
+                  onTap: _pickTime,
                   decoration: const InputDecoration(
                     labelText: "Time of Birth",
                     suffixIcon: Icon(Icons.access_time),
                   ),
-                  onTap: _pickTime,
-                  validator: (v) => v!.isEmpty ? "Select TOB" : null,
+                  validator: (v) =>
+                      v == null || v.isEmpty ? "Select TOB" : null,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 📍 Place of Birth — Google Places
-                GooglePlaceAutoCompleteTextField(
-                  textEditingController: _pobCtrl,
-                  googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                  inputDecoration: const InputDecoration(
-                    labelText: "Place of Birth",
-                    prefixIcon: Icon(Icons.location_on_outlined),
-                    border: OutlineInputBorder(),
+                // PLACE FIELD
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade300),
                   ),
-                  debounceTime: 800,
-                  countries: const ["in"],
-                  isLatLngRequired: true,
-                  getPlaceDetailWithLatLng: (Prediction p) {
-                    setState(() {
-                      _pobCtrl.text = p.description ?? "";
-                      _lat = double.tryParse(p.lat ?? "0") ?? 0.0;
-                      _lng = double.tryParse(p.lng ?? "0") ?? 0.0;
-                    });
-                  },
-                  itemClick: (Prediction p) {
-                    _pobCtrl.text = p.description ?? "";
-                  },
-                  itemBuilder: (_, __, Prediction p) {
-                    return ListTile(
-                      leading: const Icon(Icons.location_on_outlined),
-                      title: Text(p.description ?? ""),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _pobCtrl,
+                        onChanged: _onPlaceSearch,
+                        decoration: const InputDecoration(
+                          labelText: "Place of Birth",
+                          prefixIcon: Icon(Icons.location_on_outlined),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                        ),
+                        validator: (v) => v == null || v.trim().isEmpty
+                            ? "Enter place"
+                            : null,
+                      ),
 
-                // 👩 Gender
+                      if (_loadingSuggestions) const LinearProgressIndicator(),
+
+                      if (_suggestions.isNotEmpty)
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 200),
+                          child: ListView.builder(
+                            itemCount: _suggestions.length,
+                            itemBuilder: (_, i) {
+                              final s = _suggestions[i];
+                              return ListTile(
+                                leading: const Icon(Icons.location_on),
+                                title: Text(s["description"]!),
+                                onTap: () => _selectPlace(s),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // GENDER
                 DropdownButtonFormField<String>(
                   initialValue: _selectedGender,
                   items: const [
-                    DropdownMenuItem(value: 'Male', child: Text('Male')),
-                    DropdownMenuItem(value: 'Female', child: Text('Female')),
-                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                    DropdownMenuItem(value: "Male", child: Text("Male")),
+                    DropdownMenuItem(value: "Female", child: Text("Female")),
+                    DropdownMenuItem(value: "Other", child: Text("Other")),
                   ],
                   onChanged: (v) => setState(() => _selectedGender = v!),
                   decoration: const InputDecoration(labelText: "Gender"),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
 
-                // 🌐 Language
+                // LANGUAGE
                 DropdownButtonFormField<String>(
                   initialValue: _selectedLanguage,
                   items: const [
-                    DropdownMenuItem(value: 'English', child: Text('English')),
-                    DropdownMenuItem(value: 'Hindi', child: Text('Hindi')),
+                    DropdownMenuItem(value: "English", child: Text("English")),
+                    DropdownMenuItem(value: "Hindi", child: Text("Hindi")),
                   ],
                   onChanged: (v) => setState(() => _selectedLanguage = v!),
                   decoration: const InputDecoration(labelText: "Language"),
                 ),
                 const SizedBox(height: 24),
 
-                // 💾 Save Profile
                 ElevatedButton.icon(
                   icon: const Icon(Icons.person_add),
                   label: const Text("Save Profile"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                      vertical: 14,
+                      horizontal: 28,
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(30),

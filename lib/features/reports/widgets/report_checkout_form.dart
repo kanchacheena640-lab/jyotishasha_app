@@ -1,15 +1,15 @@
 // lib/features/reports/widgets/report_checkout_form.dart
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:http/http.dart' as http;
 
-// ⭐ AUTOFILL KE LIYE IMPORT
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
 
 class ReportCheckoutForm extends StatefulWidget {
   final Map<String, dynamic> initialProfile;
@@ -38,6 +38,10 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
   double? lng;
   String language = "en";
 
+  // NEW — autocomplete state
+  List<Map<String, String>> _suggestions = [];
+  bool _loadingSuggestions = false;
+
   @override
   void initState() {
     super.initState();
@@ -47,12 +51,10 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
       p = Map<String, dynamic>.from(widget.initialProfile);
     }
 
-    debugPrint("🧾 ReportCheckoutForm → initialProfile: $p");
-
     // NAME
     nameCtrl = TextEditingController(text: p["name"]?.toString() ?? "");
 
-    // ⭐ EMAIL AUTOFILL — Firebase se pull
+    // EMAIL auto from Firebase
     final firebaseEmail = FirebaseAuth.instance.currentUser?.email ?? "";
     emailCtrl = TextEditingController(text: firebaseEmail);
 
@@ -90,6 +92,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
 
     lat = (p["lat"] is num) ? (p["lat"] as num).toDouble() : null;
     lng = (p["lng"] is num) ? (p["lng"] as num).toDouble() : null;
+
     language = p["language"]?.toString() ?? "en";
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -97,6 +100,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
     });
   }
 
+  // Notify parent
   void _notifyParent() {
     widget.onFormUpdated({
       "name": nameCtrl.text,
@@ -110,6 +114,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
     });
   }
 
+  // DOB Picker
   Future<void> _pickDob() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -129,6 +134,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
     }
   }
 
+  // Time picker
   Future<void> _pickTob() async {
     final picked = await showTimePicker(
       context: context,
@@ -144,6 +150,50 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
     }
   }
 
+  // -------------------------------
+  // GOOGLE PLACES — AUTOCOMPLETE (REST)
+  // -------------------------------
+  Future<void> _searchPlace(String input) async {
+    if (input.length < 3) {
+      setState(() => _suggestions = []);
+      return;
+    }
+
+    setState(() => _loadingSuggestions = true);
+
+    final data = await LocationService.fetchAutocomplete(input);
+
+    if (!mounted) return;
+
+    setState(() {
+      _suggestions = data;
+      _loadingSuggestions = false;
+    });
+  }
+
+  // -------------------------------
+  // SELECT PLACE — GET LAT/LNG
+  // -------------------------------
+  Future<void> _selectPlace(Map<String, String> p) async {
+    pobCtrl.text = p["description"] ?? "";
+
+    FocusScope.of(context).unfocus();
+
+    final details = await LocationService.fetchPlaceDetail(p["place_id"]!);
+
+    if (details != null) {
+      setState(() {
+        lat = (details["lat"] as num).toDouble();
+        lng = (details["lng"] as num).toDouble();
+        _suggestions = [];
+      });
+      _notifyParent();
+    }
+  }
+
+  // -------------------------------
+  // UI
+  // -------------------------------
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -151,7 +201,6 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ⭐ NOTE
         Text(
           "Ordering for someone else? Update the birth details below.",
           style: GoogleFonts.montserrat(
@@ -170,10 +219,9 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
         ),
         const SizedBox(height: 12),
 
-        // EMAIL — autofilled + required
+        // EMAIL
         TextFormField(
           controller: emailCtrl,
-          keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             labelText: t.checkout_email,
             prefixIcon: const Icon(Icons.email_outlined),
@@ -206,7 +254,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
         ),
         const SizedBox(height: 12),
 
-        // POB
+        // PLACE OF BIRTH (REST GOOGLE PLACES)
         Text(
           t.checkout_pob,
           style: GoogleFonts.montserrat(
@@ -217,34 +265,46 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
         ),
         const SizedBox(height: 6),
 
-        GooglePlaceAutoCompleteTextField(
-          textEditingController: pobCtrl,
-          googleAPIKey: dotenv.env["GOOGLE_MAPS_API_KEY"] ?? "",
-          debounceTime: 800,
-          isLatLngRequired: true,
-          itemClick: (Prediction p) {
-            pobCtrl.text = p.description ?? "";
-            _notifyParent();
-          },
-          getPlaceDetailWithLatLng: (Prediction p) {
-            final lt = double.tryParse(p.lat ?? "");
-            final ln = double.tryParse(p.lng ?? "");
-            if (lt != null && ln != null) {
-              lat = lt;
-              lng = ln;
-              pobCtrl.text = p.description ?? "";
-              _notifyParent();
-            }
-          },
-          inputDecoration: InputDecoration(
+        TextFormField(
+          controller: pobCtrl,
+          decoration: InputDecoration(
             hintText: t.checkout_pob,
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 10,
+          ),
+          onChanged: _searchPlace,
+        ),
+
+        if (_loadingSuggestions) const LinearProgressIndicator(),
+
+        if (_suggestions.isNotEmpty)
+          Container(
+            constraints: const BoxConstraints(maxHeight: 230),
+            margin: const EdgeInsets.only(top: 4, bottom: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black12,
+                  blurRadius: 8,
+                  offset: Offset(0, 3),
+                ),
+              ],
+            ),
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: _suggestions.length,
+              itemBuilder: (context, index) {
+                final s = _suggestions[index];
+                return ListTile(
+                  leading: const Icon(Icons.location_on_outlined),
+                  title: Text(s["description"] ?? ""),
+                  onTap: () => _selectPlace(s),
+                );
+              },
             ),
           ),
-        ),
+
         const SizedBox(height: 20),
 
         // LANGUAGE

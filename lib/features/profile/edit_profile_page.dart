@@ -2,13 +2,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
-import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
+import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
 class EditProfilePage extends StatefulWidget {
   final Map<String, dynamic> profile;
@@ -30,12 +28,19 @@ class _EditProfilePageState extends State<EditProfilePage> {
   double _lat = 0.0;
   double _lng = 0.0;
 
-  String _selectedLanguage = 'en';
+  String _selectedLanguage = "en";
+
+  /// REST autocomplete
+  List<Map<String, String>> _suggestions = [];
+  bool _loadingSuggestions = false;
 
   @override
   void initState() {
     super.initState();
 
+    // -------------------------
+    // INITIAL FILL
+    // -------------------------
     _nameCtrl = TextEditingController(text: widget.profile["name"] ?? "");
     _dobCtrl = TextEditingController(text: widget.profile["dob"] ?? "");
     _tobCtrl = TextEditingController(text: widget.profile["tob"] ?? "");
@@ -48,6 +53,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _selectedLanguage = (lang == "hi") ? "hi" : "en";
   }
 
+  // -----------------------------------------------------------
+  // DATE PICKER
+  // -----------------------------------------------------------
   Future<void> _pickDate() async {
     final date = await showDatePicker(
       context: context,
@@ -55,37 +63,84 @@ class _EditProfilePageState extends State<EditProfilePage> {
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
+
     if (date != null) {
       _dobCtrl.text =
           "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
     }
   }
 
+  // -----------------------------------------------------------
+  // TIME PICKER
+  // -----------------------------------------------------------
   Future<void> _pickTime() async {
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
+
     if (time != null) {
       _tobCtrl.text =
           "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
     }
   }
 
-  Future<void> _saveChanges() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final profileProvider = context.read<ProfileProvider>();
-    final activeId = profileProvider.activeProfileId;
-
-    if (activeId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("No active profile selected ❌")),
-      );
+  // -----------------------------------------------------------
+  // AUTOCOMPLETE (REST)
+  // -----------------------------------------------------------
+  Future<void> _searchPlace(String input) async {
+    if (input.length < 3) {
+      setState(() => _suggestions = []);
       return;
     }
 
-    final updatedData = {
+    setState(() => _loadingSuggestions = true);
+
+    final data = await LocationService.fetchAutocomplete(input);
+
+    if (!mounted) return;
+
+    setState(() {
+      _suggestions = data;
+      _loadingSuggestions = false;
+    });
+  }
+
+  // -----------------------------------------------------------
+  // HANDLE SELECTED PLACE
+  // -----------------------------------------------------------
+  Future<void> _selectPlace(Map<String, String> p) async {
+    _pobCtrl.text = p["description"] ?? "";
+    FocusScope.of(context).unfocus();
+
+    final details = await LocationService.fetchPlaceDetail(p["place_id"]!);
+
+    if (details != null) {
+      setState(() {
+        _lat = (details["lat"] as num).toDouble();
+        _lng = (details["lng"] as num).toDouble();
+        _suggestions = [];
+      });
+    }
+  }
+
+  // -----------------------------------------------------------
+  // SAVE CHANGES
+  // -----------------------------------------------------------
+  Future<void> _saveChanges() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final provider = context.read<ProfileProvider>();
+    final activeId = provider.activeProfileId;
+
+    if (activeId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No active profile")));
+      return;
+    }
+
+    final updated = {
       "name": _nameCtrl.text.trim(),
       "dob": _dobCtrl.text.trim(),
       "tob": _tobCtrl.text.trim(),
@@ -95,27 +150,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
       "language": _selectedLanguage,
     };
 
-    final ok = await profileProvider.updateProfile(activeId, updatedData);
+    final ok = await provider.updateProfile(activeId, updated);
 
     if (!mounted) return;
 
     if (ok) {
       await context.read<LanguageProvider>().setLanguage(_selectedLanguage);
-      profileProvider.notifyListeners();
+      provider.notifyListeners();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Profile updated successfully ✨")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Profile updated ✨")));
 
       Navigator.pop(context, true);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to update profile ❌")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Failed to update ❌")));
     }
   }
 
-  // ⭐ DELETE PROFILE HANDLER
+  // -----------------------------------------------------------
+  // DELETE PROFILE
+  // -----------------------------------------------------------
   Future<void> _deleteProfile() async {
     final provider = context.read<ProfileProvider>();
     final id = provider.activeProfileId;
@@ -126,17 +183,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Delete Profile?"),
-        content: const Text(
-          "This action cannot be undone.\nAre you sure you want to delete this profile?",
-        ),
+        content: const Text("This action cannot be undone."),
         actions: [
           TextButton(
-            child: const Text("Cancel"),
             onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
           ),
           TextButton(
-            child: const Text("Delete", style: TextStyle(color: Colors.red)),
             onPressed: () => Navigator.pop(context, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -146,13 +201,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     final ok = await provider.deleteProfile(id);
 
-    if (!mounted) return;
-
-    if (ok) {
-      Navigator.pop(context, true);
-    }
+    if (ok && mounted) Navigator.pop(context, true);
   }
 
+  // -----------------------------------------------------------
+  // UI
+  // -----------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -170,6 +224,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             key: _formKey,
             child: Column(
               children: [
+                // ------------------ NAME ------------------
                 TextFormField(
                   controller: _nameCtrl,
                   decoration: const InputDecoration(labelText: "Full Name"),
@@ -178,6 +233,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 const SizedBox(height: 12),
 
+                // ------------------ DOB -------------------
                 TextFormField(
                   controller: _dobCtrl,
                   readOnly: true,
@@ -190,6 +246,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 const SizedBox(height: 12),
 
+                // ------------------ TOB -------------------
                 TextFormField(
                   controller: _tobCtrl,
                   readOnly: true,
@@ -202,27 +259,50 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 const SizedBox(height: 12),
 
-                GooglePlaceAutoCompleteTextField(
-                  textEditingController: _pobCtrl,
-                  googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                  inputDecoration: const InputDecoration(
+                // ------------------ PLACE FIELD -------------------
+                TextFormField(
+                  controller: _pobCtrl,
+                  decoration: const InputDecoration(
                     labelText: "Place of Birth",
-                    border: OutlineInputBorder(),
+                    prefixIcon: Icon(Icons.location_on_outlined),
                   ),
-                  debounceTime: 800,
-                  countries: const ["in"],
-                  isLatLngRequired: true,
-                  getPlaceDetailWithLatLng: (Prediction prediction) {
-                    setState(() {
-                      _pobCtrl.text = prediction.description ?? "";
-                      _lat = double.tryParse(prediction.lat ?? "0") ?? 0.0;
-                      _lng = double.tryParse(prediction.lng ?? "0") ?? 0.0;
-                    });
-                  },
+                  onChanged: _searchPlace,
                 ),
+
+                if (_loadingSuggestions) const LinearProgressIndicator(),
+
+                if (_suggestions.isNotEmpty)
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 220),
+                    margin: const EdgeInsets.only(top: 4, bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black12,
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _suggestions.length,
+                      itemBuilder: (context, index) {
+                        final s = _suggestions[index];
+                        return ListTile(
+                          leading: const Icon(Icons.location_on_outlined),
+                          title: Text(s["description"] ?? ""),
+                          onTap: () => _selectPlace(s),
+                        );
+                      },
+                    ),
+                  ),
 
                 const SizedBox(height: 12),
 
+                // ------------------ LANGUAGE -------------------
                 DropdownButtonFormField<String>(
                   initialValue: _selectedLanguage,
                   decoration: const InputDecoration(labelText: "Language"),
@@ -235,6 +315,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 const SizedBox(height: 24),
 
+                // ------------------ SAVE BUTTON -------------------
                 ElevatedButton.icon(
                   onPressed: _saveChanges,
                   icon: const Icon(Icons.save),
@@ -254,7 +335,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
                 const SizedBox(height: 30),
 
-                // ⭐ Small red delete button at bottom
                 TextButton.icon(
                   onPressed: _deleteProfile,
                   icon: const Icon(Icons.delete_forever, color: Colors.red),

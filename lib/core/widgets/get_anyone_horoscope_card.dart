@@ -1,13 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 
 class GetAnyoneHoroscopeCard extends StatefulWidget {
   const GetAnyoneHoroscopeCard({super.key});
@@ -30,25 +27,23 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
 
   bool isLoading = false;
 
+  // ⭐ AUTOCOMPLETE STATE
+  List<Map<String, String>> suggestions = [];
+  bool pobLoading = false;
+
+  // 🔥 Convert DD-MM-YYYY to YYYY-MM-DD
   String convertDob(String ddmmyyyy) {
     final parts = ddmmyyyy.split("-");
     return "${parts[2]}-${parts[1]}-${parts[0]}";
   }
 
+  // ⭐ Pick Date
   Future<void> pickDate() async {
     final date = await showDatePicker(
       context: context,
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
       initialDate: DateTime(1990),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: ColorScheme.light(primary: AppColors.primary),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (date != null) {
@@ -57,6 +52,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
     }
   }
 
+  // ⭐ Pick Time
   Future<void> pickTime() async {
     final time = await showTimePicker(
       context: context,
@@ -68,7 +64,46 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
     }
   }
 
-  /// 🔥 FIXED submit() (Correct Brackets, Catch + Finally Added)
+  // ⭐ REST API – Autocomplete
+  Future<List<Map<String, String>>> fetchAutocomplete(String input) async {
+    if (input.length < 3) return [];
+
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        "?input=$input&components=country:in&key=$key";
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    if (data["status"] != "OK") return [];
+
+    return (data["predictions"] as List)
+        .map<Map<String, String>>(
+          (p) => {
+            "description": p["description"].toString(),
+            "place_id": p["place_id"].toString(),
+          },
+        )
+        .toList();
+  }
+
+  // ⭐ REST API – Geocode lat/lng
+  Future<void> fetchLatLng(String placeId) async {
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/details/json"
+        "?placeid=$placeId&key=$key";
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    final loc = data["result"]["geometry"]["location"];
+    lat = loc["lat"];
+    lng = loc["lng"];
+  }
+
+  // ⭐ Submit
   Future<void> submit() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -178,8 +213,10 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
               validator: (v) => v!.isEmpty ? "Choose TOB" : null,
             ),
 
+            // ⭐ REST AUTOCOMPLETE FIELD
             Container(
               margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.only(left: 4, right: 4),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
@@ -190,37 +227,59 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
                   ),
                 ],
               ),
-              child: GooglePlaceAutoCompleteTextField(
-                textEditingController: pobCtrl,
-                googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-                debounceTime: 400,
-                countries: const ["in"],
-                inputDecoration: const InputDecoration(
-                  labelText: "Place of Birth",
-                  prefixIcon: Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.primary,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                ),
-                isLatLngRequired: true,
-                getPlaceDetailWithLatLng: (Prediction prediction) async {
-                  lat = double.tryParse(prediction.lat ?? "");
-                  lng = double.tryParse(prediction.lng ?? "");
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: pobCtrl,
+                    decoration: const InputDecoration(
+                      labelText: "Place of Birth",
+                      prefixIcon: Icon(
+                        Icons.location_on_outlined,
+                        color: AppColors.primary,
+                      ),
+                      border: InputBorder.none,
+                    ),
+                    onChanged: (value) async {
+                      if (value.length < 3) {
+                        setState(() => suggestions = []);
+                        return;
+                      }
 
-                  if (lat == null || lng == null) {
-                    final loc = await locationFromAddress(
-                      prediction.description!,
-                    );
-                    lat = loc.first.latitude;
-                    lng = loc.first.longitude;
-                  }
-                },
-                itemClick: (Prediction p) {
-                  pobCtrl.text = p.description!;
-                  FocusScope.of(context).unfocus();
-                },
+                      setState(() => pobLoading = true);
+                      final data = await fetchAutocomplete(value);
+                      setState(() {
+                        suggestions = data;
+                        pobLoading = false;
+                      });
+                    },
+                    validator: (v) => v!.isEmpty ? "Choose Place" : null,
+                  ),
+
+                  if (pobLoading) const LinearProgressIndicator(),
+
+                  if (suggestions.isNotEmpty)
+                    Container(
+                      height: 180,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListView(
+                        children: suggestions.map((s) {
+                          return ListTile(
+                            title: Text(s["description"]!),
+                            onTap: () async {
+                              pobCtrl.text = s["description"]!;
+                              suggestions = [];
+                              FocusScope.of(context).unfocus();
+                              await fetchLatLng(s["place_id"]!);
+                              setState(() {});
+                            },
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                ],
               ),
             ),
 

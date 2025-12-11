@@ -3,17 +3,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/constants/app_colors.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_places_flutter/model/prediction.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:provider/provider.dart';
+
+import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
 
 class BirthDetailPage extends StatefulWidget {
   const BirthDetailPage({super.key});
@@ -36,14 +34,20 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
   double? latitude;
   double? longitude;
 
-  /// Convert DD-MM-YYYY → YYYY-MM-DD
+  /// REST autocomplete suggestions
+  List<Map<String, String>> _placeSuggestions = [];
+  bool _isSearchingPlace = false;
+
+  // -------------------------------------------------------
+  // Convert DD-MM-YYYY → YYYY-MM-DD (backend format)
+  // -------------------------------------------------------
   String _convertDob(String ddmmyyyy) {
     final parts = ddmmyyyy.split("-");
     return "${parts[2]}-${parts[1]}-${parts[0]}";
   }
 
   // -------------------------------------------------------
-  // PREMIUM GLASS PICKER POPUP
+  // GLASS TOP BAR (shared for Cupertino pickers)
   // -------------------------------------------------------
   Widget _glassTopBar() {
     return ClipRRect(
@@ -68,6 +72,9 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
     );
   }
 
+  // -------------------------------------------------------
+  // DATE PICKER (Cupertino)
+  // -------------------------------------------------------
   Future<void> _pickDateCupertino() async {
     DateTime selected = DateTime.now();
 
@@ -129,6 +136,9 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
     );
   }
 
+  // -------------------------------------------------------
+  // TIME PICKER (Cupertino)
+  // -------------------------------------------------------
   Future<void> _pickTimeCupertino() async {
     TimeOfDay selected = TimeOfDay.now();
 
@@ -191,8 +201,49 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
   }
 
   // -------------------------------------------------------
-  // PREMIUM GOOGLE PLACE FIELD
+  // PLACE FIELD — REST GOOGLE PLACES
   // -------------------------------------------------------
+
+  Future<void> _onPlaceChanged(String value) async {
+    if (value.trim().length < 3) {
+      setState(() {
+        _placeSuggestions = [];
+        _isSearchingPlace = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearchingPlace = true);
+
+    final data = await LocationService.fetchAutocomplete(value);
+
+    if (!mounted) return;
+
+    setState(() {
+      _placeSuggestions = data;
+      _isSearchingPlace = false;
+    });
+  }
+
+  Future<void> _selectPlaceSuggestion(Map<String, String> p) async {
+    pobCtrl.text = p["description"] ?? "";
+    FocusScope.of(context).unfocus();
+
+    final details = await LocationService.fetchPlaceDetail(p["place_id"] ?? "");
+    if (details != null) {
+      setState(() {
+        latitude = details["lat"] as double;
+        longitude = details["lng"] as double;
+        _placeSuggestions = [];
+      });
+    } else {
+      // fallback: keep place text but lat/lng null → will use default later
+      setState(() {
+        _placeSuggestions = [];
+      });
+    }
+  }
+
   Widget _buildPlaceField() {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -207,57 +258,61 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
           ),
         ],
       ),
-      child: GooglePlaceAutoCompleteTextField(
-        textEditingController: pobCtrl,
-        googleAPIKey: dotenv.env['GOOGLE_MAPS_API_KEY']!,
-        inputDecoration: const InputDecoration(
-          labelText: "Place of Birth",
-          prefixIcon: Icon(
-            Icons.location_on_outlined,
-            color: AppColors.primary,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: pobCtrl,
+            onChanged: _onPlaceChanged,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? "Please fill this field" : null,
+            decoration: const InputDecoration(
+              labelText: "Place of Birth",
+              prefixIcon: Icon(
+                Icons.location_on_outlined,
+                color: AppColors.primary,
+              ),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
           ),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        ),
-        debounceTime: 400,
-        countries: const ["in"],
-        isLatLngRequired: true,
 
-        getPlaceDetailWithLatLng: (Prediction prediction) async {
-          if (prediction.lat != null && prediction.lng != null) {
-            latitude = double.tryParse(prediction.lat!);
-            longitude = double.tryParse(prediction.lng!);
-          } else {
-            final loc = await locationFromAddress(prediction.description!);
-            latitude = loc.first.latitude;
-            longitude = loc.first.longitude;
-          }
-        },
+          if (_isSearchingPlace) const LinearProgressIndicator(),
 
-        itemClick: (Prediction prediction) {
-          pobCtrl.text = prediction.description ?? "";
-          FocusScope.of(context).unfocus();
-        },
-
-        itemBuilder: (context, index, Prediction p) {
-          return Container(
-            margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black12.withOpacity(0.05),
-                  blurRadius: 6,
-                ),
-              ],
+          if (_placeSuggestions.isNotEmpty)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 220),
+              margin: const EdgeInsets.only(top: 4, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: _placeSuggestions.length,
+                itemBuilder: (context, index) {
+                  final s = _placeSuggestions[index];
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.location_on_outlined,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(s["description"] ?? ""),
+                    onTap: () => _selectPlaceSuggestion(s),
+                  );
+                },
+              ),
             ),
-            child: ListTile(
-              leading: const Icon(Icons.location_on, color: AppColors.primary),
-              title: Text(p.description ?? ""),
-            ),
-          );
-        },
+        ],
       ),
     );
   }
@@ -279,6 +334,8 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
       final dob = _convertDob(dobCtrl.text.trim());
       final tob = tobCtrl.text.trim();
       final pob = pobCtrl.text.trim();
+
+      // default fallback: Lucknow if lat/lng missing
       final lat = latitude ?? 26.8467;
       final lng = longitude ?? 80.9462;
 
@@ -358,7 +415,6 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
           ),
           centerTitle: true,
         ),
-
         body: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Container(
@@ -374,13 +430,11 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                 end: Alignment.bottomCenter,
               ),
             ),
-
             child: Form(
               key: _formKey,
               child: Column(
                 children: [
                   const SizedBox(height: 20),
-
                   Text(
                     "Tell us about yourself 🌞",
                     style: GoogleFonts.montserrat(
@@ -389,7 +443,6 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                       color: AppColors.primary,
                     ),
                   ),
-
                   const SizedBox(height: 30),
 
                   _buildField(nameCtrl, "Full Name", Icons.person_outline),
@@ -441,9 +494,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
 
                   const SizedBox(height: 30),
 
-                  // -------------------------------------------------------
-                  // PREMIUM CONTINUE BUTTON
-                  // -------------------------------------------------------
+                  // CONTINUE BUTTON
                   Container(
                     width: double.infinity,
                     height: 52,

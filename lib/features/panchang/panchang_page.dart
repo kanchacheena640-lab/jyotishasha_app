@@ -1,20 +1,23 @@
+// lib/features/panchang/panchang_page.dart
+
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'package:jyotishasha_app/core/state/panchang_provider.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
-import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
-
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
-
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
+
+import 'package:jyotishasha_app/core/state/panchang_provider.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
+import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
 class PanchangPage extends StatefulWidget {
   const PanchangPage({super.key});
@@ -27,6 +30,9 @@ class _PanchangPageState extends State<PanchangPage> {
   String locationName = "Lucknow, India";
   final TextEditingController _searchController = TextEditingController();
 
+  List<Map<String, String>> suggestions = [];
+  bool loadingSuggestions = false;
+
   @override
   void initState() {
     super.initState();
@@ -36,57 +42,148 @@ class _PanchangPageState extends State<PanchangPage> {
     });
   }
 
-  // 🔄 Change Location
-  void _changeLocation(double lat, double lng, String name) {
+  // -------------------------------------------------------------------------
+  // ⭐ GOOGLE PLACES — AUTOCOMPLETE (REST)
+  // -------------------------------------------------------------------------
+  Future<List<Map<String, String>>> fetchAutocomplete(String input) async {
+    if (input.length < 3) return [];
+
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        "?input=$input&components=country:in&key=$key";
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    if (data["status"] != "OK") return [];
+
+    return (data["predictions"] as List)
+        .map<Map<String, String>>(
+          (p) => {
+            "description": p["description"].toString(),
+            "place_id": p["place_id"].toString(),
+          },
+        )
+        .toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // ⭐ GOOGLE PLACES — GET LAT/LNG (REST)
+  // -------------------------------------------------------------------------
+  Future<Map<String, double>> fetchLatLng(String placeId) async {
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/details/json"
+        "?placeid=$placeId&key=$key";
+
+    final response = await http.get(Uri.parse(url));
+    final data = jsonDecode(response.body);
+
+    final loc = data["result"]["geometry"]["location"];
+    return {"lat": loc["lat"], "lng": loc["lng"]};
+  }
+
+  // -------------------------------------------------------------------------
+  // ⭐ Change Location Handler (with TIMEZONE)
+  // -------------------------------------------------------------------------
+  Future<void> _changeLocation(double lat, double lng, String name) async {
     final lang = context.read<LanguageProvider>().currentLang;
     final p = context.read<PanchangProvider>();
 
+    // ⭐ AUTO TIMEZONE
+    final timezone = await LocationService.fetchTimeZone(lat, lng);
+
     setState(() => locationName = name);
+
     p.fetchPanchang(lat: lat, lng: lng, lang: lang);
   }
 
-  // 🌍 Place Picker Dialog
+  // -------------------------------------------------------------------------
+  // ⭐ Place Picker Dialog (REST)
+  // -------------------------------------------------------------------------
   void _openPlacePickerDialog() {
     final t = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(t.changeLocationTitle),
-        content: KeyboardDismissOnTap(
-          child: GooglePlaceAutoCompleteTextField(
-            textEditingController: _searchController,
-            googleAPIKey: "YOUR_GOOGLE_API_KEY",
-            debounceTime: 800,
-            isLatLngRequired: true,
-            countries: const ["in"],
-            getPlaceDetailWithLatLng: (Prediction p) {
-              final lat = double.tryParse(p.lat ?? '') ?? 26.8467;
-              final lng = double.tryParse(p.lng ?? '') ?? 80.9462;
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateSB) {
+          return AlertDialog(
+            title: Text(t.changeLocationTitle),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                      hintText: "Search location",
+                    ),
+                    onChanged: (value) async {
+                      if (value.length < 3) {
+                        setStateSB(() => suggestions = []);
+                        return;
+                      }
 
-              Navigator.pop(context);
-              _changeLocation(lat, lng, p.description ?? t.selectedPlace);
-            },
-            itemBuilder: (context, index, Prediction p) {
-              return ListTile(
-                leading: const Icon(Icons.location_on_outlined),
-                title: Text(p.description ?? ""),
-              );
-            },
-            itemClick: (Prediction p) {
-              _searchController.text = p.description ?? "";
-            },
-          ),
-        ),
+                      setStateSB(() => loadingSuggestions = true);
+                      final data = await fetchAutocomplete(value);
+                      setStateSB(() {
+                        suggestions = data;
+                        loadingSuggestions = false;
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  if (loadingSuggestions) const LinearProgressIndicator(),
+
+                  // ⭐ FIX: Proper height + ListView visible
+                  if (suggestions.isNotEmpty)
+                    SizedBox(
+                      height: 250,
+                      child: ListView.builder(
+                        itemCount: suggestions.length,
+                        itemBuilder: (context, index) {
+                          final s = suggestions[index];
+                          return ListTile(
+                            leading: const Icon(Icons.location_on_outlined),
+                            title: Text(s["description"]!),
+                            onTap: () async {
+                              _searchController.text = s["description"]!;
+                              final coords = await fetchLatLng(s["place_id"]!);
+
+                              Navigator.pop(context);
+
+                              _changeLocation(
+                                coords["lat"]!,
+                                coords["lng"]!,
+                                s["description"]!,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
+  // -------------------------------------------------------------------------
+  // BUILD UI
+  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final p = context.watch<PanchangProvider>();
     final d = p.fullPanchang;
-
     final t = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -112,13 +209,14 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  // ⚠ ERROR UI
   Widget _buildError() {
     final t = AppLocalizations.of(context)!;
     return Center(child: Text(t.loadingError));
   }
 
-  // MAIN PANCHANG BODY UI
+  // -------------------------------------------------------------------------
+  // MAIN CONTENT UI
+  // -------------------------------------------------------------------------
   Widget _buildContent(Map<String, dynamic> d) {
     final t = AppLocalizations.of(context)!;
 
@@ -131,7 +229,7 @@ class _PanchangPageState extends State<PanchangPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 📅 DATE + LOCATION
+          // DATE + LOCATION
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -148,15 +246,15 @@ class _PanchangPageState extends State<PanchangPage> {
                   Text(
                     "📍 $locationName",
                     style: GoogleFonts.montserrat(
-                      fontSize: 14,
                       color: AppColors.textSecondary,
+                      fontSize: 14,
                     ),
                   ),
                 ],
               ),
               TextButton.icon(
                 onPressed: _openPlacePickerDialog,
-                icon: const Icon(Icons.location_on_outlined, size: 18),
+                icon: const Icon(Icons.location_on_outlined),
                 label: Text(t.change),
               ),
             ],
@@ -164,7 +262,7 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 16),
 
-          // 🌞 SURRISE + SUNSET
+          // SUNRISE + SUNSET
           Card(
             elevation: 2,
             color: AppColors.surface,
@@ -185,7 +283,6 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 24),
 
-          // MAIN ELEMENTS
           Text(
             t.panchang_elements,
             style: GoogleFonts.montserrat(
@@ -195,6 +292,7 @@ class _PanchangPageState extends State<PanchangPage> {
           ),
 
           const SizedBox(height: 12),
+
           _dataRow(
             t.panchang_tithi,
             "${d['tithi']?['name']} (${d['tithi']?['paksha']})",
@@ -210,7 +308,6 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 24),
 
-          // ⭐ HIGHLIGHTS
           Text(
             t.panchang_highlights,
             style: GoogleFonts.montserrat(
@@ -240,16 +337,8 @@ class _PanchangPageState extends State<PanchangPage> {
             ),
           ),
 
-          const SizedBox(height: 16),
-
-          // ⭐ GOOGLE BANNER AD (footer ke upar) — CENTER FIX
-          Center(
-            child: SizedBox(
-              width: double.infinity, // Ensures full-width
-              child: const BannerAdWidget(),
-            ),
-          ),
-
+          const SizedBox(height: 20),
+          const BannerAdWidget(),
           const SizedBox(height: 20),
           AppFooterFeedbackWidget(),
         ],
@@ -257,7 +346,6 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  // ROW TILE
   Widget _dataRow(String k, String? v) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -277,11 +365,10 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  // STAR HIGHLIGHT
   Widget _highlight(String title, String value) {
     return Card(
-      color: AppColors.surface,
       elevation: 1,
+      color: AppColors.surface,
       margin: const EdgeInsets.symmetric(vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -301,7 +388,6 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  // INFO TILE
   Widget _infoTile(String title, String value) {
     return Column(
       children: [

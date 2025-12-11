@@ -17,6 +17,7 @@ class ManualKundaliProvider with ChangeNotifier {
     required String place,
     required double lat,
     required double lng,
+    required String timezone,
     String language = "en",
   }) async {
     isLoading = true;
@@ -31,6 +32,7 @@ class ManualKundaliProvider with ChangeNotifier {
         "place": place,
         "lat": lat,
         "lng": lng,
+        "timezone": timezone,
         "language": language,
       };
 

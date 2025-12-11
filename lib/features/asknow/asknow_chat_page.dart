@@ -14,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/ads/rewarded_ad_manager.dart';
 import 'package:jyotishasha_app/core/constants/razorpay_keys.dart';
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
 
 // RAZORPAY
 import 'package:razorpay_flutter/razorpay_flutter.dart';
@@ -199,102 +200,115 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   // ---------------------------------------------------
-  // 🔧 CLEAN BOT ANSWER TEXT AT UI LEVEL
+  // 🔧 CLEAN BOT ANSWER TEXT (Final Optimized Version)
   // ---------------------------------------------------
   String _cleanBotText(String? raw) {
     if (raw == null) return "";
     String text = raw.trim();
     if (text.isEmpty) return "";
 
-    // 1) Try if it's proper JSON → {"success":true, "answer":"..."}
+    // 1) Proper JSON response
     try {
       final decoded = jsonDecode(text);
       if (decoded is Map) {
         if (decoded["answer"] is String) {
-          return (decoded["answer"] as String).trim();
+          return decoded["answer"].toString().trim();
         }
         if (decoded["message"] is String) {
-          return (decoded["message"] as String).trim();
+          return decoded["message"].toString().trim();
         }
       }
     } catch (_) {
-      // Not JSON, ignore
+      // ignore
     }
 
-    // 2) Try if it's Dart Map.toString():
-    // {success: true, answer: Aaj ka din..., remaining_tokens: 7, message: null}
+    // 2) Map.toString() fallback:  {answer: "...", message: null}
     final lower = text.toLowerCase();
     const key = "answer:";
     final idx = lower.indexOf(key);
+
     if (idx != -1) {
       String rest = text.substring(idx + key.length).trim();
 
-      // Cut when next ", someKey:"
-      final reg = RegExp(r',\s*\w+\s*:');
+      // remove next ", key:"
+      final reg = RegExp(r',\s*\w+\s*:', caseSensitive: false);
       final match = reg.firstMatch(rest);
       if (match != null) {
         rest = rest.substring(0, match.start).trim();
       }
 
-      // Remove trailing brace
-      if (rest.endsWith('}')) {
-        rest = rest.substring(0, rest.length - 1).trim();
-      }
+      // clean braces
+      rest = rest.replaceAll(RegExp(r'[{}]'), '').trim();
 
-      // Trim quotes if wrapped
-      if ((rest.startsWith("'") && rest.endsWith("'")) ||
-          (rest.startsWith('"') && rest.endsWith('"'))) {
-        rest = rest.substring(1, rest.length - 1);
+      // clean single/double quotes
+      if ((rest.startsWith('"') && rest.endsWith('"')) ||
+          (rest.startsWith("'") && rest.endsWith("'"))) {
+        rest = rest.substring(1, rest.length - 1).trim();
       }
 
       if (rest.isNotEmpty) return rest;
     }
 
-    // 3) Fallback → jo aaya hai wahi
+    // 3) If text contains ASTROLOGICAL JSON fragments
+    if (text.contains("prediction") || text.contains("remedy")) {
+      return text.replaceAll(RegExp(r'[{}"]'), "").trim();
+    }
+
+    // 4) Final fallback
     return text;
   }
 
   // ---------------------------------------------------
-  // 🔥 SYNC CHAT STATUS FROM BACKEND
+  // 🔥 SYNC CHAT STATUS FROM BACKEND (Final Version)
   // ---------------------------------------------------
   Future<void> _syncChatStatus() async {
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) return;
 
-    final userDoc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(firebaseUser.uid)
-        .get();
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(firebaseUser.uid)
+          .get();
 
-    final rawId = userDoc.data()?["backend_user_id"];
-    final int userId = rawId is int
-        ? rawId
-        : int.tryParse(rawId?.toString() ?? "0") ?? 0;
-    if (userId == 0) return;
+      final rawId = userDoc.data()?["backend_user_id"];
+      final int userId = rawId is int
+          ? rawId
+          : int.tryParse(rawId?.toString() ?? "0") ?? 0;
 
-    final status = await AskNowService.fetchChatStatus(userId);
+      if (userId == 0) return;
 
-    final provider = context.read<AskNowProvider>();
-    provider.setFreeAvailable(status["free_available"] == true);
+      final status = await AskNowService.fetchChatStatus(userId);
 
-    // 🔥 tokens ko hamesha INT bana do
-    final dynamic rawTokens =
-        status["remaining_tokens"] ??
-        status["remaining"] ??
-        status["remaining_questions"] ??
-        0;
+      if (!mounted) return;
 
-    final int tokens = int.tryParse(rawTokens.toString()) ?? 0;
+      final provider = context.read<AskNowProvider>();
 
-    provider.hasActivePack = tokens > 0;
-    provider.remainingTokens = tokens;
-    provider.statusLoaded = true;
-    provider.notifyListeners();
+      provider.setFreeAvailable(status["free_available"] == true);
+
+      // Normalized token extraction
+      final rawTokens =
+          status["remaining_tokens"] ??
+          status["remaining"] ??
+          status["remaining_questions"] ??
+          0;
+
+      final int tokens = int.tryParse(rawTokens.toString()) ?? 0;
+
+      provider.hasActivePack = tokens > 0;
+      provider.remainingTokens = tokens;
+      provider.statusLoaded = true;
+
+      provider.notifyListeners();
+    } catch (e) {
+      debugPrint("⚠ syncChatStatus error: $e");
+    }
   }
 
   @override
   void initState() {
     super.initState();
+
     RewardedAdManager.load();
 
     _razorpay = Razorpay();
@@ -302,18 +316,21 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
     _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
 
-    _syncChatStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncChatStatus();
+    });
   }
 
   @override
   void dispose() {
     _razorpay.clear();
     _questionController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   // =====================================================
-  // PAYMENT HANDLERS
+  // PAYMENT HANDLERS (Enterprise Safe Version)
   // =====================================================
 
   void _handlePaymentSuccess(PaymentSuccessResponse response) async {
@@ -330,7 +347,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
         paymentId: paymentId,
       );
 
-      final ok =
+      final bool ok =
           verifyRes["success"] == true &&
           verifyRes["result"] != null &&
           verifyRes["result"]["success"] == true;
@@ -338,95 +355,139 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
       if (!mounted) return;
 
       if (ok) {
-        final tokens = verifyRes["result"]["total_tokens"];
-        context.read<AskNowProvider>().markPackActive(
-          tokens: tokens is int ? tokens : null,
-        );
+        // normalized token pull
+        final raw = verifyRes["result"]["total_tokens"];
+        final int tokens = raw is int ? raw : int.tryParse(raw.toString()) ?? 8;
+
+        // update provider
+        context.read<AskNowProvider>().markPackActive(tokens: tokens);
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Payment verified. Question pack activated ✅"),
+            content: Text("Payment verified successfully 🔮 Pack activated!"),
+            duration: Duration(seconds: 2),
           ),
         );
 
+        // if user had asked a question before payment
         if (_pendingPaidQuestionText != null && _pendingPaidProfile != null) {
           await _askFromPaidPackAfterPayment();
         }
+
+        // reset state
+        _pendingPaidProfile = null;
+        _pendingPaidQuestionText = null;
+        _currentOrderId = null;
+        _userIdForPayment = null;
       } else {
+        final msg =
+            verifyRes["result"]?["message"] ?? "Payment verification failed.";
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              (verifyRes["result"]?["message"] ??
-                      "Payment verification failed.")
-                  .toString(),
-            ),
+            content: Text(msg.toString()),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Verify error: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Unexpected error verifying payment. Please try again.",
+          ),
+          duration: const Duration(seconds: 3),
+        ),
+      );
     }
   }
 
   void _handlePaymentError(PaymentFailureResponse response) {
     if (!mounted) return;
+
+    final code = response.code;
+    final msg = response.message ?? "Unknown error";
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Payment failed: ${response.code} ${response.message}"),
+        content: Text("Payment cancelled or failed ($code): $msg"),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
 
   void _handleExternalWallet(ExternalWalletResponse response) {
-    // Optional
-  }
-
-  // =====================================================
-  // ASK AFTER PAYMENT (Pack)
-  // =====================================================
-
-  Future<void> _askFromPaidPackAfterPayment() async {
-    final provider = context.read<AskNowProvider>();
-    final String question = _pendingPaidQuestionText!;
-    final Map<String, dynamic> profile = _pendingPaidProfile!;
-    final int userId = _userIdForPayment!;
-
-    await provider.askFromPaidPack(
-      question: question,
-      profile: profile,
-      userId: userId,
-    );
-
     if (!mounted) return;
 
-    if (provider.pendingAnswer != null) {
-      await Future.delayed(const Duration(seconds: 2));
-
-      // ✅ CLEAN HERE
-      final String ansText = _cleanBotText(provider.pendingAnswer);
-      provider.clearPending();
-
-      setState(() {
-        chatMessages.add({"sender": "bot", "text": ansText});
-      });
-
-      _scrollToBottom();
-    } else if (provider.lastErrorMessage != null &&
-        provider.lastErrorMessage != "PAYMENT_REQUIRED") {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(provider.lastErrorMessage!)));
-    }
-
-    _pendingPaidQuestionText = null;
-    _pendingPaidProfile = null;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("External wallet selected: ${response.walletName}"),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   // =====================================================
-  // ⭐ FIXED MAIN SEND QUESTION — 100% CORRECT FLOW
+  // ASK AFTER PAYMENT (Pack) — ENTERPRISE SAFE
+  // =====================================================
+  Future<void> _askFromPaidPackAfterPayment() async {
+    final provider = context.read<AskNowProvider>();
+
+    // ---------- SAFETY CHECKS ----------
+    final String? q = _pendingPaidQuestionText;
+    final Map<String, dynamic>? prof = _pendingPaidProfile;
+    final int? uid = _userIdForPayment;
+
+    if (q == null || prof == null || uid == null) {
+      debugPrint("⚠️ Missing pending question data after payment.");
+      return;
+    }
+
+    try {
+      await provider.askFromPaidPack(question: q, profile: prof, userId: uid);
+
+      if (!mounted) return;
+
+      // ---------- BOT ANSWER AVAILABLE ----------
+      final rawAnswer = provider.pendingAnswer;
+      final error = provider.lastErrorMessage;
+
+      if (rawAnswer != null && rawAnswer.toString().trim().isNotEmpty) {
+        await Future.delayed(const Duration(milliseconds: 800));
+
+        final String cleaned = _cleanBotText(rawAnswer);
+        provider.clearPending();
+
+        setState(() {
+          chatMessages.add({"sender": "bot", "text": cleaned});
+        });
+
+        _scrollToBottom();
+      }
+      // ---------- ANY NON-PAYMENT ERROR ----------
+      else if (error != null && error != "PAYMENT_REQUIRED") {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(error), duration: const Duration(seconds: 3)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Something went wrong. Please try again."),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      // ---------- ALWAYS RESET ----------
+      _pendingPaidQuestionText = null;
+      _pendingPaidProfile = null;
+      // userIdForPayment aur order id mat reset karo – wo payment flow me reset honge
+    }
+  }
+
+  // =====================================================
+  // ⭐ FIXED MAIN SEND QUESTION — ENTERPRISE SAFE VERSION
   // =====================================================
   Future<void> _sendQuestion() async {
     final String question = _questionController.text.trim();
@@ -437,12 +498,15 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     // ⛔ Prevent double-send
     if (provider.isLoading) return;
 
+    // Close keyboard instantly for smoother UI
+    FocusScope.of(context).unfocus();
+
     // -------------------------------
     // 1) FETCH USER + BACKEND ID
     // -------------------------------
     final firebaseUser = FirebaseAuth.instance.currentUser;
     if (firebaseUser == null) {
-      debugPrint("❌ No Firebase user");
+      debugPrint("❌ No Firebase user.");
       return;
     }
 
@@ -457,21 +521,16 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
         : int.tryParse(rawId?.toString() ?? "0") ?? 0;
 
     if (userId == 0) {
-      debugPrint("❌ backend_user_id missing");
+      debugPrint("❌ backend_user_id missing.");
       return;
     }
 
-    final profileSnap = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(firebaseUser.uid)
-        .collection("profiles")
-        .doc("default")
-        .get();
-
-    final Map<String, dynamic> profile = profileSnap.data() ?? {};
+    // Fetch active profile
+    final profileProvider = context.read<ProfileProvider>();
+    final Map<String, dynamic> profile = profileProvider.activeProfile ?? {};
 
     // -------------------------------
-    // 2) SHOW IMMEDIATELY IN UI
+    // 2) UI: Show user message instantly
     // -------------------------------
     setState(() {
       chatMessages.add({"sender": "user", "text": question});
@@ -480,73 +539,75 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
     _scrollToBottom();
 
-    // -------------------------------------------------------------------
-    // ⭐ NEW PRIORITY LOGIC (THE REAL FIX)
-    //
-    // 1️⃣ If free question available → use free
-    // 2️⃣ Else if pack tokens > 0 → use tokens
-    // 3️⃣ Else → NO free + NO tokens → show reward + pack sheet
-    // -------------------------------------------------------------------
-
-    bool useFree = provider.freeAvailable == true; // free not used today
-    bool usePack = !useFree && provider.remainingTokens > 0; // pack available
-    bool needPayment = !useFree && !usePack; // nothing available
+    // -------------------------------
+    // 3) DECISION TREE (MOST IMPORTANT)
+    // -------------------------------
+    final bool freeAvailable = provider.freeAvailable == true;
+    final bool packAvailable = provider.remainingTokens > 0;
+    final bool needPayment = !freeAvailable && !packAvailable;
 
     // -------------------------------
-    // ⭐ 3) NOTHING AVAILABLE → SHOW OPTIONS
+    // 4) NOTHING AVAILABLE → PAYMENT SHEET
     // -------------------------------
     if (needPayment) {
-      // Save question for after-payment if user chooses pack
       _pendingPaidQuestionText = question;
       _pendingPaidProfile = profile;
       _userIdForPayment = userId;
-
-      // ⭐ Show bottom sheet: Buy Pack OR Watch Reward Ads
       _showPackSheet();
-
       return;
     }
 
     // -------------------------------
-    // ⭐ 4) USE FREE OR PACK — MAKE API CALL
+    // 5) CALL API USING FREE OR PACK
     // -------------------------------
-    await provider.askFreeOrFromTokens(
-      question: question,
-      profile: profile,
-      userId: userId,
-    );
+    try {
+      await provider.askFreeOrFromTokens(
+        question: question,
+        profile: profile,
+        userId: userId,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Something went wrong. Try again.")),
+        );
+      }
+      return;
+    }
 
     if (!mounted) return;
 
     // -------------------------------
-    // ⭐ 5) GOT BOT ANSWER
+    // 6) ANSWER FROM BACKEND
     // -------------------------------
-    if (provider.pendingAnswer != null) {
-      await Future.delayed(const Duration(seconds: 2));
-      final String ansText = _cleanBotText(provider.pendingAnswer);
+    final rawAnswer = provider.pendingAnswer;
+
+    if (rawAnswer != null && rawAnswer.toString().trim().isNotEmpty) {
+      await Future.delayed(const Duration(milliseconds: 900)); // smoother feel
+      final ansText = _cleanBotText(rawAnswer);
       provider.clearPending();
 
       setState(() {
         chatMessages.add({"sender": "bot", "text": ansText});
       });
 
+      _scrollToBottom();
       return;
     }
 
     // -------------------------------
-    // ⭐ 6) PAYMENT NEEDED (Pack Required)
+    // 7) PAYMENT REQUIRED MID-FLOW
     // -------------------------------
     if (provider.lastErrorMessage == "PAYMENT_REQUIRED") {
       _pendingPaidQuestionText = question;
       _pendingPaidProfile = profile;
       _userIdForPayment = userId;
-
       _showPackSheet();
       return;
     }
 
     // -------------------------------
-    // ⭐ 7) ANY OTHER ERROR
+    // 8) ANY OTHER ERROR
     // -------------------------------
     if (provider.lastErrorMessage != null) {
       ScaffoldMessenger.of(
@@ -556,11 +617,15 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   // =====================================================
-  // ⭐ UPGRADED PACK + REWARD COMBINED BOTTOM SHEET
+  // ⭐ UPGRADED PACK + PURE ENTERPRISE BOTTOM SHEET
   // =====================================================
   void _showPackSheet() {
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: false,
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -580,14 +645,19 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
               // Title
               const Text(
                 "You’ve used your free question today",
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.black87,
+                ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
 
               const Text(
                 "To continue asking, buy a question pack:",
@@ -597,11 +667,11 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
               const SizedBox(height: 26),
 
-              // ✅ ONLY PACK OPTION (Reward block removed)
+              // ⭐ PACK CARD
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.purple.shade50,
+                  color: const Color(0xFFF3E8FF),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: Colors.purple.shade200),
                 ),
@@ -610,40 +680,48 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                     const Text(
                       "Buy Pack – ₹51",
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Color(0xFF7C3AED),
                       ),
                     ),
                     const SizedBox(height: 10),
+
                     const Text(
-                      "Get 8 premium questions you can use anytime. No expiry.",
+                      "Get 8 premium questions. No expiry. Use anytime.",
                       textAlign: TextAlign.center,
                       style: TextStyle(fontSize: 12, color: Colors.black54),
                     ),
-                    const SizedBox(height: 14),
-                    ElevatedButton(
-                      onPressed: () async {
-                        // 👇 pehle sheet band, phir thoda delay, phir Razorpay open
-                        Navigator.pop(context);
-                        await Future.delayed(const Duration(milliseconds: 200));
-                        _startPackPayment();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7C3AED),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
+
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+
+                          // Prevent immediate UI lag
+                          await Future.delayed(
+                            const Duration(milliseconds: 200),
+                          );
+
+                          _startPackPayment();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF7C3AED),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                      child: const Text(
-                        "Pay ₹51 & Get 8 Questions",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                        child: const Text(
+                          "Pay ₹51 & Get 8 Questions",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -651,7 +729,8 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+
               const Text(
                 "Pack questions never expire.",
                 style: TextStyle(fontSize: 11, color: Colors.black45),
@@ -663,19 +742,27 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     );
   }
 
+  // =====================================================
+  // ⭐ START PACK PAYMENT — SAFE & CLEAN
+  // =====================================================
   Future<void> _startPackPayment() async {
     try {
-      // 1️⃣ userId ensure karo – ya to existing field se, ya Firebase/Firestore se
       int userId;
 
+      // 1️⃣ If already cached (user pressed Send earlier)
       if (_userIdForPayment != null) {
         userId = _userIdForPayment!;
       } else {
         final firebaseUser = FirebaseAuth.instance.currentUser;
+
         if (firebaseUser == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Please login again to buy a pack.")),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Please login again to buy a pack."),
+              ),
+            );
+          }
           return;
         }
 
@@ -690,22 +777,24 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
             : int.tryParse(rawId?.toString() ?? "0") ?? 0;
 
         if (userId == 0) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("User id missing. Please reopen the app."),
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("User ID missing. Please restart the app."),
+              ),
+            );
+          }
           return;
         }
 
         _userIdForPayment = userId;
       }
 
-      // 2️⃣ Order create karo backend se
+      // 2️⃣ Create Razorpay Order
       final orderRes = await AskNowService.createPackOrder(userId: userId);
 
       final order = orderRes["order"] as Map<String, dynamic>?;
-      if (order == null) throw Exception("Invalid order response");
+      if (order == null) throw Exception("Invalid order data");
 
       final String razorpayOrderId =
           order["razorpay_order_id"]?.toString() ?? "";
@@ -713,22 +802,18 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
       _currentOrderId = razorpayOrderId;
 
-      // 3️⃣ Razorpay options
+      // 3️⃣ Razorpay Options
       final options = {
-        "key": RazorpayKeys.liveKey, // 🔥 common key file se
-        "amount": amount * 100, // paise
+        "key": RazorpayKeys.liveKey,
+        "amount": amount * 100,
         "currency": "INR",
         "name": "Jyotishasha AskNow",
         "description": "ChatPack 8 Questions",
         "order_id": razorpayOrderId,
-        "prefill": {
-          "contact":
-              "", // chahe to yahan phone/email bhi auto fill kara sakte hain
-          "email": "",
-        },
+        "prefill": {"contact": "", "email": ""},
       };
 
-      // 4️⃣ Razorpay popup open
+      // 4️⃣ Open Razorpay
       _razorpay.open(options);
     } catch (e) {
       if (!mounted) return;
@@ -757,198 +842,271 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           centerTitle: true,
         ),
 
-        body: Column(
-          children: [
-            AskNowHeaderStatusWidget(
-              freeQ: provider.statusLoaded && provider.freeAvailable ? 1 : 0,
-              earnedQ: provider.remainingTokens, // ✅ int hi jaa raha hai
-              onBuy: _showPackSheet,
-            ),
-            const SizedBox(height: 12),
-
-            // ⭐ FREE QUESTION UNLOCK BUTTON ⭐
-            if (provider.statusLoaded &&
-                provider.freeAvailable == false && // free NOT available
-                provider.freeUsedToday == true && // free USED TODAY
-                provider.remainingTokens == 0) // no pack tokens
-              Center(
-                child: GestureDetector(
-                  onTap: () => _showEarnFreeQuestionSheet(),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 10,
-                      horizontal: 22,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.orange,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.play_circle_fill,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                        SizedBox(width: 8),
-                        Text(
-                          "Unlock 1 Free Question",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        body: SafeArea(
+          bottom: true,
+          child: Column(
+            children: [
+              // 🔹 Top status: free Q + pack summary
+              AskNowHeaderStatusWidget(
+                freeQ: provider.statusLoaded && provider.freeAvailable ? 1 : 0,
+                earnedQ: provider.remainingTokens, // ✅ int hi jaa raha hai
+                onBuy: _showPackSheet,
               ),
+              const SizedBox(height: 12),
 
-            Expanded(
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(24),
-                    topRight: Radius.circular(24),
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: chatMessages.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 24,
-                                ),
-                                child: Text(
-                                  // 🔁 ARB text: empty state hint
-                                  loc.asknowEmptyHint,
-                                  textAlign: TextAlign.center,
-                                  style: GoogleFonts.montserrat(
-                                    fontSize: 14,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              controller: _scrollController,
-                              padding: const EdgeInsets.all(16),
-                              itemCount: chatMessages.length,
-                              itemBuilder: (context, index) {
-                                final msg = chatMessages[index];
-                                final bool isUser = msg['sender'] == 'user';
-
-                                List<Widget> items = [];
-
-                                // ⭐ 1. Normal Chat Bubble
-                                items.add(
-                                  Align(
-                                    alignment: isUser
-                                        ? Alignment.centerRight
-                                        : Alignment.centerLeft,
-                                    child: Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        vertical: 4,
-                                      ),
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: isUser
-                                            ? const Color(0xFF7C3AED)
-                                            : const Color(0xFFF6F6F6),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Text(
-                                        msg['text'] ?? "",
-                                        style: GoogleFonts.montserrat(
-                                          color: isUser
-                                              ? Colors.white
-                                              : Colors.black87,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                );
-
-                                // ⭐ 2. Ad Insert — हर bot message के बाद ad दिखे
-                                if (!isUser) {
-                                  items.add(const SizedBox(height: 10));
-                                  items.add(const BannerAdWidget());
-                                  items.add(const SizedBox(height: 10));
-                                }
-
-                                return Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.stretch,
-                                  children: items,
-                                );
-                              },
-                            ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                      child: Row(
+              // ⭐ FREE QUESTION UNLOCK BUTTON (Watch Ads)
+              if (provider.statusLoaded &&
+                  provider.freeAvailable == false && // free NOT available
+                  provider.freeUsedToday == true && // free USED TODAY
+                  provider.remainingTokens == 0) // no pack tokens
+                Center(
+                  child: GestureDetector(
+                    onTap: _showEarnFreeQuestionSheet,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 10,
+                        horizontal: 22,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _questionController,
-                              textInputAction: TextInputAction.send,
-                              onSubmitted: (_) {
-                                if (!provider.isLoading) {
-                                  _sendQuestion();
-                                }
-                              },
-                              decoration: InputDecoration(
-                                // 🔁 ARB text: input hint
-                                hintText: loc.asknowInputHint,
-                                hintStyle: GoogleFonts.montserrat(),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 10,
-                                ),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
+                          Icon(
+                            Icons.play_circle_fill,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          const SizedBox(width: 8),
-                          FloatingActionButton(
-                            onPressed: provider.isLoading
-                                ? null
-                                : _sendQuestion,
-                            backgroundColor: provider.isLoading
-                                ? Colors.grey
-                                : const Color(0xFF7C3AED),
-                            mini: true,
-                            child: provider.isLoading
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(
-                                    Icons.send,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Unlock 1 Free Question",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
+                ),
+
+              // 🔹 Main Chat + Input
+              Expanded(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(24),
+                      topRight: Radius.circular(24),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // 🔹 Chat list + optional "typing..." bubble
+                      Expanded(
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: chatMessages.isEmpty
+                                  ? Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          // 🔁 ARB text: empty state hint
+                                          loc.asknowEmptyHint,
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.montserrat(
+                                            fontSize: 14,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      controller: _scrollController,
+                                      padding: const EdgeInsets.all(16),
+                                      itemCount: chatMessages.length,
+                                      itemBuilder: (context, index) {
+                                        final msg = chatMessages[index];
+                                        final bool isUser =
+                                            msg['sender'] == 'user';
+
+                                        List<Widget> items = [];
+
+                                        // ⭐ 1. Normal Chat Bubble
+                                        items.add(
+                                          Align(
+                                            alignment: isUser
+                                                ? Alignment.centerRight
+                                                : Alignment.centerLeft,
+                                            child: Container(
+                                              margin:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 4,
+                                                  ),
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                color: isUser
+                                                    ? const Color(0xFF7C3AED)
+                                                    : const Color(0xFFF6F6F6),
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                              child: Text(
+                                                msg['text'] ?? "",
+                                                style: GoogleFonts.montserrat(
+                                                  color: isUser
+                                                      ? Colors.white
+                                                      : Colors.black87,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        );
+
+                                        // ⭐ 2. Ad Insert — har bot message ke baad ad
+                                        if (!isUser) {
+                                          items.add(const SizedBox(height: 10));
+                                          items.add(const BannerAdWidget());
+                                          items.add(const SizedBox(height: 10));
+                                        }
+
+                                        return Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: items,
+                                        );
+                                      },
+                                    ),
+                            ),
+
+                            // ⭐ Typing indicator — jab answer load ho raha ho
+                            if (provider.isLoading &&
+                                chatMessages.isNotEmpty &&
+                                chatMessages.last['sender'] == 'user')
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  8,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF6F6F6),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(
+                                          width: 14,
+                                          height: 14,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          "✨ Connecting to stars…",
+                                          style: GoogleFonts.montserrat(
+                                            fontSize: 12,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      // 🔹 Input bar
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _questionController,
+                                textInputAction: TextInputAction.send,
+                                minLines: 1,
+                                maxLines: 4,
+                                onSubmitted: (_) {
+                                  if (!provider.isLoading) {
+                                    FocusScope.of(
+                                      context,
+                                    ).unfocus(); // ⬅ keyboard hide
+                                    _sendQuestion();
+                                  }
+                                },
+                                decoration: InputDecoration(
+                                  // 🔁 ARB text: input hint
+                                  hintText: loc.asknowInputHint,
+                                  hintStyle: GoogleFonts.montserrat(),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 10,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FloatingActionButton(
+                              onPressed: provider.isLoading
+                                  ? null
+                                  : () {
+                                      FocusScope.of(
+                                        context,
+                                      ).unfocus(); // ⬅ keyboard hide
+                                      _sendQuestion();
+                                    },
+                              backgroundColor: provider.isLoading
+                                  ? Colors.grey
+                                  : const Color(0xFF7C3AED),
+                              mini: true,
+                              child: provider.isLoading
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : const Icon(
+                                      Icons.send,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

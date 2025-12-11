@@ -3,8 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:google_places_flutter/google_places_flutter.dart';
-import 'package:google_places_flutter/model/prediction.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
@@ -75,6 +73,10 @@ class _MuhurthPageState extends State<MuhurthPage> {
 
   final TextEditingController _locationController = TextEditingController();
 
+  // REST Autocomplete UI state
+  List<Map<String, String>> _placeSuggestions = [];
+  bool _loadingSuggestions = false;
+
   @override
   void initState() {
     super.initState();
@@ -83,7 +85,64 @@ class _MuhurthPageState extends State<MuhurthPage> {
     });
   }
 
-  // MAIN API with CACHE
+  @override
+  void dispose() {
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  // ---------------------------------------------------------------------------
+  // ⭐ GOOGLE PLACES — AUTOCOMPLETE (REST)
+  // ---------------------------------------------------------------------------
+  Future<List<Map<String, String>>> _fetchPlaceSuggestions(String input) async {
+    if (input.length < 3) return [];
+
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
+        "?input=$input&components=country:in&key=$key";
+
+    final res = await http.get(Uri.parse(url));
+    final data = jsonDecode(res.body);
+
+    if (data["status"] != "OK") return [];
+
+    return (data["predictions"] as List)
+        .map<Map<String, String>>(
+          (p) => {
+            "description": p["description"].toString(),
+            "place_id": p["place_id"].toString(),
+          },
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // ⭐ GOOGLE PLACES — DETAILS → LAT/LNG (REST)
+  // ---------------------------------------------------------------------------
+  Future<Map<String, double>> _fetchLatLngFromPlaceId(String placeId) async {
+    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final url =
+        "https://maps.googleapis.com/maps/api/place/details/json"
+        "?placeid=$placeId&key=$key";
+
+    final res = await http.get(Uri.parse(url));
+    final data = jsonDecode(res.body);
+
+    if (data["status"] != "OK") {
+      throw Exception("Place details failed: ${data["status"]}");
+    }
+
+    final loc = data["result"]["geometry"]["location"];
+    return {
+      "lat": (loc["lat"] as num).toDouble(),
+      "lng": (loc["lng"] as num).toDouble(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // MAIN MUHURTH API with CACHE
+  // ---------------------------------------------------------------------------
   Future<void> _fetchMuhurth() async {
     final lang = AppLocalizations.of(context)!.localeName;
     final cacheKey = "$selectedActivity|$latitude|$longitude|$lang";
@@ -124,6 +183,8 @@ class _MuhurthPageState extends State<MuhurthPage> {
         setState(() {
           muhurthResults = muhurthCache[cacheKey]!;
         });
+      } else {
+        debugPrint("Muhurth API error: ${res.statusCode}");
       }
     } catch (e) {
       debugPrint("Error fetching muhurth: $e");
@@ -132,7 +193,9 @@ class _MuhurthPageState extends State<MuhurthPage> {
     setState(() => isLoading = false);
   }
 
-  // LOCATION PICKER
+  // ---------------------------------------------------------------------------
+  // LOCATION PICKER — REST BASED
+  // ---------------------------------------------------------------------------
   Future<void> _openLocationPicker() async {
     showModalBottomSheet(
       context: context,
@@ -142,69 +205,109 @@ class _MuhurthPageState extends State<MuhurthPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
       builder: (context) {
-        return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.55,
-          minChildSize: 0.40,
-          maxChildSize: 0.95,
-          builder: (_, controller) {
-            return SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  controller: controller,
-                  child: Column(
-                    children: [
-                      Text(
-                        AppLocalizations.of(context)!.muhurthChange,
-                        style: GoogleFonts.montserrat(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final t = AppLocalizations.of(context)!;
 
-                      GooglePlaceAutoCompleteTextField(
-                        textEditingController: _locationController,
-                        googleAPIKey: dotenv.env["GOOGLE_MAPS_API_KEY"]!,
-                        inputDecoration: InputDecoration(
-                          hintText: "Search location",
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.55,
+              minChildSize: 0.40,
+              maxChildSize: 0.95,
+              builder: (_, controller) {
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          t.muhurthChange,
+                          style: GoogleFonts.montserrat(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
                           ),
                         ),
-                        debounceTime: 600,
-                        isLatLngRequired: true,
 
-                        getPlaceDetailWithLatLng: (Prediction prediction) {
-                          try {
-                            final lat = double.parse(prediction.lat!);
-                            final lng = double.parse(prediction.lng!);
+                        const SizedBox(height: 16),
 
-                            setState(() {
-                              cityName = prediction.description ?? "Location";
-                              latitude = lat;
-                              longitude = lng;
+                        // SEARCH
+                        TextField(
+                          controller: _locationController,
+                          decoration: InputDecoration(
+                            hintText: "Search location",
+                            prefixIcon: const Icon(Icons.location_on_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onChanged: (value) async {
+                            if (value.length < 3) {
+                              setModalState(() => _placeSuggestions = []);
+                              return;
+                            }
+
+                            setModalState(() => _loadingSuggestions = true);
+
+                            final data = await _fetchPlaceSuggestions(value);
+
+                            setModalState(() {
+                              _loadingSuggestions = false;
+                              _placeSuggestions = data;
                             });
+                          },
+                        ),
 
-                            Navigator.pop(context);
-                            _initialLoad = false; // reset guard
-                            _fetchMuhurth();
-                          } catch (e) {
-                            debugPrint("Location parse error: $e");
-                          }
-                        },
+                        if (_loadingSuggestions)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 8.0),
+                            child: LinearProgressIndicator(),
+                          ),
 
-                        itemClick: (Prediction prediction) {
-                          _locationController.text = prediction.description!;
-                        },
-                      ),
+                        const SizedBox(height: 12),
 
-                      const SizedBox(height: 36),
-                    ],
+                        // SUGGESTION LIST
+                        if (_placeSuggestions.isNotEmpty)
+                          Expanded(
+                            child: ListView.builder(
+                              controller: controller,
+                              itemCount: _placeSuggestions.length,
+                              itemBuilder: (context, index) {
+                                final s = _placeSuggestions[index];
+
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.location_on_outlined,
+                                  ),
+                                  title: Text(s["description"]!),
+                                  onTap: () async {
+                                    _locationController.text =
+                                        s["description"]!;
+
+                                    final coords =
+                                        await _fetchLatLngFromPlaceId(
+                                          s["place_id"]!,
+                                        );
+
+                                    // update main state
+                                    setState(() {
+                                      cityName = s["description"]!;
+                                      latitude = coords["lat"]!;
+                                      longitude = coords["lng"]!;
+                                    });
+
+                                    Navigator.pop(context);
+                                    _fetchMuhurth();
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             );
           },
         );
@@ -212,6 +315,9 @@ class _MuhurthPageState extends State<MuhurthPage> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // BUILD UI
+  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
@@ -233,8 +339,8 @@ class _MuhurthPageState extends State<MuhurthPage> {
           ),
           actions: const [
             GlobalShareButton(
-              currentPage: "panchang",
-            ), // ⭐ Muhurtha = Panchang category
+              currentPage: "panchang", // Muhurtha = Panchang category
+            ),
           ],
         ),
 
@@ -254,7 +360,6 @@ class _MuhurthPageState extends State<MuhurthPage> {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-
                   TextButton.icon(
                     onPressed: _openLocationPicker,
                     icon: const Icon(Icons.location_on_outlined, size: 18),
@@ -288,9 +393,9 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     value: selectedActivity,
                     isExpanded: true,
                     icon: const Icon(Icons.arrow_drop_down),
-
                     onChanged: (val) {
-                      setState(() => selectedActivity = val!);
+                      if (val == null) return;
+                      setState(() => selectedActivity = val);
 
                       if (_initialLoad) {
                         _initialLoad = false;
@@ -299,7 +404,6 @@ class _MuhurthPageState extends State<MuhurthPage> {
 
                       _fetchMuhurth();
                     },
-
                     items: activities.map((a) {
                       final title = (lang == "hi")
                           ? activityLabelsHi[a]!
@@ -339,13 +443,12 @@ class _MuhurthPageState extends State<MuhurthPage> {
                             muhurthResults.length +
                             (muhurthResults.length ~/ 3),
                         itemBuilder: (context, index) {
-                          // after every 3rd item → insert ad
-                          if ((index + 1) % 3 == 0) {
+                          // after every 3 cards → 1 ad
+                          if ((index + 1) % 4 == 0) {
                             return adCard();
                           }
 
-                          // map actual data index
-                          final dataIndex = index - (index ~/ 4);
+                          final dataIndex = index - ((index + 1) ~/ 4);
                           final item = muhurthResults[dataIndex];
 
                           return _buildMuhurthCard(item, t);
@@ -387,7 +490,6 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     color: AppColors.primary,
                   ),
                 ),
-
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
