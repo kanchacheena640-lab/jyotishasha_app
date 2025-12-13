@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
@@ -60,7 +59,7 @@ class PanchangCardWidget extends StatelessWidget {
         children: [
           Text(
             "🕉️ ${t.panchang_today}",
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
@@ -73,7 +72,7 @@ class PanchangCardWidget extends StatelessWidget {
             summary.isNotEmpty
                 ? summary
                 : "$tithi ($paksha), Nakshatra: $nakshatra • Month: $month",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 14.5,
               height: 1.5,
               color: Colors.black87,
@@ -85,7 +84,7 @@ class PanchangCardWidget extends StatelessWidget {
           if (vratLine.isNotEmpty)
             Text(
               vratLine,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 14.5,
                 color: Colors.deepPurple,
                 fontWeight: FontWeight.w600,
@@ -117,7 +116,7 @@ class PanchangCardWidget extends StatelessWidget {
               ),
               child: Text(
                 t.panchang_viewFull,
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 13.5,
                   color: Colors.blueAccent,
                   fontWeight: FontWeight.w600,
@@ -164,14 +163,11 @@ class PanchangCardWidget extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.montserrat(fontSize: 12, color: Colors.grey[700]),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
         const SizedBox(height: 2),
         Text(
           value,
-          style: GoogleFonts.montserrat(
+          style: const TextStyle(
             fontSize: 13.5,
             fontWeight: FontWeight.w600,
             color: Colors.deepPurple,

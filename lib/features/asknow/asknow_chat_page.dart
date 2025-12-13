@@ -1,6 +1,5 @@
 import 'dart:convert'; // for JSON parsing
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 // STATE
@@ -921,7 +920,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                           // 🔁 ARB text: empty state hint
                                           loc.asknowEmptyHint,
                                           textAlign: TextAlign.center,
-                                          style: GoogleFonts.montserrat(
+                                          style: const TextStyle(
                                             fontSize: 14,
                                             color: Colors.black54,
                                           ),
@@ -960,7 +959,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                               ),
                                               child: Text(
                                                 msg['text'] ?? "",
-                                                style: GoogleFonts.montserrat(
+                                                style: TextStyle(
                                                   color: isUser
                                                       ? Colors.white
                                                       : Colors.black87,
@@ -1022,7 +1021,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                         const SizedBox(width: 8),
                                         Text(
                                           "✨ Connecting to stars…",
-                                          style: GoogleFonts.montserrat(
+                                          style: const TextStyle(
                                             fontSize: 12,
                                             color: Colors.black54,
                                           ),
@@ -1058,7 +1057,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                 decoration: InputDecoration(
                                   // 🔁 ARB text: input hint
                                   hintText: loc.asknowInputHint,
-                                  hintStyle: GoogleFonts.montserrat(),
+                                  hintStyle: const TextStyle(),
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                     vertical: 10,

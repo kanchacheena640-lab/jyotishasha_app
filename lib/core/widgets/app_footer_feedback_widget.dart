@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AppFooterFeedbackWidget extends StatelessWidget {
@@ -32,7 +31,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
             child: TextField(
               controller: _controller,
               maxLines: 2,
-              style: GoogleFonts.montserrat(fontSize: 13),
+              style: const TextStyle(fontSize: 13),
               decoration: InputDecoration(
                 hintText: t.footerFeedbackHint,
                 contentPadding: const EdgeInsets.symmetric(
@@ -67,7 +66,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     t.footerFeedbackSend,
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
@@ -84,7 +83,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
           Text(
             t.footerCopyright,
             textAlign: TextAlign.center,
-            style: GoogleFonts.montserrat(fontSize: 12, color: Colors.black54),
+            style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
 
           const SizedBox(height: 4),
@@ -93,7 +92,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
             onTap: () {}, // TODO: open Privacy/Terms page
             child: Text(
               t.footerPrivacyTerms,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 12,
                 decoration: TextDecoration.underline,
                 color: Colors.black54,

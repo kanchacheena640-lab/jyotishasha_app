@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:provider/provider.dart';
@@ -152,10 +151,10 @@ class _ChatPackCheckoutPageState extends State<ChatPackCheckoutPage> {
           children: [
             Text(
               "AskNow ChatPack",
-              style: GoogleFonts.playfairDisplay(
+              style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF4A148C),
+                color: Color(0xFF4A148C),
               ),
             ),
 
@@ -163,10 +162,10 @@ class _ChatPackCheckoutPageState extends State<ChatPackCheckoutPage> {
 
             Text(
               "Get 8 detailed astrology answers.\nLove • Career • Money • Health & more.",
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 16,
                 height: 1.4,
-                color: Colors.deepPurple.shade700,
+                color: Colors.deepPurple,
               ),
             ),
 
@@ -191,7 +190,7 @@ class _ChatPackCheckoutPageState extends State<ChatPackCheckoutPage> {
                 ),
                 child: Text(
                   "Buy Now • ₹$price",
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -219,18 +218,18 @@ class _ChatPackCheckoutPageState extends State<ChatPackCheckoutPage> {
         children: [
           Text(
             label,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF4A148C),
+              color: Color(0xFF4A148C),
             ),
           ),
           Text(
             value,
-            style: GoogleFonts.montserrat(
+            style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple.shade700,
+              color: Colors.deepPurple,
             ),
           ),
         ],

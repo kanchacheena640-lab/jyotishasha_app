@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
@@ -57,7 +56,7 @@ class HouseResultWidget extends StatelessWidget {
   Widget _header(AppLocalizations t) {
     return Text(
       t.house_header(house.toString()),
-      style: GoogleFonts.playfairDisplay(
+      style: const TextStyle(
         fontSize: 26,
         fontWeight: FontWeight.bold,
         color: AppColors.primary,
@@ -84,7 +83,7 @@ class HouseResultWidget extends StatelessWidget {
         children: [
           Text(
             title,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.black87,
@@ -115,7 +114,7 @@ class HouseResultWidget extends StatelessWidget {
     if (focus == null || focus.trim().isEmpty) {
       return Text(
         t.house_meaning_not_available,
-        style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+        style: const TextStyle(fontSize: 15, height: 1.55),
       );
     }
 
@@ -131,7 +130,7 @@ class HouseResultWidget extends StatelessWidget {
 
     return Text(
       t.house_deals_with(formatted),
-      style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+      style: const TextStyle(fontSize: 15, height: 1.55),
     );
   }
 
@@ -144,7 +143,7 @@ class HouseResultWidget extends StatelessWidget {
     if (placements.isEmpty) {
       return Text(
         t.house_no_placements,
-        style: GoogleFonts.montserrat(color: Colors.grey),
+        style: const TextStyle(color: Colors.grey),
       );
     }
 
@@ -162,10 +161,7 @@ class HouseResultWidget extends StatelessWidget {
 
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: Text(
-            line,
-            style: GoogleFonts.montserrat(fontSize: 14, height: 1.55),
-          ),
+          child: Text(line, style: const TextStyle(fontSize: 14, height: 1.55)),
         );
       }).toList(),
     );
@@ -177,7 +173,7 @@ class HouseResultWidget extends StatelessWidget {
   Widget _buildLord(AppLocalizations t, String lord) {
     return Text(
       t.house_lord_line(house.toString(), lord),
-      style: GoogleFonts.montserrat(fontSize: 14, height: 1.55),
+      style: const TextStyle(fontSize: 14, height: 1.55),
     );
   }
 
@@ -190,9 +186,6 @@ class HouseResultWidget extends StatelessWidget {
         r?[Provider.of<LanguageProvider>(context).currentLang] ??
         t.house_remedy_default;
 
-    return Text(
-      text,
-      style: GoogleFonts.montserrat(fontSize: 14, height: 1.55),
-    );
+    return Text(text, style: const TextStyle(fontSize: 14, height: 1.55));
   }
 }

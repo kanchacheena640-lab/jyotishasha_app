@@ -7,6 +7,9 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/services/location_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jyotishasha_app/core/state/kundali_provider.dart';
 
 class AddProfilePage extends StatefulWidget {
   const AddProfilePage({super.key});
@@ -134,41 +137,89 @@ class _AddProfilePageState extends State<AddProfilePage> {
       return;
     }
 
-    final provider = context.read<ProfileProvider>();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
 
-    final data = {
-      "name": _nameCtrl.text.trim(),
-      "dob": _dobCtrl.text.trim(),
-      "tob": _tobCtrl.text.trim(),
-      "pob": _pobCtrl.text.trim(),
-      "lat": _lat!,
-      "lng": _lng!,
-      "timezone": _timezone ?? "Asia/Kolkata",
-      "gender": _selectedGender,
-      "language": _selectedLanguage,
-      "createdAt": DateTime.now().toIso8601String(),
-    };
+    setState(() => _loadingSuggestions = true);
 
-    final id = await provider.addProfile(data);
+    try {
+      // 🔥 FORMAT DOB (DD-MM-YYYY → YYYY-MM-DD)
+      final parts = _dobCtrl.text.trim().split("-");
+      final formattedDob = "${parts[2]}-${parts[1]}-${parts[0]}";
 
-    if (id != null) {
+      final name = _nameCtrl.text.trim();
+      final dob = formattedDob;
+      final tob = _tobCtrl.text.trim();
+      final pob = _pobCtrl.text.trim();
+      final lat = _lat!;
+      final lng = _lng!;
+      final lang = _selectedLanguage == "English" ? "en" : "hi";
+
+      // ⭐ 1) BACKEND KUNDALI GENERATION (same as BirthDetailPage)
+      final kundaliRes = await context
+          .read<KundaliProvider>()
+          .bootstrapUserProfile(
+            name: name,
+            dob: dob,
+            tob: tob,
+            pob: pob,
+            lat: lat,
+            lng: lng,
+            language: lang,
+          );
+
+      if (kundaliRes == null || kundaliRes["ok"] != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to generate Kundali")),
+        );
+        return;
+      }
+
+      final firestore = FirebaseFirestore.instance;
+      final userRef = firestore.collection("users").doc(user.uid);
+
+      // ⭐ NEW PROFILE ID (auto Firestore ID)
+      final newProfileRef = userRef.collection("profiles").doc();
+      final newId = newProfileRef.id;
+
+      // ⭐ SAVE FULL PROFILE + BACKEND PROFILE ID
+      await newProfileRef.set({
+        "name": name,
+        "dob": dob,
+        "tob": tob,
+        "pob": pob,
+        "lat": lat,
+        "lng": lng,
+        "language": lang,
+
+        // 🔥🔥 Kundali Details SAME AS default profile
+        "lagna": kundaliRes["lagna"],
+        "moon_sign": kundaliRes["moon_sign"],
+        "nakshatra": kundaliRes["nakshatra"],
+        "backendProfileId": kundaliRes["profileId"], // ⭐ REQUIRED FOR AskNow
+
+        "profile_complete": true,
+        "isActive": false,
+        "createdAt": DateTime.now().toIso8601String(),
+        "updatedAt": DateTime.now().toIso8601String(),
+      });
+
+      // ⭐ If no active profile exists → make this active
+      final provider = context.read<ProfileProvider>();
       if (provider.activeProfileId == null) {
-        await provider.setActiveProfile(id);
+        await provider.setActiveProfile(newId);
       }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Profile created")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Profile added successfully")),
+      );
 
       Navigator.pop(context, true);
-      return;
+    } finally {
+      if (mounted) setState(() => _loadingSuggestions = false);
     }
-
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Failed to save profile")));
   }
 
   // -------------------------------------------------------

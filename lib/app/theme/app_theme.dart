@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// 🌈 Global Jyotishasha Brand Colors
 class AppColors {
-  static const Color primary = Color(0xFF7C3AED); // Deep Purple
-  static const Color secondary = Color(0xFFFBBF24); // Saffron-Gold
-  static const Color background = Color(0xFFF8F6FB); // Light Lavender-White
+  static const Color primary = Color(0xFF7C3AED);
+  static const Color secondary = Color(0xFFFBBF24);
+  static const Color background = Color(0xFFF8F6FB);
   static const Color card = Colors.white;
   static const Color textDark = Colors.black87;
   static const Color textLight = Colors.white;
   static const Color accentBlue = Color(0xFF1E3A8A);
 
-  // 🌈 Gradients
   static const LinearGradient gradientPurpleGold = LinearGradient(
     colors: [Color(0xFF7C3AED), Color(0xFFFBBF24)],
     begin: Alignment.topLeft,
@@ -25,43 +23,44 @@ class AppColors {
   );
 }
 
-/// 🎨 App-Wide Theme Configuration
 class AppTheme {
   static ThemeData get lightTheme {
     final base = ThemeData.light(useMaterial3: true);
 
     return base.copyWith(
-      // 🟣 Global background color
       scaffoldBackgroundColor: AppColors.background,
       primaryColor: AppColors.primary,
 
-      // 🧩 Consistent color scheme
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.card,
       ),
 
-      // 🪶 Global Text Theme
-      textTheme: GoogleFonts.montserratTextTheme().copyWith(
-        displayLarge: const TextStyle(
-          fontWeight: FontWeight.w700,
-          color: AppColors.textDark,
-        ),
-        titleLarge: const TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textDark,
-        ),
-        titleMedium: const TextStyle(
-          fontWeight: FontWeight.w500,
-          color: AppColors.textDark,
-        ),
-        bodyLarge: const TextStyle(fontSize: 16, color: AppColors.textDark),
-        bodyMedium: const TextStyle(fontSize: 14, color: AppColors.textDark),
-      ),
+      // ✅ SAFE FONT APPLY (no fontFamily param)
+      textTheme: base.textTheme
+          .apply(fontFamily: 'Montserrat')
+          .copyWith(
+            displayLarge: const TextStyle(
+              fontWeight: FontWeight.w700,
+              color: AppColors.textDark,
+            ),
+            titleLarge: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textDark,
+            ),
+            titleMedium: const TextStyle(
+              fontWeight: FontWeight.w500,
+              color: AppColors.textDark,
+            ),
+            bodyLarge: const TextStyle(fontSize: 16, color: AppColors.textDark),
+            bodyMedium: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textDark,
+            ),
+          ),
 
-      // 🧭 AppBar Style
       appBarTheme: const AppBarTheme(
         elevation: 0,
         backgroundColor: AppColors.background,
@@ -74,7 +73,6 @@ class AppTheme {
         ),
       ),
 
-      // 🪔 Card Style
       cardTheme: const CardThemeData(
         color: AppColors.card,
         elevation: 2,
@@ -84,7 +82,6 @@ class AppTheme {
         ),
       ),
 
-      // 🔘 Button Style
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -97,7 +94,6 @@ class AppTheme {
         ),
       ),
 
-      // ✏️ Input / Form Fields
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.card,
@@ -112,7 +108,6 @@ class AppTheme {
         ),
       ),
 
-      // 💫 SnackBar / Dialog / Sheet Styles
       snackBarTheme: const SnackBarThemeData(
         backgroundColor: AppColors.primary,
         contentTextStyle: TextStyle(color: Colors.white),

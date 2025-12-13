@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
@@ -55,6 +58,79 @@ class _DashboardPageState extends State<DashboardPage> {
       _attachProfileSwitchListener();
       _attachLanguageListener();
     });
+  }
+
+  Future<void> _printAndSaveFcmToken() async {
+    try {
+      // 🔔 Android 13+ notification permission
+      final settings = await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      print("🔔 Notification permission: ${settings.authorizationStatus}");
+
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        print("❌ Notification permission NOT granted");
+        return;
+      }
+
+      // 🔥 Get FCM token
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) {
+        print("❌ FCM token is NULL");
+        return;
+      }
+
+      print("🔥 FCM TOKEN => $token");
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
+
+      // 🔹 1️⃣ Firestore me save (debug / backup / visibility)
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).update(
+        {"fcm_token": token, "fcm_updated_at": FieldValue.serverTimestamp()},
+      );
+
+      // 🔹 2️⃣ Backend me bhi bhejo (REAL PUSH ke liye)
+      await _sendFcmToBackend(token);
+    } catch (e) {
+      print("❌ FCM TOKEN ERROR: $e");
+    }
+  }
+
+  // ------------------------------------------------------------
+  // FCM to backend
+  // ------------------------------------------------------------
+
+  Future<void> _sendFcmToBackend(String token) async {
+    try {
+      // 🔐 Firebase JWT token nikalo
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final jwtToken = await firebaseUser?.getIdToken();
+
+      if (jwtToken == null) {
+        print("❌ JWT token missing");
+        return;
+      }
+
+      final res = await http.post(
+        Uri.parse(
+          "https://jyotishasha-backend.onrender.com/api/users/update-fcm",
+        ),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $jwtToken",
+        },
+        body: jsonEncode({"fcm_token": token}),
+      );
+
+      print("📡 FCM → Backend status: ${res.statusCode}");
+      print("📡 FCM → Backend response: ${res.body}");
+    } catch (e) {
+      print("❌ BACKEND FCM ERROR: $e");
+    }
   }
 
   // ------------------------------------------------------------
@@ -194,6 +270,7 @@ class _DashboardPageState extends State<DashboardPage> {
       if (user == null) return;
 
       await _loadAndRefreshAll();
+      await _printAndSaveFcmToken();
     } catch (_) {}
   }
 

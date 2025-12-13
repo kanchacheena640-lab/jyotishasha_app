@@ -1,7 +1,6 @@
 // lib/features/reports/pages/report_checkout_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -78,10 +77,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
       appBar: AppBar(
         title: Text(
           report["title"] ?? "Checkout",
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
 
@@ -106,7 +102,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
                 children: [
                   Text(
                     report["title"] ?? "",
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
                       color: Colors.deepPurple.shade800,
@@ -115,10 +111,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
                   const SizedBox(height: 6),
                   Text(
                     report["short_description"] ?? "",
-                    style: GoogleFonts.montserrat(
-                      fontSize: 13,
-                      color: Colors.grey.shade700,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                   ),
                 ],
               ),
@@ -155,7 +148,7 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
                 onPressed: _validateAndProceed,
                 child: Text(
                   "Proceed to Pay",
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
                   ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class DonationWidget extends StatefulWidget {
   final void Function(int amount)? onDonate;
@@ -33,7 +32,7 @@ class _DonationWidgetState extends State<DonationWidget> {
         children: [
           Text(
             "🙏 Offer Chadava",
-            style: GoogleFonts.playfairDisplay(
+            style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.primary,
@@ -54,7 +53,7 @@ class _DonationWidgetState extends State<DonationWidget> {
                     _customController.clear();
                   });
                 },
-                labelStyle: GoogleFonts.montserrat(
+                labelStyle: TextStyle(
                   color: isSelected ? Colors.white : Colors.deepPurple,
                   fontWeight: FontWeight.w600,
                 ),
@@ -69,7 +68,7 @@ class _DonationWidgetState extends State<DonationWidget> {
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: "Or enter custom amount",
-              labelStyle: GoogleFonts.montserrat(),
+              labelStyle: const TextStyle(),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),

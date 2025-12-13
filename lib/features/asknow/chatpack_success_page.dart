@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ChatPackSuccessPage extends StatelessWidget {
   final String email;
@@ -21,10 +20,10 @@ class ChatPackSuccessPage extends StatelessWidget {
 
               Text(
                 "Payment Successful!",
-                style: GoogleFonts.playfairDisplay(
+                style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
-                  color: Colors.green.shade800,
+                  color: Colors.green,
                 ),
               ),
 
@@ -34,9 +33,9 @@ class ChatPackSuccessPage extends StatelessWidget {
                 "Your AskNow ChatPack (8 Questions) has been activated.\n"
                 "You can now ask questions anytime.",
                 textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
+                style: TextStyle(
                   fontSize: 16,
-                  color: Colors.deepPurple.shade700,
+                  color: Colors.deepPurple,
                   height: 1.4,
                 ),
               ),
@@ -46,10 +45,7 @@ class ChatPackSuccessPage extends StatelessWidget {
               Text(
                 "Confirmation sent to:\n$email",
                 textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
-                  color: Colors.grey.shade800,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade800),
               ),
 
               const SizedBox(height: 35),
@@ -68,10 +64,7 @@ class ChatPackSuccessPage extends StatelessWidget {
                 ),
                 child: Text(
                   "Go Back",
-                  style: GoogleFonts.montserrat(
-                    fontSize: 16,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
               ),
             ],

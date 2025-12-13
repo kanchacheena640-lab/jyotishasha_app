@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -59,7 +58,7 @@ class _ProfilePageState extends State<ProfilePage> {
       backgroundColor: const Color(0xFFFEEFF5),
 
       appBar: AppBar(
-        title: Text("Profile", style: GoogleFonts.montserrat()),
+        title: Text("Profile", style: const TextStyle()),
         backgroundColor: theme.colorScheme.primary,
         foregroundColor: Colors.white,
       ),
@@ -131,7 +130,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   // ⭐ Other Profiles heading
                   Text(
                     "Other Profiles",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -171,11 +170,11 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
         title: Text(
           (p["name"] ?? "").toString(),
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           "${(p["dob"] ?? "").toString()}  •  ${(p["pob"] ?? "").toString()}",
-          style: GoogleFonts.montserrat(fontSize: 13),
+          style: const TextStyle(fontSize: 13),
         ),
         trailing: Icon(Icons.check_circle, color: theme.colorScheme.primary),
       ),
@@ -197,13 +196,10 @@ class _ProfilePageState extends State<ProfilePage> {
           backgroundColor: Colors.white,
           child: Icon(Icons.person_outline),
         ),
-        title: Text(
-          (p["name"] ?? "").toString(),
-          style: GoogleFonts.montserrat(),
-        ),
+        title: Text((p["name"] ?? "").toString(), style: const TextStyle()),
         subtitle: Text(
           "${(p["dob"] ?? "").toString()} • ${(p["pob"] ?? "").toString()}",
-          style: GoogleFonts.montserrat(fontSize: 12),
+          style: const TextStyle(fontSize: 12),
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (v) async {

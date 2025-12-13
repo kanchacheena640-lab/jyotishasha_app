@@ -1,11 +1,7 @@
 // lib/features/reports/widgets/report_checkout_form.dart
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -203,7 +199,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
       children: [
         Text(
           "Ordering for someone else? Update the birth details below.",
-          style: GoogleFonts.montserrat(
+          style: const TextStyle(
             fontSize: 13,
             color: Colors.deepPurple,
             fontWeight: FontWeight.w500,
@@ -257,7 +253,7 @@ class _ReportCheckoutFormState extends State<ReportCheckoutForm> {
         // PLACE OF BIRTH (REST GOOGLE PLACES)
         Text(
           t.checkout_pob,
-          style: GoogleFonts.montserrat(
+          style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Colors.deepPurple.shade700,

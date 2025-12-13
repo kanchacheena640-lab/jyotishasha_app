@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// 💎 Gemstone Suggestion Tool Widget
 class GemstoneSuggestionWidget extends StatelessWidget {
@@ -30,7 +29,7 @@ class GemstoneSuggestionWidget extends StatelessWidget {
         children: [
           Text(
             "💎 Gemstone Recommendation",
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
@@ -67,7 +66,7 @@ class GemstoneSuggestionWidget extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         "$title: ${value ?? '--'}",
-        style: GoogleFonts.montserrat(
+        style: const TextStyle(
           fontSize: 15,
           color: Colors.deepPurple,
           fontWeight: FontWeight.w600,
@@ -83,7 +82,7 @@ class GemstoneSuggestionWidget extends StatelessWidget {
       children: [
         Text(
           cta["heading"] ?? "Explore Personalized Reports",
-          style: GoogleFonts.playfairDisplay(
+          style: const TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Colors.black87,
@@ -116,7 +115,7 @@ class GemstoneSuggestionWidget extends StatelessWidget {
               children: [
                 Text(
                   s["title"] ?? "",
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     color: Colors.deepPurple,
                   ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AstrologyProfileCard extends StatelessWidget {
@@ -61,7 +60,7 @@ class AstrologyProfileCard extends StatelessWidget {
                   children: [
                     Text(
                       t.profile_title, // ⭐ LOCALIZED
-                      style: GoogleFonts.playfairDisplay(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -127,7 +126,7 @@ class AstrologyProfileCard extends StatelessWidget {
             RichText(
               textAlign: TextAlign.center,
               text: TextSpan(
-                style: GoogleFonts.montserrat(
+                style: TextStyle(
                   color: const Color(0xFF3B56A6),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -149,7 +148,7 @@ class AstrologyProfileCard extends StatelessWidget {
             Text(
               "${t.profile_active_planets}: $activeDasha",
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 color: const Color(0xFF3B56A6),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -189,7 +188,7 @@ class AstrologyProfileCard extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 3),
     child: Text(
       "$label: ${value ?? "-"}",
-      style: GoogleFonts.montserrat(
+      style: TextStyle(
         color: Colors.white.withOpacity(0.90),
         fontSize: 13.5,
         height: 1.3,

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
@@ -59,7 +58,7 @@ class _ShubhMuhurthBannerWidgetState extends State<ShubhMuhurthBannerWidget> {
             child: Text(
               t.muhurthBannerTitle,
               textAlign: TextAlign.center, // 👈 Add this
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
@@ -100,7 +99,7 @@ class _ShubhMuhurthBannerWidgetState extends State<ShubhMuhurthBannerWidget> {
                     child: Text(
                       "${active["emoji"]}  ${active["label"]}",
                       key: ValueKey(active["label"]),
-                      style: GoogleFonts.playfairDisplay(
+                      style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,

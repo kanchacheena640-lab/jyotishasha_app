@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ReportSuccessPage extends StatelessWidget {
   final String email;
@@ -46,7 +45,7 @@ class ReportSuccessPage extends StatelessWidget {
 
               Text(
                 "Success!",
-                style: GoogleFonts.playfairDisplay(
+                style: const TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
                   color: Colors.deepPurple,
@@ -58,7 +57,7 @@ class ReportSuccessPage extends StatelessWidget {
               Text(
                 "Your \"$reportTitle\" report has been generated successfully.",
                 textAlign: TextAlign.center,
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 16,
                   color: Colors.black87,
                   height: 1.4,
@@ -69,17 +68,14 @@ class ReportSuccessPage extends StatelessWidget {
 
               Text(
                 "A copy has been emailed to:",
-                style: GoogleFonts.montserrat(
-                  fontSize: 14,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 14, color: Colors.black54),
               ),
 
               const SizedBox(height: 6),
 
               Text(
                 email,
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.deepPurple,
@@ -103,7 +99,7 @@ class ReportSuccessPage extends StatelessWidget {
                   },
                   child: Text(
                     "Go Home",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

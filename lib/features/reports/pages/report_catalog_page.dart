@@ -5,7 +5,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/language_provider.dart';
@@ -172,7 +171,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
       child: ChoiceChip(
         label: Text(
           label,
-          style: GoogleFonts.montserrat(
+          style: TextStyle(
             fontWeight: FontWeight.w500,
             color: selected ? Colors.white : const Color(0xFF7C3AED),
           ),
@@ -253,7 +252,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: const Color(0xFF4A148C),
@@ -264,7 +263,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                       desc,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Colors.black87,
                       ),
@@ -275,7 +274,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                       children: [
                         Text(
                           "${t.reports_price_prefix}${r["price"]}",
-                          style: GoogleFonts.montserrat(
+                          style: const TextStyle(
                             color: const Color(0xFF7C3AED),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
@@ -381,7 +380,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                         children: [
                           Text(
                             title,
-                            style: GoogleFonts.montserrat(
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: const Color(0xFF4A148C),
@@ -390,7 +389,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                           const SizedBox(height: 12),
                           Text(
                             desc,
-                            style: GoogleFonts.montserrat(
+                            style: const TextStyle(
                               fontSize: 14,
                               height: 1.5,
                               color: Colors.black87,
@@ -441,7 +440,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                               },
                               child: Text(
                                 "${t.reports_buy_now} ${t.reports_price_prefix}${r["price"]}",
-                                style: GoogleFonts.montserrat(
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white,

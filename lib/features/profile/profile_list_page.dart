@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/features/profile/add_profile_page.dart';
@@ -32,7 +31,7 @@ class _ProfileListPageState extends State<ProfileListPage> {
       appBar: AppBar(
         title: Text(
           "Profiles",
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
+          style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: theme.colorScheme.primary,
       ),
@@ -85,10 +84,7 @@ class _ProfileListPageState extends State<ProfileListPage> {
 
           Text(
             "Other Profiles",
-            style: GoogleFonts.montserrat(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
           ),
           const SizedBox(height: 10),
 
@@ -118,11 +114,11 @@ class _ProfileListPageState extends State<ProfileListPage> {
         ),
         title: Text(
           p["name"] ?? "",
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           "${p["dob"] ?? ''} • ${p["pob"] ?? ''}",
-          style: GoogleFonts.montserrat(fontSize: 13),
+          style: const TextStyle(fontSize: 13),
         ),
         trailing: IconButton(
           icon: const Icon(Icons.edit),
@@ -153,10 +149,10 @@ class _ProfileListPageState extends State<ProfileListPage> {
           backgroundColor: Colors.white,
           child: Icon(Icons.person_outline, color: Colors.black54),
         ),
-        title: Text(p["name"] ?? "", style: GoogleFonts.montserrat()),
+        title: Text(p["name"] ?? "", style: const TextStyle()),
         subtitle: Text(
           "${p["dob"] ?? ''} • ${p["pob"] ?? ''}",
-          style: GoogleFonts.montserrat(fontSize: 12),
+          style: const TextStyle(fontSize: 12),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -165,7 +161,7 @@ class _ProfileListPageState extends State<ProfileListPage> {
             TextButton(
               child: Text(
                 "Activate",
-                style: GoogleFonts.montserrat(
+                style: TextStyle(
                   color: theme.colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),

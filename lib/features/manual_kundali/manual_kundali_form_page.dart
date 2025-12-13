@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -280,7 +279,7 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
           elevation: 0,
           title: Text(
             "Manual Kundali",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
               color: Colors.black87,
@@ -440,7 +439,7 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
                         )
                       : Text(
                           "Generate Kundali",
-                          style: GoogleFonts.montserrat(
+                          style: const TextStyle(
                             fontSize: 16,
                             color: Colors.white,
                             fontWeight: FontWeight.w700,

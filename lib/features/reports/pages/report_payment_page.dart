@@ -1,7 +1,6 @@
 // lib/features/reports/pages/report_payment_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class ReportPaymentPage extends StatefulWidget {
@@ -51,10 +50,7 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
       appBar: AppBar(
         title: Text(
           "Confirm & Pay",
-          style: GoogleFonts.montserrat(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
         ),
       ),
 
@@ -74,7 +70,7 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
             onPressed: _startPayment,
             child: Text(
               "Pay ₹${priceDouble.toStringAsFixed(0)}",
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 16,
                 color: Colors.white,
@@ -103,7 +99,7 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
                 children: [
                   Text(
                     report["title"] ?? "",
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Colors.deepPurple.shade800,
@@ -112,7 +108,7 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
                   const SizedBox(height: 6),
                   Text(
                     "Price: ₹${priceDouble.toStringAsFixed(0)}",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.deepPurple,
@@ -157,7 +153,7 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         "$label: ${value ?? "-"}",
-        style: GoogleFonts.montserrat(fontSize: 14),
+        style: const TextStyle(fontSize: 14),
       ),
     );
   }

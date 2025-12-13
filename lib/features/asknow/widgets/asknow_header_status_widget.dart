@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AskNowHeaderStatusWidget extends StatelessWidget {
   final int freeQ; // 0 or 1
@@ -38,7 +37,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
             children: [
               Text(
                 "Free Q",
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
@@ -60,7 +59,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                 ),
                 child: Text(
                   "$freeQ",
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontSize: 14,
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -75,7 +74,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
             children: [
               Text(
                 "Earned Q",
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: Colors.black87,
@@ -96,7 +95,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                   ),
                   child: Text(
                     "$earnedQ",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -118,7 +117,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                     ),
                     child: Text(
                       "8Q @ ₹51",
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

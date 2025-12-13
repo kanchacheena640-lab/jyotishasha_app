@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
@@ -109,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                     // ⭐ Heading
                     Text(
                       "Welcome to Jyotishasha",
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary,
@@ -121,7 +120,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     Text(
                       "Personalized Kundali • Daily Insights • AskNow",
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontSize: 14,
                         color: Colors.black54,
                       ),
@@ -146,7 +145,7 @@ class _LoginPageState extends State<LoginPage> {
                           padding: const EdgeInsets.symmetric(vertical: 12),
                           child: Text(
                             "Continue with Google",
-                            style: GoogleFonts.montserrat(
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -171,7 +170,7 @@ class _LoginPageState extends State<LoginPage> {
                     Text(
                       "By continuing, you agree to our Terms & Privacy Policy.",
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         fontSize: 12,
                         color: Colors.black45,
                       ),

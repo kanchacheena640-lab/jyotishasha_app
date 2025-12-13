@@ -1,7 +1,6 @@
 // lib/features/astrology/widgets/manual_astrology_tool_section.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/features/astrology/data/astrology_meta.dart';
@@ -201,7 +200,7 @@ class _ManualAstrologyToolSectionState
                   child: Center(
                     child: Text(
                       categories[index],
-                      style: GoogleFonts.montserrat(
+                      style: TextStyle(
                         color: selected ? Colors.white : Colors.black87,
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
@@ -310,7 +309,7 @@ class _ManualAstrologyToolSectionState
                       name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.montserrat(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: const Color(0xFF2D1B69),

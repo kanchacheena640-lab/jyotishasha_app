@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class KaalsarpDoshWidget extends StatelessWidget {
   final Map<String, dynamic>? kundaliData;
@@ -41,7 +40,7 @@ class KaalsarpDoshWidget extends StatelessWidget {
           // 🟣 Heading
           Text(
             heading,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
@@ -52,7 +51,7 @@ class KaalsarpDoshWidget extends StatelessWidget {
           // 📜 General Explanation
           Text(
             explanation,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 14,
               height: 1.6,
               color: Colors.black87,
@@ -63,7 +62,7 @@ class KaalsarpDoshWidget extends StatelessWidget {
           // 🔹 Report Paragraphs
           Text(
             reportParagraphs,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 14,
               height: 1.6,
               color: Colors.black87,
@@ -75,7 +74,7 @@ class KaalsarpDoshWidget extends StatelessWidget {
           if (summary.isNotEmpty) ...[
             Text(
               "Summary:",
-              style: GoogleFonts.playfairDisplay(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -84,7 +83,7 @@ class KaalsarpDoshWidget extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               summary,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 14,
                 height: 1.6,
                 color: Colors.black87,

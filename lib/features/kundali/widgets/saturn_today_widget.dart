@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
 class SaturnTodayWidget extends StatelessWidget {
@@ -28,7 +27,7 @@ class SaturnTodayWidget extends StatelessWidget {
           // Heading
           Text(
             "Saturn Today",
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -40,7 +39,7 @@ class SaturnTodayWidget extends StatelessWidget {
           // Saturn Position
           Text(
             "Saturn in $rashi (House $house)",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
@@ -50,7 +49,7 @@ class SaturnTodayWidget extends StatelessWidget {
           const SizedBox(height: 18),
 
           // Main Paragraph
-          Text(text, style: GoogleFonts.montserrat(fontSize: 15, height: 1.6)),
+          Text(text, style: const TextStyle(fontSize: 15, height: 1.6)),
 
           const SizedBox(height: 20),
 
@@ -70,7 +69,7 @@ class SaturnTodayWidget extends StatelessWidget {
               ),
               child: Text(
                 "Get Saturn Transit Report (₹101)",
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,

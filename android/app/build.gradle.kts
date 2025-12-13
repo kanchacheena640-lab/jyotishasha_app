@@ -28,15 +28,7 @@ android {
         multiDexEnabled = true
     }
 
-    // ⭐ ABI Split (KTS style)
-    splits {
-        abi {
-            isEnable = true
-            reset()
-            include("armeabi-v7a", "arm64-v8a")
-            isUniversalApk = false
-        }
-    }
+    
 
     buildTypes {
         getByName("release") {

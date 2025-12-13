@@ -1,7 +1,6 @@
 // lib/features/astrology/widgets/astrology_tool_section.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -248,7 +247,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
                 name,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.montserrat(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF2D1B69),
@@ -352,7 +351,7 @@ class _AstrologyToolSectionState extends State<AstrologyToolSection> {
                   child: Center(
                     child: Text(
                       categories[index],
-                      style: GoogleFonts.montserrat(
+                      style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w600,
                         color: selected ? Colors.white : Colors.black87,

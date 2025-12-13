@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/features/blog/blog_reader_page.dart';
 
 class BlogCarouselWidget extends StatelessWidget {
@@ -31,7 +30,7 @@ class BlogCarouselWidget extends StatelessWidget {
                     jyotishashaGradient.createShader(bounds),
                 child: Text(
                   "Astrology Blog",
-                  style: GoogleFonts.playfairDisplay(
+                  style: const TextStyle(
                     fontSize: 21,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -46,7 +45,7 @@ class BlogCarouselWidget extends StatelessWidget {
                       jyotishashaGradient.createShader(bounds),
                   child: Text(
                     "Explore →",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,

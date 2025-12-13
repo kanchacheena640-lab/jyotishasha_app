@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class ShubhMuhurthPreviewWidget extends StatelessWidget {
@@ -47,12 +46,10 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
             child: Text(
               t.shubhUpcomingTitle,
               textAlign: TextAlign.center,
-              style: GoogleFonts.playfairDisplay(
-                textStyle: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
           ),
@@ -145,12 +142,10 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
             onTap: onSeeMore,
             child: Text(
               t.shubhSeeMore,
-              style: GoogleFonts.montserrat(
-                textStyle: const TextStyle(
-                  fontSize: 15,
-                  color: Color(0xFF5A189A),
-                  fontWeight: FontWeight.w600,
-                ),
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF5A189A),
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),

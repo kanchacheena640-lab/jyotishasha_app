@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/features/astrology/astrology_page.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
@@ -42,7 +41,7 @@ class AstrologyStudioWidget extends StatelessWidget {
           // 🔮 HEADER
           Text(
             t.astrologyStudio,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
               color: const Color(0xFF6D28D9),
@@ -53,7 +52,7 @@ class AstrologyStudioWidget extends StatelessWidget {
 
           Text(
             t.astrologyStudioSubtitle,
-            style: GoogleFonts.montserrat(
+            style: TextStyle(
               fontSize: 13.8,
               height: 1.4,
               color: Colors.black87.withOpacity(0.7),
@@ -103,7 +102,7 @@ class AstrologyStudioWidget extends StatelessWidget {
                       Expanded(
                         child: Text(
                           cat["title"]!,
-                          style: GoogleFonts.montserrat(
+                          style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,

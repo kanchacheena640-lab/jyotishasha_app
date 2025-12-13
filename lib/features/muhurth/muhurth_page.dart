@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -223,7 +222,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                       children: [
                         Text(
                           t.muhurthChange,
-                          style: GoogleFonts.montserrat(
+                          style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 18,
                           ),
@@ -332,7 +331,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
           centerTitle: true,
           title: Text(
             t.muhurthTitle,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -355,7 +354,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                 children: [
                   Text(
                     "📍 $cityName",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
@@ -372,7 +371,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
 
               Text(
                 t.muhurthSelectOccasion,
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   color: AppColors.primary,
                 ),
@@ -413,9 +412,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                         value: a,
                         child: Text(
                           title,
-                          style: GoogleFonts.montserrat(
-                            color: AppColors.textPrimary,
-                          ),
+                          style: const TextStyle(color: AppColors.textPrimary),
                         ),
                       );
                     }).toList(),
@@ -433,7 +430,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                     ? Center(
                         child: Text(
                           t.muhurthNoResults,
-                          style: GoogleFonts.montserrat(
+                          style: const TextStyle(
                             color: AppColors.textSecondary,
                           ),
                         ),
@@ -484,7 +481,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
               children: [
                 Text(
                   formattedDate,
-                  style: GoogleFonts.playfairDisplay(
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
@@ -519,7 +516,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
               "🪔 ${t.muhurthWeekdayLabel}: ${item["weekday"]}  •  "
               "${t.muhurthNakshatraLabel}: ${item["nakshatra"]}  •  "
               "${t.muhurthTithiLabel}: ${item["tithi"]}",
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 13,
               ),
@@ -532,7 +529,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Text(
                   "• $r",
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontSize: 13,
                   ),

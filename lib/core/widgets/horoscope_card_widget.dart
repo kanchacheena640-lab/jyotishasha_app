@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:math';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 
@@ -166,7 +165,7 @@ class HoroscopeCardWidget extends StatelessWidget {
             children: [
               Text(
                 "$title’s Horoscope",
-                style: GoogleFonts.playfairDisplay(
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF5A189A),
@@ -184,7 +183,7 @@ class HoroscopeCardWidget extends StatelessWidget {
           if (isToday)
             Text(
               mainLine,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.grey[900],
@@ -197,7 +196,7 @@ class HoroscopeCardWidget extends StatelessWidget {
           if (isTomorrow) ...[
             Text(
               mainLine,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.grey[900],
@@ -206,7 +205,7 @@ class HoroscopeCardWidget extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               aspect,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.grey[900],
@@ -215,7 +214,7 @@ class HoroscopeCardWidget extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               remedy,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.5,
                 color: Colors.grey[900],
@@ -242,7 +241,7 @@ class HoroscopeCardWidget extends StatelessWidget {
 
               Text(
                 "Lucky Color: $luckyColor",
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 13.5,
                   color: Color(0xFF5A189A),
                   fontWeight: FontWeight.w500,
@@ -253,7 +252,7 @@ class HoroscopeCardWidget extends StatelessWidget {
 
               Text(
                 "Lucky Number: $luckyNumber",
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 13.5,
                   color: Color(0xFF5A189A),
                   fontWeight: FontWeight.w500,
@@ -267,7 +266,7 @@ class HoroscopeCardWidget extends StatelessWidget {
           // 🧭 Direction
           Text(
             "Favourable Direction: $direction",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: Color(0xFF5A189A),

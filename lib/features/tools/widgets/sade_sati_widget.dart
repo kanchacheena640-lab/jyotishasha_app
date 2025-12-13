@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
 class SadhesatiWidget extends StatelessWidget {
@@ -50,12 +49,10 @@ class SadhesatiWidget extends StatelessWidget {
         children: [
           Text(
             "Sade Sati Report",
-            style: GoogleFonts.playfairDisplay(
-              textStyle: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
-              ),
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
             ),
           ),
           const SizedBox(height: 12),
@@ -63,7 +60,7 @@ class SadhesatiWidget extends StatelessWidget {
           if (shortDesc.isNotEmpty)
             Text(
               shortDesc,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,
                 height: 1.5,
@@ -75,7 +72,7 @@ class SadhesatiWidget extends StatelessWidget {
           if (explanation.isNotEmpty)
             Text(
               explanation,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 15,
                 color: Colors.black87,
                 height: 1.5,
@@ -86,7 +83,7 @@ class SadhesatiWidget extends StatelessWidget {
 
           Text(
             "Moon Rashi: $moonRashi",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 15,
               color: Colors.black87,
               fontWeight: FontWeight.w600,
@@ -94,7 +91,7 @@ class SadhesatiWidget extends StatelessWidget {
           ),
           Text(
             "Saturn Rashi: $saturnRashi",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 15,
               color: Colors.black87,
               fontWeight: FontWeight.w600,
@@ -102,7 +99,7 @@ class SadhesatiWidget extends StatelessWidget {
           ),
           Text(
             "Status: $status",
-            style: GoogleFonts.montserrat(
+            style: TextStyle(
               fontSize: 15,
               color: status.toLowerCase() == "active"
                   ? Colors.green
@@ -119,7 +116,7 @@ class SadhesatiWidget extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Text(
                   para,
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontSize: 15,
                     color: Colors.black87,
                     height: 1.5,
@@ -142,12 +139,10 @@ class SadhesatiWidget extends StatelessWidget {
                 children: [
                   Text(
                     "Phase Dates",
-                    style: GoogleFonts.playfairDisplay(
-                      textStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -161,7 +156,7 @@ class SadhesatiWidget extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 6),
                       child: Text(
                         "$key: ${formatDate(val["start"])} → ${formatDate(val["end"])}",
-                        style: GoogleFonts.montserrat(
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Colors.black87,
                         ),
@@ -198,12 +193,10 @@ class SadhesatiWidget extends StatelessWidget {
                 children: [
                   Text(
                     summary["heading"] ?? "Summary",
-                    style: GoogleFonts.playfairDisplay(
-                      textStyle: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
-                      ),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.deepPurple,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -220,7 +213,7 @@ class SadhesatiWidget extends StatelessWidget {
                           Expanded(
                             child: Text(
                               point,
-                              style: GoogleFonts.montserrat(
+                              style: const TextStyle(
                                 fontSize: 15,
                                 color: Colors.black87,
                                 height: 1.5,

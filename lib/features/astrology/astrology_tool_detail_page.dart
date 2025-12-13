@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -63,10 +62,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        title: Text(
-          widget.title,
-          style: GoogleFonts.playfairDisplay(color: Colors.white),
-        ),
+        title: Text(widget.title, style: const TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.share_outlined, color: Colors.white),
@@ -112,7 +108,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
                             /// DOB / TOB / POB
                             Text(
                               "${t.tool_dob}: $dob • ${t.tool_tob}: $tob • ${t.tool_pob}: $pob",
-                              style: GoogleFonts.montserrat(
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 13.5,
                               ),
@@ -128,7 +124,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
                             /// NAME / RASHI / LAGNA
                             Text(
                               "${t.tool_name}: $name • ${t.tool_rashi}: $rashi • ${t.tool_lagna}: $lagna",
-                              style: GoogleFonts.montserrat(
+                              style: TextStyle(
                                 color: Colors.white70,
                                 fontSize: 14,
                               ),
@@ -320,7 +316,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _decor(),
-      child: Text(data.toString(), style: GoogleFonts.montserrat(fontSize: 14)),
+      child: Text(data.toString(), style: TextStyle(fontSize: 14)),
     );
   }
 
@@ -348,7 +344,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
           /// TITLE
           Text(
             data["title"] ?? "",
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -372,7 +368,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
           /// TEXT (multi-line personality)
           Text(
             (data["text"] ?? "").replaceAll("\\n", "\n"),
-            style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+            style: const TextStyle(fontSize: 15, height: 1.55),
           ),
         ],
       ),
@@ -382,10 +378,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
   Widget _metaRow(String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        "$label: ${value ?? "-"}",
-        style: GoogleFonts.montserrat(fontSize: 14),
-      ),
+      child: Text("$label: ${value ?? "-"}", style: TextStyle(fontSize: 14)),
     );
   }
 
@@ -401,7 +394,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
         children: [
           Text(
             data["title"] ?? "",
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -410,7 +403,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
           const SizedBox(height: 10),
           Text(
             data["text"] ?? "",
-            style: GoogleFonts.montserrat(fontSize: 15, height: 1.55),
+            style: TextStyle(fontSize: 15, height: 1.55),
           ),
         ],
       ),
@@ -501,7 +494,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
   Widget _empty(String msg) {
     return Padding(
       padding: const EdgeInsets.all(30),
-      child: Text(msg, style: GoogleFonts.montserrat(color: Colors.grey)),
+      child: Text(msg, style: TextStyle(color: Colors.grey)),
     );
   }
 }

@@ -3,7 +3,6 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:jyotishasha_app/core/constants/planet_meta.dart';
@@ -167,7 +166,7 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
               Expanded(
                 child: Text(
                   planet,
-                  style: GoogleFonts.playfairDisplay(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -209,15 +208,12 @@ class _PlanetResultWidgetState extends State<PlanetResultWidget> {
         children: [
           Text(
             title,
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Text(
             content,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 13.5,
               height: 1.55,
               color: Colors.black87,

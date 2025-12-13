@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -408,7 +407,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
           elevation: 0,
           title: Text(
             "Enter Birth Details",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.w600,
             ),
@@ -437,7 +436,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                   const SizedBox(height: 20),
                   Text(
                     "Tell us about yourself 🌞",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w700,
                       color: AppColors.primary,

@@ -1,7 +1,6 @@
 // lib/features/kundali/widgets/gemstone_result_widget.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
@@ -37,7 +36,7 @@ class GemstoneResultWidget extends StatelessWidget {
           /// TITLE
           Text(
             t.gemstoneSuggestion,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: AppColors.primary,
@@ -56,7 +55,7 @@ class GemstoneResultWidget extends StatelessWidget {
           /// FINAL PARAGRAPH (English Always)
           Text(
             paragraph,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 15,
               height: 1.55,
               color: Colors.black87,
@@ -72,10 +71,7 @@ class GemstoneResultWidget extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 6),
       child: Text(
         "$label: $value",
-        style: GoogleFonts.montserrat(
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
+        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
       ),
     );
   }

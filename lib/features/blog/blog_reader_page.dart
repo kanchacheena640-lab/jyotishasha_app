@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class BlogReaderPage extends StatefulWidget {
   final String url;
@@ -22,13 +21,19 @@ class _BlogReaderPageState extends State<BlogReaderPage> {
 
     controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      // ⭐ MOST IMPORTANT FIX ⭐
       ..setNavigationDelegate(
         NavigationDelegate(
+          onNavigationRequest: (NavigationRequest request) {
+            // forces everything to stay inside the app
+            return NavigationDecision.navigate;
+          },
           onPageFinished: (_) {
             setState(() => isLoading = false);
           },
         ),
       )
+      // Load URL inside WebView
       ..loadRequest(Uri.parse(widget.url));
   }
 
@@ -36,6 +41,7 @@ class _BlogReaderPageState extends State<BlogReaderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
+
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0.4,
@@ -47,7 +53,7 @@ class _BlogReaderPageState extends State<BlogReaderPage> {
           widget.title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.montserrat(
+          style: const TextStyle(
             fontSize: 17,
             fontWeight: FontWeight.w600,
             color: Colors.black,
@@ -59,7 +65,6 @@ class _BlogReaderPageState extends State<BlogReaderPage> {
         children: [
           WebViewWidget(controller: controller),
 
-          // Loader
           if (isLoading)
             const Center(
               child: CircularProgressIndicator(color: Colors.deepPurple),

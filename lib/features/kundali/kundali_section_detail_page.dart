@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 
 class KundaliSectionDetailPage extends StatelessWidget {
@@ -21,10 +20,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
-        title: Text(
-          title,
-          style: GoogleFonts.playfairDisplay(color: Colors.white),
-        ),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
       ),
 
       body: Padding(
@@ -64,10 +60,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: _decor(),
-      child: Text(
-        text,
-        style: GoogleFonts.montserrat(fontSize: 14, height: 1.45),
-      ),
+      child: Text(text, style: const TextStyle(fontSize: 14, height: 1.45)),
     );
   }
 
@@ -80,7 +73,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
         padding: const EdgeInsets.only(top: 40),
         child: Text(
           msg,
-          style: GoogleFonts.montserrat(fontSize: 14, color: Colors.grey),
+          style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
       ),
     );
@@ -102,7 +95,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
             children: [
               Text(
                 entry.key,
-                style: GoogleFonts.montserrat(
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
@@ -110,7 +103,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 _pretty(entry.value),
-                style: GoogleFonts.montserrat(fontSize: 13, height: 1.45),
+                style: const TextStyle(fontSize: 13, height: 1.45),
               ),
             ],
           ),
@@ -131,7 +124,7 @@ class KundaliSectionDetailPage extends StatelessWidget {
           decoration: _decor(),
           child: Text(
             _pretty(item),
-            style: GoogleFonts.montserrat(fontSize: 13, height: 1.4),
+            style: const TextStyle(fontSize: 13, height: 1.4),
           ),
         );
       }).toList(),

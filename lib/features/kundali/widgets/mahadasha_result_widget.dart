@@ -1,7 +1,6 @@
 // lib/features/kundali/widgets/mahadasha_result_widget.dart
 
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 // ---------------------------------------------------------
@@ -126,7 +125,7 @@ class MahadashaResultWidget extends StatelessWidget {
         children: [
           Text(
             t.currentDasha,
-            style: GoogleFonts.montserrat(
+            style: TextStyle(
               fontWeight: FontWeight.w600,
               color: color.primary,
               fontSize: 13,
@@ -148,7 +147,7 @@ class MahadashaResultWidget extends StatelessWidget {
                 ),
                 child: Text(
                   "$mahaName → $antarName",
-                  style: GoogleFonts.montserrat(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 15,
                     color: color.onSurface,
@@ -159,7 +158,7 @@ class MahadashaResultWidget extends StatelessWidget {
               if (period != null)
                 Text(
                   period,
-                  style: GoogleFonts.montserrat(
+                  style: TextStyle(
                     fontSize: 11,
                     color: color.onSurface.withOpacity(0.6),
                   ),
@@ -172,7 +171,7 @@ class MahadashaResultWidget extends StatelessWidget {
           if (impact != null && impact.trim().isNotEmpty)
             Text(
               impact,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 12.5,
                 height: 1.35,
                 color: color.onSurface.withOpacity(0.8),
@@ -200,8 +199,8 @@ class MahadashaResultWidget extends StatelessWidget {
           color: color.primary.withOpacity(0.15),
           borderRadius: BorderRadius.circular(999),
         ),
-        labelStyle: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.montserrat(),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(),
         labelColor: color.primary,
         unselectedLabelColor: color.onSurface.withOpacity(0.6),
         tabs: [
@@ -239,7 +238,7 @@ class MahadashaResultWidget extends StatelessWidget {
 
         Text(
           t.antardashaTimeline,
-          style: GoogleFonts.montserrat(
+          style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 12,
             color: color.onSurface.withOpacity(0.9),
@@ -296,7 +295,7 @@ class MahadashaResultWidget extends StatelessWidget {
               children: [
                 Text(
                   name,
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13.5,
                   ),
@@ -304,7 +303,7 @@ class MahadashaResultWidget extends StatelessWidget {
                 if (start != null && end != null)
                   Text(
                     "${_formatDate(start)} – ${_formatDate(end)}",
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       fontSize: 11,
                       color: color.onSurface.withOpacity(0.7),
                     ),
@@ -351,7 +350,7 @@ class MahadashaResultWidget extends StatelessWidget {
               children: [
                 Text(
                   planet,
-                  style: GoogleFonts.montserrat(
+                  style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -359,7 +358,7 @@ class MahadashaResultWidget extends StatelessWidget {
                 if (start != null && end != null)
                   Text(
                     "${_formatDate(start)} – ${_formatDate(end)}",
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       fontSize: 11,
                       color: color.onSurface.withOpacity(0.7),
                     ),
@@ -377,7 +376,7 @@ class MahadashaResultWidget extends StatelessWidget {
               ),
               child: Text(
                 t.now,
-                style: GoogleFonts.montserrat(
+                style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
                   color: color.primary,
@@ -436,7 +435,7 @@ class MahadashaResultWidget extends StatelessWidget {
                     children: [
                       Text(
                         name,
-                        style: GoogleFonts.montserrat(
+                        style: const TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -444,7 +443,7 @@ class MahadashaResultWidget extends StatelessWidget {
                       if (start != null && end != null)
                         Text(
                           "${_formatDate(start)} – ${_formatDate(end)}",
-                          style: GoogleFonts.montserrat(
+                          style: TextStyle(
                             fontSize: 11,
                             color: color.onSurface.withOpacity(0.7),
                           ),
@@ -520,7 +519,7 @@ class MahadashaResultWidget extends StatelessWidget {
                     children: [
                       Text(
                         t.mahadashaOf(name),
-                        style: GoogleFonts.montserrat(
+                        style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -539,7 +538,7 @@ class MahadashaResultWidget extends StatelessWidget {
                           ),
                           child: Text(
                             t.current,
-                            style: GoogleFonts.montserrat(
+                            style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: color.primary,
@@ -554,7 +553,7 @@ class MahadashaResultWidget extends StatelessWidget {
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
                         "${_formatDate(start)} – ${_formatDate(end)}",
-                        style: GoogleFonts.montserrat(
+                        style: TextStyle(
                           fontSize: 11.5,
                           color: color.onSurface.withOpacity(0.7),
                         ),
@@ -565,7 +564,7 @@ class MahadashaResultWidget extends StatelessWidget {
 
                   Text(
                     t.antardashaTimeline,
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -608,7 +607,7 @@ class MahadashaResultWidget extends StatelessWidget {
                                   children: [
                                     Text(
                                       aName,
-                                      style: GoogleFonts.montserrat(
+                                      style: const TextStyle(
                                         fontWeight: FontWeight.w600,
                                         fontSize: 13,
                                       ),
@@ -616,7 +615,7 @@ class MahadashaResultWidget extends StatelessWidget {
                                     if (aStart != null && aEnd != null)
                                       Text(
                                         "${_formatDate(aStart)} – ${_formatDate(aEnd)}",
-                                        style: GoogleFonts.montserrat(
+                                        style: TextStyle(
                                           fontSize: 11,
                                           color: color.onSurface.withOpacity(
                                             0.7,
@@ -715,7 +714,7 @@ class MahadashaResultWidget extends StatelessWidget {
       ),
       child: Text(
         t.dashaDataUnavailable,
-        style: GoogleFonts.montserrat(
+        style: TextStyle(
           fontSize: 12,
           color: color.onSurface.withOpacity(0.75),
         ),

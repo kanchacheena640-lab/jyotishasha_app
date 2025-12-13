@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'dart:math';
 
@@ -200,7 +199,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                     children: [
                       TextSpan(
                         text: "${t.greetNamaste} ",
-                        style: GoogleFonts.montserrat(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                           color: Colors.deepPurple.shade700,
@@ -208,7 +207,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                       ),
                       TextSpan(
                         text: "$displayName 🙏",
-                        style: GoogleFonts.playfairDisplay(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.deepPurple.shade900,
@@ -218,7 +217,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                         const TextSpan(text: " "),
                         TextSpan(
                           text: "($birthRashi Rashi)",
-                          style: GoogleFonts.montserrat(
+                          style: TextStyle(
                             fontSize: 11.5,
                             color: Colors.deepPurple.shade500,
                           ),
@@ -247,7 +246,7 @@ class GreetingHeaderWidget extends StatelessWidget {
             child: dailyProvider.isLoading
                 ? Text(
                     t.dailyLoading,
-                    style: GoogleFonts.montserrat(
+                    style: TextStyle(
                       fontSize: 14.5,
                       color: Colors.deepPurple.shade800,
                       height: 1.5,
@@ -260,7 +259,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                           dailyProvider.aspectLine!.trim().isNotEmpty)
                         Text(
                           dailyProvider.aspectLine!,
-                          style: GoogleFonts.montserrat(
+                          style: TextStyle(
                             fontSize: 14.5,
                             color: Colors.deepPurple.shade800,
                             height: 1.5,
@@ -269,7 +268,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                       const SizedBox(height: 10),
                       Text(
                         t.dailyRemedy,
-                        style: GoogleFonts.montserrat(
+                        style: TextStyle(
                           fontSize: 14.5,
                           fontWeight: FontWeight.w700,
                           color: Colors.deepPurple.shade700,
@@ -278,7 +277,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         dailyProvider.remedyLine ?? "—",
-                        style: GoogleFonts.montserrat(
+                        style: TextStyle(
                           fontSize: 14,
                           color: Colors.deepPurple.shade700,
                           height: 1.5,
@@ -340,7 +339,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                           Flexible(
                             child: Text(
                               "${t.luckyColorLabel}: $luckyColorTranslated",
-                              style: GoogleFonts.montserrat(
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF5A189A),
@@ -364,7 +363,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                           Flexible(
                             child: Text(
                               "${t.luckyNumberLabel}: $luckyNumber",
-                              style: GoogleFonts.montserrat(
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: const Color(0xFF5A189A),
@@ -391,7 +390,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                     Expanded(
                       child: Text(
                         "${t.favourableDirectionLabel}: $luckyDirectionTranslated",
-                        style: GoogleFonts.montserrat(
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: const Color(0xFF5A189A),
@@ -411,7 +410,7 @@ class GreetingHeaderWidget extends StatelessWidget {
           // ---------------------------------------------------
           Text(
             t.panchangTimeAlert,
-            style: GoogleFonts.playfairDisplay(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple.shade700,
@@ -423,7 +422,7 @@ class GreetingHeaderWidget extends StatelessWidget {
           panchang.isLoading
               ? Text(
                   t.panchangCalcLoading,
-                  style: GoogleFonts.montserrat(
+                  style: TextStyle(
                     fontSize: 13,
                     color: Colors.deepPurple.shade500,
                   ),
@@ -471,7 +470,7 @@ class GreetingHeaderWidget extends StatelessWidget {
           children: [
             Text(
               title,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 13,
                 color: Colors.deepPurple.shade700,
                 fontWeight: FontWeight.w600,
@@ -481,7 +480,7 @@ class GreetingHeaderWidget extends StatelessWidget {
             Text(
               time,
               textAlign: TextAlign.center,
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 12.5,
                 color: Colors.deepPurple.shade400,
               ),

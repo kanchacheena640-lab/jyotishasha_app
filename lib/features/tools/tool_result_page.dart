@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -226,7 +225,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
 
   PreferredSizeWidget _buildAppBar(ThemeData theme, String title) {
     return AppBar(
-      title: Text(title, style: GoogleFonts.playfairDisplay()),
+      title: Text(title, style: const TextStyle()),
       backgroundColor: theme.colorScheme.primary,
       foregroundColor: Colors.white,
       centerTitle: true,
@@ -273,7 +272,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
           Text(
             "🪔 Birth Chart Overview",
             textAlign: TextAlign.center,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
@@ -282,7 +281,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
           const SizedBox(height: 12),
           Text(
             widget.formData["name"]?.toString().toUpperCase() ?? "USER",
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: Colors.black87,
@@ -379,10 +378,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
       children: [
         Text(
           "Explore More Tools",
-          style: GoogleFonts.playfairDisplay(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         GridView.builder(

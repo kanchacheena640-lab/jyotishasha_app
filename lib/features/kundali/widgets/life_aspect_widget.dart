@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -153,7 +152,7 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
                   Expanded(
                     child: Text(
                       aspect,
-                      style: GoogleFonts.playfairDisplay(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -168,20 +167,14 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
               if (houses.trim().isNotEmpty)
                 Text(
                   AppLocalizations.of(context)!.housesPrefix(houses),
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
 
               if (planets.trim().isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(
                   AppLocalizations.of(context)!.planetsPrefix(planets),
-                  style: GoogleFonts.montserrat(
-                    color: Colors.white70,
-                    fontSize: 12,
-                  ),
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
                 ),
               ],
             ],
@@ -217,15 +210,12 @@ class _LifeAspectWidgetState extends State<LifeAspectWidget> {
         children: [
           Text(
             title,
-            style: GoogleFonts.playfairDisplay(
-              fontSize: 17,
-              fontWeight: FontWeight.w700,
-            ),
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 10),
           Text(
             content,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 13.5,
               height: 1.55,
               color: Colors.black87,

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
@@ -180,7 +179,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
           children: [
             Text(
               "Get Horoscope of Anyone — Free",
-              style: GoogleFonts.playfairDisplay(
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -315,7 +314,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
                   ? const CircularProgressIndicator(color: Colors.white)
                   : Text(
                       "Get Horoscope",
-                      style: GoogleFonts.montserrat(
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),

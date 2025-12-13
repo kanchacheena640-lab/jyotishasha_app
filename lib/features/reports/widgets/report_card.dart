@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class ReportCard extends StatelessWidget {
   final Map<String, dynamic> report;
@@ -55,7 +54,7 @@ class ReportCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.montserrat(
+                      style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                         color: Colors.deepPurple.shade700,
@@ -64,7 +63,7 @@ class ReportCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       "₹$price",
-                      style: GoogleFonts.montserrat(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: Colors.green.shade700,

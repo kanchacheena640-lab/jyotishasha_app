@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class MangalDoshWidget extends StatelessWidget {
   final Map<String, dynamic>? kundaliData;
@@ -52,7 +51,7 @@ class MangalDoshWidget extends StatelessWidget {
           // 🔶 Heading
           Text(
             heading,
-            style: GoogleFonts.playfairDisplay(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.deepPurple,
@@ -64,7 +63,7 @@ class MangalDoshWidget extends StatelessWidget {
           // 🔷 Status line
           Text(
             status,
-            style: GoogleFonts.montserrat(
+            style: TextStyle(
               fontSize: 14,
               color: Colors.deepPurple.shade700,
               fontWeight: FontWeight.w600,
@@ -76,7 +75,7 @@ class MangalDoshWidget extends StatelessWidget {
           // 🪔 Main report text
           Text(
             reportParagraphs,
-            style: GoogleFonts.montserrat(
+            style: const TextStyle(
               fontSize: 14,
               height: 1.6,
               color: Colors.black87,
@@ -89,7 +88,7 @@ class MangalDoshWidget extends StatelessWidget {
           if (summaryPoints.isNotEmpty) ...[
             Text(
               "Summary:",
-              style: GoogleFonts.playfairDisplay(
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
@@ -98,7 +97,7 @@ class MangalDoshWidget extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               summaryPoints,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 fontSize: 14,
                 height: 1.6,
                 color: Colors.black87,
@@ -113,7 +112,7 @@ class MangalDoshWidget extends StatelessWidget {
             alignment: Alignment.bottomRight,
             child: Text(
               "Language: ${language.toUpperCase()}",
-              style: GoogleFonts.montserrat(
+              style: TextStyle(
                 fontSize: 12,
                 fontStyle: FontStyle.italic,
                 color: Colors.grey.shade600,

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
@@ -43,7 +42,7 @@ class _HoroscopePageState extends State<HoroscopePage>
         backgroundColor: AppColors.primary,
         title: Text(
           "Your Horoscope",
-          style: GoogleFonts.montserrat(
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
@@ -93,7 +92,7 @@ class _HoroscopePageState extends State<HoroscopePage>
         child: Text(
           "Weekly horoscope is coming soon...",
           textAlign: TextAlign.center,
-          style: GoogleFonts.montserrat(fontSize: 16, color: Colors.black54),
+          style: const TextStyle(fontSize: 16, color: Colors.black54),
         ),
       ),
     );

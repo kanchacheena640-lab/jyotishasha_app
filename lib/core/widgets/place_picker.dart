@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../../services/location_service.dart';
 
@@ -107,10 +106,7 @@ class _PlacePickerState extends State<PlacePicker> {
                       Icons.location_on_outlined,
                       color: Colors.deepPurple,
                     ),
-                    title: Text(
-                      item["description"]!,
-                      style: GoogleFonts.montserrat(),
-                    ),
+                    title: Text(item["description"]!, style: const TextStyle()),
                     onTap: () => _selectPlace(item),
                   );
                 },

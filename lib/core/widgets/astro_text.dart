@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// AstroText:
 /// - Normal text ko RichText me convert karta hai
@@ -28,7 +27,7 @@ class AstroText extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final baseStyle = GoogleFonts.montserrat(
+    final baseStyle = TextStyle(
       fontSize: fontSize,
       color: color ?? Colors.black87,
       fontWeight: fontWeight,

@@ -2,7 +2,6 @@
 
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
@@ -10,7 +9,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
-import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
@@ -193,7 +191,7 @@ class _PanchangPageState extends State<PanchangPage> {
         centerTitle: true,
         title: Text(
           t.panchang,
-          style: GoogleFonts.montserrat(
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
@@ -238,14 +236,14 @@ class _PanchangPageState extends State<PanchangPage> {
                 children: [
                   Text(
                     formattedDate,
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   Text(
                     "📍 $locationName",
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 14,
                     ),
@@ -285,10 +283,7 @@ class _PanchangPageState extends State<PanchangPage> {
 
           Text(
             t.panchang_elements,
-            style: GoogleFonts.montserrat(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
 
           const SizedBox(height: 12),
@@ -310,10 +305,7 @@ class _PanchangPageState extends State<PanchangPage> {
 
           Text(
             t.panchang_highlights,
-            style: GoogleFonts.montserrat(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
 
           _highlight(
@@ -330,7 +322,7 @@ class _PanchangPageState extends State<PanchangPage> {
           Center(
             child: Text(
               t.dataSyncedText,
-              style: GoogleFonts.montserrat(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
               ),
@@ -352,12 +344,12 @@ class _PanchangPageState extends State<PanchangPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(k, style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
+          Text(k, style: const TextStyle(fontWeight: FontWeight.w500)),
           Flexible(
             child: Text(
               v ?? '--',
               textAlign: TextAlign.end,
-              style: GoogleFonts.montserrat(color: AppColors.textSecondary),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ),
         ],
@@ -376,13 +368,10 @@ class _PanchangPageState extends State<PanchangPage> {
           Icons.star_border_outlined,
           color: AppColors.primary.withOpacity(0.9),
         ),
-        title: Text(
-          title,
-          style: GoogleFonts.montserrat(fontWeight: FontWeight.w600),
-        ),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           value,
-          style: GoogleFonts.montserrat(color: AppColors.textSecondary),
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
       ),
     );
@@ -391,11 +380,8 @@ class _PanchangPageState extends State<PanchangPage> {
   Widget _infoTile(String title, String value) {
     return Column(
       children: [
-        Text(title, style: GoogleFonts.montserrat(fontWeight: FontWeight.w500)),
-        Text(
-          value,
-          style: GoogleFonts.montserrat(color: AppColors.textSecondary),
-        ),
+        Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        Text(value, style: const TextStyle(color: AppColors.textSecondary)),
       ],
     );
   }

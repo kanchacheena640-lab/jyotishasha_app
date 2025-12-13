@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 
 // third-party
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,7 +63,7 @@ class DashboardHomeSection extends StatelessWidget {
                   child: Text(
                     t.darshanInstruction,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.montserrat(
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
@@ -109,7 +108,7 @@ class DashboardHomeSection extends StatelessWidget {
                             children: [
                               Text(
                                 t.todaysDayLord,
-                                style: GoogleFonts.playfairDisplay(
+                                style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -119,7 +118,7 @@ class DashboardHomeSection extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 t.darshanWithMantra,
-                                style: GoogleFonts.montserrat(
+                                style: const TextStyle(
                                   fontSize: 14.5,
                                   color: Colors.white70,
                                   height: 1.3,
@@ -151,7 +150,7 @@ class DashboardHomeSection extends StatelessWidget {
                           ),
                           child: Text(
                             "ॐ",
-                            style: GoogleFonts.playfairDisplay(
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 42,
                               fontWeight: FontWeight.bold,
@@ -253,7 +252,7 @@ class DashboardHomeSection extends StatelessWidget {
                             children: [
                               Text(
                                 t.createManualKundali,
-                                style: GoogleFonts.montserrat(
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
@@ -262,7 +261,7 @@ class DashboardHomeSection extends StatelessWidget {
                               const SizedBox(height: 4),
                               Text(
                                 t.enterNameDateBirthplace,
-                                style: GoogleFonts.montserrat(
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w400,
                                   letterSpacing: 0.2,
