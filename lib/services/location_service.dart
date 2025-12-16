@@ -1,9 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class LocationService {
-  static final String _apiKey = dotenv.env["GOOGLE_MAPS_API_KEY"] ?? "";
+  static const String _apiKey = "AIzaSyBxt6et6THD47K936GIXWJ8o-TP65RayOc";
 
   // ----------------------------------------------------------------------
   // 🔍 1) AUTOCOMPLETE (Search Suggestions)

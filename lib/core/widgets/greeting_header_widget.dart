@@ -342,7 +342,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF5A189A),
+                                color: Color(0xFF5A189A),
                               ),
                             ),
                           ),
@@ -366,7 +366,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                               style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
-                                color: const Color(0xFF5A189A),
+                                color: Color(0xFF5A189A),
                               ),
                             ),
                           ),
@@ -393,7 +393,7 @@ class GreetingHeaderWidget extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF5A189A),
+                          color: Color(0xFF5A189A),
                         ),
                       ),
                     ),
@@ -449,8 +449,10 @@ class GreetingHeaderWidget extends StatelessWidget {
   // ♈ Rashi Image
   // -------------------------------------------------------
   String _zodiacAssetForRashi(String? rashi) {
-    if (rashi == null || rashi.isEmpty) return 'assets/zodiac/leo.png';
-    return 'assets/zodiac/${rashi.toLowerCase()}.png';
+    if (rashi == null || rashi.isEmpty) {
+      return 'assets/zodiac/leo.webp';
+    }
+    return 'assets/zodiac/${rashi.toLowerCase()}.webp';
   }
 
   // -------------------------------------------------------

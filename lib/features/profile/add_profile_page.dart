@@ -1,8 +1,5 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
@@ -72,36 +69,21 @@ class _AddProfilePageState extends State<AddProfilePage> {
   bool _loadingSuggestions = false;
 
   Future<void> _onPlaceSearch(String input) async {
-    if (input.length < 3) {
+    if (input.trim().length < 3) {
       setState(() => _suggestions = []);
       return;
     }
 
     setState(() => _loadingSuggestions = true);
 
-    final key = dotenv.env["GOOGLE_MAPS_API_KEY"]!;
-    final url =
-        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-        "?input=$input&components=country:in&key=$key";
+    final data = await LocationService.fetchAutocomplete(input);
 
-    try {
-      final res = await http.get(Uri.parse(url));
-      final data = jsonDecode(res.body);
+    if (!mounted) return;
 
-      if (data["status"] == "OK") {
-        _suggestions = (data["predictions"] as List).map<Map<String, String>>((
-          p,
-        ) {
-          return {"description": p["description"], "place_id": p["place_id"]};
-        }).toList();
-      } else {
-        _suggestions = [];
-      }
-    } catch (e) {
-      _suggestions = [];
-    }
-
-    setState(() => _loadingSuggestions = false);
+    setState(() {
+      _suggestions = data;
+      _loadingSuggestions = false;
+    });
   }
 
   // -------------------------------------------------------

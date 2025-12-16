@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart'; // ⭐ IMPORTANT
+import 'firebase_options.dart';
+
+// ⭐ IMPORTANT
 
 import 'package:jyotishasha_app/app/app.dart';
 import 'package:jyotishasha_app/core/state/kundali_provider.dart';
@@ -19,11 +20,11 @@ BuildContext? globalKundaliContext;
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await dotenv.load(fileName: ".env");
-  await Firebase.initializeApp();
+  // await dotenv.load(fileName: ".env");
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // ⭐ MUST-HAVE for ads
-  await MobileAds.instance.initialize();
+  // await MobileAds.instance.initialize();
 
   runApp(
     MultiProvider(

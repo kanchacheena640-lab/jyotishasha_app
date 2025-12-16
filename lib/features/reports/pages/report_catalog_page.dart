@@ -255,7 +255,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
-                        color: const Color(0xFF4A148C),
+                        color: Color(0xFF4A148C),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -275,7 +275,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                         Text(
                           "${t.reports_price_prefix}${r["price"]}",
                           style: const TextStyle(
-                            color: const Color(0xFF7C3AED),
+                            color: Color(0xFF7C3AED),
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -383,7 +383,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF4A148C),
+                              color: Color(0xFF4A148C),
                             ),
                           ),
                           const SizedBox(height: 12),

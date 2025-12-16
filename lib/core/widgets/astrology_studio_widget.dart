@@ -44,7 +44,7 @@ class AstrologyStudioWidget extends StatelessWidget {
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF6D28D9),
+              color: Color(0xFF6D28D9),
             ),
           ),
 

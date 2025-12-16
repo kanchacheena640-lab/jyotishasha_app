@@ -1,17 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class AppFooterFeedbackWidget extends StatelessWidget {
-  final TextEditingController _controller = TextEditingController();
+  const AppFooterFeedbackWidget({super.key});
 
-  AppFooterFeedbackWidget({super.key});
+  Future<void> _openMail() async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: 'hr.slcomp@gmail.com',
+      queryParameters: {'subject': 'Jyotishasha App Feedback'},
+    );
+
+    if (await canLaunchUrl(emailUri)) {
+      await launchUrl(emailUri);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
-    final theme = Theme.of(context);
 
-    // 🌈 Jyotishasha gradient (saffron → purple)
     const jyotishashaGradient = LinearGradient(
       colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
       begin: Alignment.centerLeft,
@@ -25,36 +34,16 @@ class AppFooterFeedbackWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // 💬 Feedback input box
-          SizedBox(
-            width: 300,
-            child: TextField(
-              controller: _controller,
-              maxLines: 2,
-              style: const TextStyle(fontSize: 13),
-              decoration: InputDecoration(
-                hintText: t.footerFeedbackHint,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
+          Text(
+            t.footerFeedbackHint,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
 
           const SizedBox(height: 16),
 
-          // ✨ Gradient Send Button
           GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(t.footerFeedbackThanks)));
-              _controller.clear();
-            },
+            onTap: _openMail,
             child: ShaderMask(
               shaderCallback: (bounds) => jyotishashaGradient.createShader(
                 Rect.fromLTWH(0, 0, bounds.width, bounds.height),
@@ -62,7 +51,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.send_rounded, size: 22, color: Colors.white),
+                  const Icon(Icons.mail_outline, size: 22, color: Colors.white),
                   const SizedBox(width: 6),
                   Text(
                     t.footerFeedbackSend,
@@ -79,7 +68,6 @@ class AppFooterFeedbackWidget extends StatelessWidget {
 
           const SizedBox(height: 18),
 
-          // ⚖️ Copyright
           Text(
             t.footerCopyright,
             textAlign: TextAlign.center,
@@ -89,7 +77,7 @@ class AppFooterFeedbackWidget extends StatelessWidget {
           const SizedBox(height: 4),
 
           GestureDetector(
-            onTap: () {}, // TODO: open Privacy/Terms page
+            onTap: () {},
             child: Text(
               t.footerPrivacyTerms,
               style: const TextStyle(

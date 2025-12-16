@@ -75,7 +75,7 @@ class _DarshanPageState extends State<DarshanPage>
     };
 
     _deity = deityMap[_day] ?? 'shiva';
-    _imagePath = 'assets/images/${_day}_$_deity.png';
+    _imagePath = 'assets/images/${_day}_$_deity.webp';
 
     _audioPath =
         'audio/${_day}_$_deity${_deity == "hanuman" ? "_chalisa" : "_aarti"}.mp3';
