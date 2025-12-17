@@ -1,5 +1,10 @@
-// lib/core/state/asknow_provider.dart
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:http/http.dart' as http;
+
 import 'package:jyotishasha_app/services/asknow_service.dart';
 
 class AskNowProvider extends ChangeNotifier {
@@ -7,7 +12,7 @@ class AskNowProvider extends ChangeNotifier {
   // STATE
   // ---------------------------------------------------------
   bool isLoading = false;
-  String? pendingAnswer; // <-- ALWAYS STRING
+  String? pendingAnswer;
   String? lastErrorMessage;
 
   // FREE system
@@ -21,6 +26,53 @@ class AskNowProvider extends ChangeNotifier {
   bool statusLoaded = false;
 
   // ---------------------------------------------------------
+  // GOOGLE PLAY BILLING
+  // ---------------------------------------------------------
+  final InAppPurchase _iap = InAppPurchase.instance;
+  StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
+
+  int? _pendingUserId;
+
+  // ---------------------------------------------------------
+  // INIT / DISPOSE
+  // ---------------------------------------------------------
+  void initBilling() {
+    _purchaseSub ??= _iap.purchaseStream.listen((purchases) {
+      for (final purchase in purchases) {
+        switch (purchase.status) {
+          case PurchaseStatus.pending:
+            isLoading = true;
+            notifyListeners();
+            break;
+
+          case PurchaseStatus.purchased:
+          case PurchaseStatus.restored:
+            _verifyAndActivate(purchase);
+            break;
+
+          case PurchaseStatus.canceled:
+            isLoading = false;
+            lastErrorMessage = "Payment cancelled";
+            notifyListeners();
+            break;
+
+          case PurchaseStatus.error:
+            isLoading = false;
+            lastErrorMessage = purchase.error?.message;
+            notifyListeners();
+            break;
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _purchaseSub?.cancel();
+    super.dispose();
+  }
+
+  // ---------------------------------------------------------
   void clearPending() {
     pendingAnswer = null;
     notifyListeners();
@@ -32,22 +84,15 @@ class AskNowProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void consumeToken() {
-    if (hasActivePack && remainingTokens > 0) {
-      remainingTokens--;
-      hasActivePack = remainingTokens > 0;
-      notifyListeners();
-    }
-  }
-
   // ---------------------------------------------------------
-  // MAIN LOGIC
+  // MAIN CHAT LOGIC (FIXED)
   // ---------------------------------------------------------
   Future<void> askFreeOrFromTokens({
     required String question,
     required Map<String, dynamic> profile,
     required int userId,
   }) async {
+    // 🔒 HARD RESET BEFORE CALL
     isLoading = true;
     pendingAnswer = null;
     lastErrorMessage = null;
@@ -61,146 +106,141 @@ class AskNowProvider extends ChangeNotifier {
         return;
       }
 
+      Map<String, dynamic>? res;
+
       // ---------------- FREE QUESTION ----------------
       if (freeAvailable) {
-        final res = await AskNowService.askFreeQuestion(
+        res = await AskNowService.askFreeQuestion(
           userId: userId,
           question: question,
           profile: profile,
         );
-
-        if (res["success"] == true && res["answer"] != null) {
-          // ✅ Always only clean text string
-          pendingAnswer = res["answer"].toString();
-          setFreeAvailable(false);
-          isLoading = false;
-          notifyListeners();
-          return;
-        }
-
-        lastErrorMessage = res["message"] ?? "Unable to use free chat.";
-        isLoading = false;
-        notifyListeners();
-        return;
+        setFreeAvailable(false);
       }
-
       // ---------------- PAID QUESTION ----------------
-      if (hasActivePack) {
-        final res = await AskNowService.askPaidQuestion(
+      else if (hasActivePack) {
+        res = await AskNowService.askPaidQuestion(
           userId: userId,
           question: question,
           profile: profile,
         );
-
-        if (res["success"] == true && res["answer"] != null) {
-          // ✅ Clean string again
-          pendingAnswer = res["answer"].toString();
-
-          final rem = res["remaining_tokens"] ?? res["remaining"];
-          if (rem != null) {
-            final parsed = int.tryParse(rem.toString());
-            if (parsed != null) {
-              remainingTokens = parsed;
-              hasActivePack = parsed > 0;
-            }
-          }
-
-          isLoading = false;
-          notifyListeners();
-          return;
-        }
-
-        lastErrorMessage = res["message"] ?? "Unable to use your pack.";
+      } else {
+        lastErrorMessage = "PAYMENT_REQUIRED";
         isLoading = false;
         notifyListeners();
         return;
       }
 
-      // ---------------- NO FREE, NO PACK ----------------
-      lastErrorMessage = "PAYMENT_REQUIRED";
-      isLoading = false;
-      notifyListeners();
+      // ---------------- RESULT HANDLE (CRITICAL FIX) ----------------
+      final String answerText = res["answer"]?.toString().trim() ?? "";
+
+      if (answerText.isNotEmpty) {
+        pendingAnswer = answerText;
+      } else {
+        lastErrorMessage = "No answer received. Please try again.";
+      }
+
+      // Update tokens if present
+      final rem = res["remaining_tokens"];
+      if (rem != null) {
+        final parsed = int.tryParse(rem.toString());
+        if (parsed != null) {
+          remainingTokens = parsed;
+          hasActivePack = parsed > 0;
+        }
+      }
     } catch (e) {
       lastErrorMessage = e.toString();
+    } finally {
+      // 🔥 GUARANTEED EXIT
       isLoading = false;
       notifyListeners();
     }
   }
 
   // ---------------------------------------------------------
-  // AFTER PAYMENT
+  // GOOGLE PLAY PACK PURCHASE
   // ---------------------------------------------------------
-  void markPackActive({int? tokens}) {
-    remainingTokens = tokens ?? remainingTokens;
-    hasActivePack = remainingTokens > 0;
-    notifyListeners();
-  }
-
-  Future<void> askFromPaidPack({
-    required String question,
-    required Map<String, dynamic> profile,
+  Future<void> startGooglePlayPackPurchase({
     required int userId,
+    required String productId,
   }) async {
-    isLoading = true;
-    pendingAnswer = null;
-    lastErrorMessage = null;
-    notifyListeners();
+    _pendingUserId = userId;
 
-    try {
-      final res = await AskNowService.askPaidQuestion(
-        userId: userId,
-        question: question,
-        profile: profile,
-      );
-
-      if (res["success"] == true && res["answer"] != null) {
-        // ✅ Clean bot answer again
-        pendingAnswer = res["answer"].toString();
-
-        final rem = res["remaining_tokens"] ?? res["remaining"];
-        if (rem != null) {
-          final parsed = int.tryParse(rem.toString());
-          if (parsed != null) {
-            remainingTokens = parsed;
-            hasActivePack = parsed > 0;
-          }
-        }
-
-        isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      lastErrorMessage = res["message"] ?? "Unable to use your pack.";
-      isLoading = false;
+    final response = await _iap.queryProductDetails({productId});
+    if (response.productDetails.isEmpty) {
+      lastErrorMessage = "Product not found";
       notifyListeners();
-    } catch (e) {
-      lastErrorMessage = e.toString();
-      isLoading = false;
-      notifyListeners();
+      return;
     }
+
+    final product = response.productDetails.first;
+    final param = PurchaseParam(productDetails: product);
+
+    _iap.buyNonConsumable(purchaseParam: param);
   }
 
-  // ⭐ ADD 1 QUESTION WHEN USER WATCHES 2 ADS
+  // ---------------------------------------------------------
+  // VERIFY + ACTIVATE
+  // ---------------------------------------------------------
+  Future<void> _verifyAndActivate(PurchaseDetails purchase) async {
+    if (_pendingUserId == null) {
+      isLoading = false;
+      lastErrorMessage = "User not ready for verification";
+      notifyListeners();
+      return;
+    }
+
+    final res = await http.post(
+      Uri.parse("https://jyotishasha-backend.onrender.com/api/chatpack/verify"),
+      headers: const {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "user_id": _pendingUserId,
+        "product_id": purchase.productID,
+        "purchase_token": purchase.verificationData.serverVerificationData,
+      }),
+    );
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      isLoading = false;
+      lastErrorMessage = "Verification failed";
+      notifyListeners();
+      return;
+    }
+
+    await _iap.completePurchase(purchase);
+
+    remainingTokens = 8;
+    hasActivePack = true;
+    statusLoaded = true;
+    isLoading = false;
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------
+  // REWARD ADS (2 ads = 1Q)
+  // ---------------------------------------------------------
   Future<void> earnedReward(int userId) async {
     try {
       final res = await AskNowService.addRewardQuestion(userId);
 
       if (res["success"] == true) {
-        final int newTotal =
-            int.tryParse(res["total_tokens"].toString()) ?? remainingTokens;
+        final int total =
+            int.tryParse(res["total_tokens"]?.toString() ?? "") ??
+            remainingTokens;
 
-        remainingTokens = newTotal;
-        hasActivePack = remainingTokens > 0;
+        remainingTokens = total;
+        hasActivePack = total > 0;
+        statusLoaded = true;
 
-        // ⭐ FREE KO TOUCH MAT KARNA
         freeAvailable = false;
         freeUsedToday = true;
 
         notifyListeners();
       }
     } catch (e) {
-      print("Reward error: $e");
+      lastErrorMessage = e.toString();
+      notifyListeners();
     }
   }
 }

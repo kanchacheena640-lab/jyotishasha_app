@@ -104,21 +104,22 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                 )
               else
                 // No tokens → buy pack button
-                GestureDetector(
+                InkWell(
                   onTap: onBuy,
+                  borderRadius: BorderRadius.circular(10),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
+                      horizontal: 14,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade700,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
+                    child: const Text(
                       "8Q @ ₹51",
-                      style: const TextStyle(
-                        fontSize: 13,
+                      style: TextStyle(
+                        fontSize: 14,
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),

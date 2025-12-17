@@ -14,6 +14,7 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/asknow_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'services/play_billing_stub.dart';
 
 BuildContext? globalKundaliContext;
 
@@ -22,6 +23,8 @@ Future<void> main() async {
 
   // await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await PlayBillingStub.init();
 
   // ⭐ MUST-HAVE for ads
   // await MobileAds.instance.initialize();
@@ -38,7 +41,14 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ManualKundaliProvider()),
         ChangeNotifierProvider(create: (_) => DailyProvider()),
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
-        ChangeNotifierProvider(lazy: false, create: (_) => AskNowProvider()),
+        ChangeNotifierProvider(
+          lazy: false,
+          create: (_) {
+            final p = AskNowProvider();
+            p.initBilling(); // ✅ YAHAN CALL
+            return p;
+          },
+        ),
       ],
       child: const JyotishashaApp(),
     ),

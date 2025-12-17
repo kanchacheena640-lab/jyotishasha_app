@@ -43,14 +43,18 @@ class RewardedAdManager {
       return;
     }
 
-    final ad = _rewardedAd;
+    final RewardedAd ad = _rewardedAd!;
     _rewardedAd = null;
 
-    ad!.fullScreenContentCallback = FullScreenContentCallback(
-      onAdDismissedFullScreenContent: (RewardedAd ad) {
-        print("📌 Ad Closed → Mark as completed");
-        onAdCompleted(); // <-- THIS triggers "Ad 1/2 completed"
+    bool _completed = false;
 
+    ad.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (RewardedAd ad) {
+        if (!_completed) {
+          _completed = true;
+          print("📌 Ad Closed → Mark as completed");
+          onAdCompleted(); // ✅ count 1 ad
+        }
         ad.dispose();
         load();
       },

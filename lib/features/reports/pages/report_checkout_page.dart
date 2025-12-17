@@ -52,6 +52,11 @@ class _ReportCheckoutPageState extends State<ReportCheckoutPage> {
       return;
     }
 
+    if (formData["lat"] == null || formData["lng"] == null) {
+      _showError("Please select place from suggestions.");
+      return;
+    }
+
     debugPrint("==== FINAL CHECKOUT DATA ====");
     debugPrint(formData.toString());
     debugPrint("================================");

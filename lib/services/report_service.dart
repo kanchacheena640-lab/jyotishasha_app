@@ -1,58 +1,49 @@
-// 🌟 report_service.dart
+// lib/services/report_service.dart
 // -------------------------------------------
-// Temporary placeholder file for Report Payment integration
-// -------------------------------------------
-// TODO: Replace with actual Razorpay + backend API logic
-//       Endpoints (future):
-//         - POST /api/razorpay-order
-//         - POST /webhook/razorpay
+// Google Play Billing → Backend Report Trigger
 // -------------------------------------------
 
-import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ReportService {
-  // 🧾 Step 1: Create order (dummy simulation)
-  Future<Map<String, dynamic>> createOrder(
-    String reportName,
-    double price,
-  ) async {
-    await Future.delayed(const Duration(seconds: 2)); // simulate network delay
-    print("🪄 [DEBUG] Order created for: $reportName (₹$price)");
-    // TODO: replace with API call to Flask backend for Razorpay order_id
-    return {
-      "orderId": "order_test_12345",
-      "amount": price * 100, // in paise
-      "currency": "INR",
-      "reportName": reportName,
-    };
-  }
+  static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
 
-  // 💳 Step 2: Simulate Razorpay checkout process
-  Future<bool> startPayment(Map<String, dynamic> orderData) async {
-    print("💳 [DEBUG] Starting dummy payment for ${orderData["reportName"]}");
-    await Future.delayed(const Duration(seconds: 3));
-    // TODO: Integrate Razorpay Flutter SDK (future)
-    return true; // simulate success
-  }
+  /// ✅ Called AFTER Google Play purchase success
+  /// ❌ No price, no order_id
+  /// ⚠️ purchase_token sent only for future hardening
+  Future<bool> sendReportRequest({
+    required String name,
+    required String email,
+    required Map<String, dynamic> birthDetails,
+    required String purchaseToken,
+  }) async {
+    try {
+      final payload = {
+        "name": name,
+        "email": email,
+        "product": "report-51", // 🔒 BACKEND EXPECTS THIS
+        "dob": birthDetails["dob"],
+        "tob": birthDetails["tob"],
+        "pob": birthDetails["pob"],
+        "latitude": birthDetails["lat"],
+        "longitude": birthDetails["lng"],
+        "language": birthDetails["language"] ?? "en",
 
-  // 📧 Step 3: Send email confirmation (future backend webhook)
-  Future<void> sendReportEmail(String reportName, String email) async {
-    print("📨 [DEBUG] Sending $reportName PDF to $email");
-    await Future.delayed(const Duration(seconds: 1));
-    // TODO: Backend will handle sending email + PDF attachment
-  }
+        // future-proof (ignored by backend for now)
+        "purchase_token": purchaseToken,
+        "platform": "android",
+      };
 
-  // 🧠 Step 4: Main function — full flow simulation
-  Future<void> purchaseReport(String reportName, String email) async {
-    print("⚙️ [DEBUG] Initiating report purchase flow...");
-    final order = await createOrder(reportName, 49);
-    final success = await startPayment(order);
+      final res = await http.post(
+        Uri.parse("$_baseUrl/api/webhook"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(payload),
+      );
 
-    if (success) {
-      await sendReportEmail(reportName, email);
-      print("✅ [DEBUG] Purchase complete and email sent for $reportName");
-    } else {
-      print("❌ [DEBUG] Payment failed for $reportName");
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
     }
   }
 }
