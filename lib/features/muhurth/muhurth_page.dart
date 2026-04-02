@@ -2,13 +2,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
+import 'package:jyotishasha_app/services/location_service.dart';
 
 Widget adCard() {
   return Card(
@@ -94,49 +94,19 @@ class _MuhurthPageState extends State<MuhurthPage> {
   // ⭐ GOOGLE PLACES — AUTOCOMPLETE (REST)
   // ---------------------------------------------------------------------------
   Future<List<Map<String, String>>> _fetchPlaceSuggestions(String input) async {
-    if (input.length < 3) return [];
-
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
-    final url =
-        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-        "?input=$input&components=country:in&key=$key";
-
-    final res = await http.get(Uri.parse(url));
-    final data = jsonDecode(res.body);
-
-    if (data["status"] != "OK") return [];
-
-    return (data["predictions"] as List)
-        .map<Map<String, String>>(
-          (p) => {
-            "description": p["description"].toString(),
-            "place_id": p["place_id"].toString(),
-          },
-        )
-        .toList();
+    if (input.trim().length < 3) return [];
+    return await LocationService.fetchAutocomplete(input);
   }
 
   // ---------------------------------------------------------------------------
   // ⭐ GOOGLE PLACES — DETAILS → LAT/LNG (REST)
   // ---------------------------------------------------------------------------
   Future<Map<String, double>> _fetchLatLngFromPlaceId(String placeId) async {
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
-    final url =
-        "https://maps.googleapis.com/maps/api/place/details/json"
-        "?placeid=$placeId&key=$key";
-
-    final res = await http.get(Uri.parse(url));
-    final data = jsonDecode(res.body);
-
-    if (data["status"] != "OK") {
-      throw Exception("Place details failed: ${data["status"]}");
+    final res = await LocationService.fetchPlaceDetail(placeId);
+    if (res == null) {
+      throw Exception("Place details not found");
     }
-
-    final loc = data["result"]["geometry"]["location"];
-    return {
-      "lat": (loc["lat"] as num).toDouble(),
-      "lng": (loc["lng"] as num).toDouble(),
-    };
+    return {"lat": res["lat"] as double, "lng": res["lng"] as double};
   }
 
   // ---------------------------------------------------------------------------

@@ -49,11 +49,20 @@
 
     </application>
 
-    <!-- Required to query activities that can process text -->
+   <!-- Required to query activities (Android 11+) -->
     <queries>
+
+        <!-- For opening email apps (mailto) -->
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="mailto" />
+        </intent>
+
+        <!-- Existing text processing (keep this) -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
+
     </queries>
 </manifest>

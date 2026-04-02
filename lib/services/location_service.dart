@@ -15,7 +15,6 @@ class LocationService {
     final url =
         "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         "?input=${Uri.encodeQueryComponent(input)}"
-        "&components=country:in"
         "&key=$_apiKey";
 
     try {

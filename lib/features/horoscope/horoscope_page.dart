@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 
-import 'package:jyotishasha_app/core/state/daily_provider.dart';
-import 'package:jyotishasha_app/core/widgets/horoscope_card_widget.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
+import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/state/monthly_provider.dart';
+import 'package:jyotishasha_app/core/state/yearly_provider.dart';
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
+import 'package:jyotishasha_app/core/widgets/horoscope_card_widget.dart';
+import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
+import 'package:share_plus/share_plus.dart';
 
 class HoroscopePage extends StatefulWidget {
-  final int initialTab; // 👈 For Today (0), Tomorrow (1), Weekly (2)
-
-  const HoroscopePage({
-    super.key,
-    this.initialTab = 0, // default = Today
-  });
+  final int initialTab;
+  const HoroscopePage({super.key, this.initialTab = 0});
 
   @override
   State<HoroscopePage> createState() => _HoroscopePageState();
@@ -28,71 +31,160 @@ class _HoroscopePageState extends State<HoroscopePage>
     tabController = TabController(
       length: 3,
       vsync: this,
-      initialIndex: widget.initialTab, // 👈 FIXED
+      initialIndex: widget.initialTab,
     );
+
+    tabController.addListener(() {
+      if (!tabController.indexIsChanging) {
+        _loadByTab(tabController.index);
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadByTab(tabController.index);
+    });
+  }
+
+  String? _normalizeSign(String? sign) {
+    if (sign == null || sign.isEmpty) return null;
+
+    final map = {
+      'aries': 'aries',
+      'taurus': 'taurus',
+      'gemini': 'gemini',
+      'cancer': 'cancer',
+      'leo': 'leo',
+      'virgo': 'virgo',
+      'libra': 'libra',
+      'scorpio': 'scorpio',
+      'sagittarius': 'sagittarius',
+      'capricorn': 'capricorn',
+      'aquarius': 'aquarius',
+      'pisces': 'pisces',
+      'मेष': 'aries',
+      'वृषभ': 'taurus',
+      'मिथुन': 'gemini',
+      'कर्क': 'cancer',
+      'सिंह': 'leo',
+      'कन्या': 'virgo',
+      'तुला': 'libra',
+      'वृश्चिक': 'scorpio',
+      'धनु': 'sagittarius',
+      'मकर': 'capricorn',
+      'कुंभ': 'aquarius',
+      'मीन': 'pisces',
+    };
+
+    final key = sign.toLowerCase().trim();
+    return map[key];
+  }
+
+  void _loadByTab(int index) {
+    final profile = context.read<ProfileProvider>();
+
+    final rawSign = profile.activeProfile?['moon_sign'];
+    final sign = _normalizeSign(rawSign);
+
+    final lang = Localizations.localeOf(context).languageCode;
+
+    if (sign == null) return;
+
+    if (index == 0) {
+      context.read<DailyProvider>().fetchDaily(sign: sign, lang: lang);
+    } else if (index == 1) {
+      context.read<MonthlyProvider>().fetchMonthly(sign: sign, lang: lang);
+    } else if (index == 2) {
+      context.read<YearlyProvider>().fetchYearly(
+        sign: sign,
+        year: DateTime.now().year,
+        lang: lang,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final daily = context.watch<DailyProvider>();
+    final t = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         title: Text(
-          "Your Horoscope",
+          t.yourHoroscope,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.w600,
           ),
         ),
         centerTitle: true,
-
+        actions: const [GlobalShareButton(currentPage: "horoscope")],
         bottom: TabBar(
           controller: tabController,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          tabs: const [
-            Tab(text: "Today"),
-            Tab(text: "Tomorrow"),
-            Tab(text: "Weekly"),
+          tabs: [
+            Tab(text: t.today),
+            Tab(text: t.monthly),
+            Tab(text: t.yearly),
           ],
         ),
       ),
 
       body: TabBarView(
         controller: tabController,
-        children: [
-          // ⭐ TODAY
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: const HoroscopeCardWidget(title: "Today"),
+        children: const [
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: HoroscopeCardWidget(period: HoroscopePeriod.today),
           ),
-
-          // ⭐ TOMORROW (same dynamic card)
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: const HoroscopeCardWidget(title: "Tomorrow"),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: HoroscopeCardWidget(period: HoroscopePeriod.monthly),
           ),
-
-          // ⭐ WEEKLY (coming soon)
-          _buildWeeklyPlaceholder(),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: HoroscopeCardWidget(period: HoroscopePeriod.yearly),
+          ),
         ],
       ),
-    );
-  }
 
-  Widget _buildWeeklyPlaceholder() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Text(
-          "Weekly horoscope is coming soon...",
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 16, color: Colors.black54),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.share, size: 18),
+                  label: const Text("Share"),
+                  onPressed: () {
+                    const text =
+                        "Your personalized horoscope is ready 🔮\n"
+                        "Get daily, monthly & yearly predictions.\n\n"
+                        "Download Jyotishasha App:\n"
+                        "https://play.google.com/store/apps/details?id=com.jyotishasha.app";
+
+                    Share.share(text);
+                  },
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.favorite, size: 18, color: Colors.red),
+                  label: const Text("Compatibility"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    elevation: 2,
+                  ),
+                  onPressed: () {
+                    context.go('/astrology');
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

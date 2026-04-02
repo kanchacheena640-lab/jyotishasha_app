@@ -234,7 +234,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get todaysDayLord => 'Today\'s Day Lord';
 
   @override
-  String get darshanWithMantra => 'Darshan with Mantra';
+  String get darshanWithMantra => 'Mantra & Darshan';
 
   @override
   String get createManualKundali => 'Create Manual Kundali';
@@ -244,9 +244,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exploreYourChart => 'Explore Your Chart';
-
-  @override
-  String get today => 'Today';
 
   @override
   String get tomorrow => 'Tomorrow';
@@ -1105,7 +1102,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get astrologyStudioSubtitle => 'Explore planets, houses, yogas and dasha — beautifully organized for you.';
 
   @override
-  String get studioProfile => 'Your Astro Profile';
+  String get studioProfile => 'Profile';
 
   @override
   String get studioPlanets => 'Your Planets';
@@ -1201,11 +1198,76 @@ class AppLocalizationsEn extends AppLocalizations {
   String get muhurthBannerCta => 'Tap to see your Shubh Muhurth';
 
   @override
-  String get darshanInstruction => 'Touch ॐ for Darshan & Mantra';
+  String get darshanInstruction => 'Today’s Divine Blessings';
 
   @override
   String get asknowEmptyHint => 'Start your consultation by typing your question below 💬';
 
   @override
   String get asknowInputHint => 'Type your question...';
+
+  @override
+  String get loveInsights => 'Love Insights';
+
+  @override
+  String get yourHoroscope => 'Your Horoscope';
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get monthly => 'Monthly';
+
+  @override
+  String get yearly => 'Yearly';
+
+  @override
+  String get trendingGeneral => 'General';
+
+  @override
+  String get trendingLove => 'Love';
+
+  @override
+  String get trendingFinance => 'Finance';
+
+  @override
+  String get transitAlertTitle => 'Celestial Insights';
+
+  @override
+  String get todaysPanchang => 'Daily Panchang';
+
+  @override
+  String get transitNextChange => 'Next Change';
+
+  @override
+  String transitHouse(Object number) {
+    return 'House $number';
+  }
+
+  @override
+  String get transitPlanetaryPositions => 'PLANETARY POSITIONS';
+
+  @override
+  String get transitReadFull => 'Read Full Prediction';
+
+  @override
+  String get transitLive => 'LIVE';
+
+  @override
+  String get transitDegree => 'Degree';
+
+  @override
+  String get trendingReports => 'Trending Reports';
+
+  @override
+  String get panchang_next => 'Next';
+
+  @override
+  String get panchang_month => 'Month';
+
+  @override
+  String get panchang_karan => 'Karan';
+
+  @override
+  String get transitNextTransit => 'Next Transit';
 }

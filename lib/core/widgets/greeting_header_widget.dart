@@ -1,494 +1,347 @@
+// lib/core/widgets/greeting_header_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
+import 'package:shimmer/shimmer.dart';
 
-import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
-import 'package:jyotishasha_app/core/state/panchang_provider.dart';
-import 'package:jyotishasha_app/l10n/app_localizations.dart';
+import 'package:jyotishasha_app/core/state/profile_provider.dart';
+import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 
 class GreetingHeaderWidget extends StatelessWidget {
-  final DailyProvider daily;
+  const GreetingHeaderWidget({super.key});
 
-  const GreetingHeaderWidget({super.key, required this.daily});
-
-  // -------------------------------------------------------
-  // ⭐ TODAY lucky generators
-  // -------------------------------------------------------
-  String getTodayLuckyColor() {
-    final colors = [
-      "Red",
-      "Blue",
-      "Green",
-      "Purple",
-      "Pink",
-      "Yellow",
-      "Orange",
-      "White",
-      "Black",
-      "Gold",
-      "Silver",
-      "Turquoise",
-    ];
-    final seed = DateTime.now().toIso8601String().substring(0, 10).hashCode;
-    return colors[Random(seed).nextInt(colors.length)];
+  String _getGreeting(String lang) {
+    return (lang == "hi") ? "नमस्कार" : "Namaskar";
   }
 
-  String getTodayLuckyNumber() {
-    final nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-    final seed = (DateTime.now().millisecondsSinceEpoch ~/ 86400000);
-    return nums[Random(seed).nextInt(nums.length)];
-  }
+  String _zodiacAsset(String? sign) {
+    if (sign == null || sign.isEmpty) return 'assets/zodiac/leo.webp';
 
-  String getTodayDirection() {
-    final dirs = [
-      "North",
-      "South",
-      "East",
-      "West",
-      "North-East",
-      "South-East",
-      "South-West",
-      "North-West",
-    ];
-    final seed = DateTime.now().day * 77;
-    return dirs[Random(seed).nextInt(dirs.length)];
-  }
-
-  // -------------------------------------------------------
-  // ⭐ Color mapping (for dot)
-  // -------------------------------------------------------
-  Color mapLuckyColor(String color) {
-    final colorMap = {
-      'red': Colors.red,
-      'blue': Colors.blue,
-      'green': Colors.green,
-      'yellow': Colors.yellow,
-      'pink': Colors.pink,
-      'purple': Colors.purple,
-      'orange': Colors.orange,
-      'white': Colors.white,
-      'black': Colors.black,
-      'brown': Colors.brown,
-      'grey': Colors.grey,
-      'gray': Colors.grey,
-      'gold': const Color(0xFFFFD700),
-      'silver': const Color(0xFFC0C0C0),
-      'turquoise': Colors.tealAccent,
-    };
-
-    return colorMap[color.toLowerCase()] ?? Colors.deepPurple;
-  }
-
-  // -------------------------------------------------------
-  // ⭐ Translate Lucky Color
-  // -------------------------------------------------------
-  String translateLuckyColor(String color, String lang) {
     final map = {
-      "red": {"en": "Red", "hi": "लाल"},
-      "blue": {"en": "Blue", "hi": "नीला"},
-      "green": {"en": "Green", "hi": "हरा"},
-      "purple": {"en": "Purple", "hi": "बैंगनी"},
-      "pink": {"en": "Pink", "hi": "गुलाबी"},
-      "yellow": {"en": "Yellow", "hi": "पीला"},
-      "orange": {"en": "Orange", "hi": "नारंगी"},
-      "white": {"en": "White", "hi": "सफेद"},
-      "black": {"en": "Black", "hi": "काला"},
-      "gold": {"en": "Gold", "hi": "सोना"},
-      "silver": {"en": "Silver", "hi": "चांदी"},
-      "turquoise": {"en": "Turquoise", "hi": "फ़िरोज़ी"},
+      'aries': 'aries',
+      'taurus': 'taurus',
+      'gemini': 'gemini',
+      'cancer': 'cancer',
+      'leo': 'leo',
+      'virgo': 'virgo',
+      'libra': 'libra',
+      'scorpio': 'scorpio',
+      'sagittarius': 'sagittarius',
+      'capricorn': 'capricorn',
+      'aquarius': 'aquarius',
+      'pisces': 'pisces',
+      'मेष': 'aries',
+      'वृषभ': 'taurus',
+      'मिथुन': 'gemini',
+      'कर्क': 'cancer',
+      'सिंह': 'leo',
+      'कन्या': 'virgo',
+      'तुला': 'libra',
+      'वृश्चिक': 'scorpio',
+      'धनु': 'sagittarius',
+      'मकर': 'capricorn',
+      'कुंभ': 'aquarius',
+      'मीन': 'pisces',
     };
 
-    final key = color.toLowerCase();
-    return map[key]?[lang] ?? color;
+    final key = sign.toLowerCase().trim();
+    final slug = map[key] ?? 'leo';
+
+    return 'assets/zodiac/$slug.webp';
   }
 
-  // -------------------------------------------------------
-  // ⭐ Translate Lucky Direction
-  // -------------------------------------------------------
-  String translateDirection(String dir, String lang) {
-    final map = {
-      "north": {"en": "North", "hi": "उत्तर"},
-      "south": {"en": "South", "hi": "दक्षिण"},
-      "east": {"en": "East", "hi": "पूर्व"},
-      "west": {"en": "West", "hi": "पश्चिम"},
-      "north-east": {"en": "North-East", "hi": "उत्तर-पूर्व"},
-      "north-west": {"en": "North-West", "hi": "उत्तर-पश्चिम"},
-      "south-east": {"en": "South-East", "hi": "दक्षिण-पूर्व"},
-      "south-west": {"en": "South-West", "hi": "दक्षिण-पश्चिम"},
-    };
-
-    final key = dir.toLowerCase();
-    return map[key]?[lang] ?? dir;
-  }
-
-  // -------------------------------------------------------
-  // ⭐ UI BUILD
-  // -------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final firebase = context.watch<FirebaseKundaliProvider>();
-    final kundali = firebase.kundaliData ?? {};
-    final panchang = context.watch<PanchangProvider>();
-    final dailyProvider = context.watch<DailyProvider>();
-    final t = AppLocalizations.of(context)!;
+    final profile = context.watch<ProfileProvider>().activeProfile;
 
-    final String lang = t.localeName; // "en" or "hi"
+    final daily = context.watch<DailyProvider>();
+    final lang = context.watch<LanguageProvider>().currentLang;
 
-    final displayName = kundali["profile"]?["name"] ?? t.greetFriend;
-    final birthRashi = kundali["rashi"] ?? "";
-    final zodiacAsset = _zodiacAssetForRashi(birthRashi);
+    final isLoading = daily.isLoading;
+    final intro = daily.intro;
 
-    // ⭐ Generate today's lucky values
-    final luckyColor = getTodayLuckyColor();
-    final luckyNumber = getTodayLuckyNumber();
-    final luckyDirection = getTodayDirection();
+    // 🔁 Language change hone par Daily API dobara fetch hogi
+    final lastLang = context.read<DailyProvider>().lastLang;
 
-    // ⭐ Translated for UI
-    final luckyColorTranslated = translateLuckyColor(luckyColor, lang);
-    final luckyDirectionTranslated = translateDirection(luckyDirection, lang);
+    if (lastLang != lang) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final sign =
+            profile?["moon_sign"] ?? profile?["rashi"] ?? profile?["sign"];
 
-    final dotColor = mapLuckyColor(luckyColor);
+        if (sign != null) {
+          context.read<DailyProvider>().fetchDaily(
+            sign: sign,
+            lang: lang,
+            force: true,
+          );
+        }
+      });
+    }
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF3E8FF), Color(0xFFEDE9FE)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 8, offset: Offset(0, 3)),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 15,
+            offset: Offset(0, 5),
+          ),
         ],
       ),
-
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ---------------------------------------------------
-          // 🌙 Greeting + Rashi Icon
-          // ---------------------------------------------------
-          Row(
-            children: [
-              Container(
-                height: 54,
-                width: 54,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.deepPurple.shade200,
-                    width: 1.5,
-                  ),
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                ),
-                child: ClipOval(
-                  child: Image.asset(zodiacAsset, fit: BoxFit.contain),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: "${t.greetNamaste} ",
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.deepPurple.shade700,
-                        ),
-                      ),
-                      TextSpan(
-                        text: "$displayName 🙏",
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple.shade900,
-                        ),
-                      ),
-                      if (birthRashi.isNotEmpty) ...[
-                        const TextSpan(text: " "),
-                        TextSpan(
-                          text: "($birthRashi Rashi)",
-                          style: TextStyle(
-                            fontSize: 11.5,
-                            color: Colors.deepPurple.shade500,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 20),
-
-          // ---------------------------------------------------
-          // 🪔 Daily Aspect + Remedy
-          // ---------------------------------------------------
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.deepPurple.shade100, width: 1),
-            ),
-            child: dailyProvider.isLoading
-                ? Text(
-                    t.dailyLoading,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      color: Colors.deepPurple.shade800,
-                      height: 1.5,
-                    ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (dailyProvider.aspectLine != null &&
-                          dailyProvider.aspectLine!.trim().isNotEmpty)
-                        Text(
-                          dailyProvider.aspectLine!,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            color: Colors.deepPurple.shade800,
-                            height: 1.5,
-                          ),
-                        ),
-                      const SizedBox(height: 10),
-                      Text(
-                        t.dailyRemedy,
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.deepPurple.shade700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        dailyProvider.remedyLine ?? "—",
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.deepPurple.shade700,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // ---------------------------------------------------
-          // ⭐ LUCKY BLOCK (NEW PREMIUM STYLE)
-          // ---------------------------------------------------
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFFF8F5FF),
-                  Color(0xFFEDE7FF),
-                ], // Soft Premium Gradient
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.deepPurple.shade100, width: 1.2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.deepPurple.withOpacity(0.12),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 🎨 Lucky Color + 🔢 Lucky Number → SIDE-BY-SIDE
-                Row(
-                  children: [
-                    // ⭐ Lucky Color
-                    Expanded(
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 14,
-                            height: 14,
-                            decoration: BoxDecoration(
-                              color: dotColor,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.black26,
-                                width: 0.6,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              "${t.luckyColorLabel}: $luckyColorTranslated",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF5A189A),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // ⭐ Lucky Number
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.confirmation_num_rounded,
-                            size: 18,
-                            color: Color(0xFF5A189A),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Text(
-                              "${t.luckyNumberLabel}: $luckyNumber",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF5A189A),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 14),
-
-                // 🧭 Lucky Direction (FULL WIDTH)
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.explore_rounded,
-                      size: 18,
-                      color: Color(0xFF5A189A),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "${t.favourableDirectionLabel}: $luckyDirectionTranslated",
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF5A189A),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          // ---------------------------------------------------
-          // 📅 Panchang Time Alert
-          // ---------------------------------------------------
-          Text(
-            t.panchangTimeAlert,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple.shade700,
-            ),
-          ),
-
-          const SizedBox(height: 8),
-
-          panchang.isLoading
-              ? Text(
-                  t.panchangCalcLoading,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.deepPurple.shade500,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _timeTile(
-                      "🕒 ${t.timeToDo}",
-                      "${panchang.abhijitStart} – ${panchang.abhijitEnd}",
-                    ),
-                    _timeTile(
-                      "🌑 ${t.timeToHold}",
-                      "${panchang.rahukaalStart} – ${panchang.rahukaalEnd}",
-                    ),
-                  ],
-                ),
-        ],
-      ),
+      child: isLoading
+          ? _buildShimmerLoader()
+          : _buildActualContent(context, profile, intro),
     );
   }
 
-  // -------------------------------------------------------
-  // ♈ Rashi Image
-  // -------------------------------------------------------
-  String _zodiacAssetForRashi(String? rashi) {
-    if (rashi == null || rashi.isEmpty) {
-      return 'assets/zodiac/leo.webp';
-    }
-    return 'assets/zodiac/${rashi.toLowerCase()}.webp';
+  Widget _buildActualContent(
+    BuildContext context,
+    Map? profile,
+    String? intro,
+  ) {
+    final userName = profile?['name'] ?? "Guest";
+    final sign = profile?['moon_sign'] as String?;
+    final lang = context.watch<LanguageProvider>().currentLang;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                _buildZodiacIcon(sign),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _getGreeting(lang),
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF1A1A1A),
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    Text(
+                      userName,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            _buildNotificationBell(context),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF6366F1).withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Row(
+                    children: [
+                      Icon(Icons.auto_awesome, size: 16, color: Colors.white),
+                      SizedBox(width: 8),
+                      Text(
+                        "TODAY'S VIBE",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white70,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Icon(Icons.more_horiz, color: Colors.white70),
+                ],
+              ),
+
+              if (intro != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  intro,
+                  maxLines: 2,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    height: 1.2,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
+              _buildReadMoreBtn(context, lang),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
-  // -------------------------------------------------------
-  // ⏳ Time tile
-  // -------------------------------------------------------
-  Widget _timeTile(String title, String time) {
-    return Expanded(
+  Widget _buildNotificationBell(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Notifications coming soon!")),
+        );
+      },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: Colors.deepPurple.shade100),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.grey[100],
+          shape: BoxShape.circle,
         ),
-        child: Column(
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.deepPurple.shade700,
-                fontWeight: FontWeight.w600,
-              ),
+            const Icon(
+              Icons.notifications_none_rounded,
+              size: 24,
+              color: Color(0xFF1A1A1A),
             ),
-            const SizedBox(height: 4),
-            Text(
-              time,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: Colors.deepPurple.shade400,
+            Positioned(
+              right: 1,
+              top: 1,
+              child: Container(
+                width: 9,
+                height: 9,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildZodiacIcon(String? sign) {
+    return Container(
+      width: 56,
+      height: 56,
+      padding: const EdgeInsets.all(3),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(colors: [Colors.amber, Colors.orange]),
+      ),
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+        ),
+        child: ClipOval(
+          child: Image.asset(_zodiacAsset(sign), fit: BoxFit.contain),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReadMoreBtn(BuildContext context, String lang) {
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const HoroscopePage(initialTab: 0)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              lang == "hi" ? "विस्तार से पढ़ें" : "Read Detailed",
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              size: 14,
+              color: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerLoader() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[200]!,
+      highlightColor: Colors.white,
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const CircleAvatar(radius: 28, backgroundColor: Colors.white),
+                  const SizedBox(width: 12),
+                  Container(width: 120, height: 30, color: Colors.white),
+                ],
+              ),
+              const CircleAvatar(radius: 20, backgroundColor: Colors.white),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Container(
+            width: double.infinity,
+            height: 140,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+            ),
+          ),
+        ],
       ),
     );
   }

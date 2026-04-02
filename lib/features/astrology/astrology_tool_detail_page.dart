@@ -354,7 +354,7 @@ class _AstrologyToolDetailPageState extends State<AstrologyToolDetailPage> {
           const SizedBox(height: 14),
 
           /// IMAGE
-          if (img.isNotEmpty)
+          if (img.startsWith("http"))
             Center(
               child: Image.network(
                 img,

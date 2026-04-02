@@ -34,6 +34,22 @@ class AskNowProvider extends ChangeNotifier {
   int? _pendingUserId;
 
   // ---------------------------------------------------------
+  // 🔒 SINGLE SOURCE OF TRUTH (BACKEND → PROVIDER)
+  // ---------------------------------------------------------
+  void applyStatusFromBackend(Map<String, dynamic> status) {
+    freeAvailable = status["free_available"] == true;
+    freeUsedToday = status["free_used_today"] == true;
+
+    remainingTokens =
+        int.tryParse(status["remaining_tokens"]?.toString() ?? "0") ?? 0;
+
+    hasActivePack = remainingTokens > 0;
+    statusLoaded = true;
+
+    notifyListeners();
+  }
+
+  // ---------------------------------------------------------
   // INIT / DISPOSE
   // ---------------------------------------------------------
   void initBilling() {
@@ -78,12 +94,6 @@ class AskNowProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setFreeAvailable(bool available) {
-    freeAvailable = available;
-    freeUsedToday = !available;
-    notifyListeners();
-  }
-
   // ---------------------------------------------------------
   // MAIN CHAT LOGIC (FIXED)
   // ---------------------------------------------------------
@@ -92,7 +102,6 @@ class AskNowProvider extends ChangeNotifier {
     required Map<String, dynamic> profile,
     required int userId,
   }) async {
-    // 🔒 HARD RESET BEFORE CALL
     isLoading = true;
     pendingAnswer = null;
     lastErrorMessage = null;
@@ -101,8 +110,6 @@ class AskNowProvider extends ChangeNotifier {
     try {
       if (!statusLoaded) {
         lastErrorMessage = "WAIT_SYNC";
-        isLoading = false;
-        notifyListeners();
         return;
       }
 
@@ -115,10 +122,13 @@ class AskNowProvider extends ChangeNotifier {
           question: question,
           profile: profile,
         );
-        setFreeAvailable(false);
+
+        // 🔒 HARD SYNC after free consume
+        final status = await AskNowService.fetchChatStatus(userId);
+        applyStatusFromBackend(status);
       }
       // ---------------- PAID QUESTION ----------------
-      else if (hasActivePack) {
+      else if (hasActivePack && remainingTokens > 0) {
         res = await AskNowService.askPaidQuestion(
           userId: userId,
           question: question,
@@ -126,24 +136,19 @@ class AskNowProvider extends ChangeNotifier {
         );
       } else {
         lastErrorMessage = "PAYMENT_REQUIRED";
-        isLoading = false;
-        notifyListeners();
         return;
       }
 
-      // ---------------- RESULT HANDLE (CRITICAL FIX) ----------------
       final String answerText = res["answer"]?.toString().trim() ?? "";
-
       if (answerText.isNotEmpty) {
         pendingAnswer = answerText;
       } else {
-        lastErrorMessage = "No answer received. Please try again.";
+        lastErrorMessage = "No answer received.";
       }
 
-      // Update tokens if present
-      final rem = res["remaining_tokens"];
-      if (rem != null) {
-        final parsed = int.tryParse(rem.toString());
+      // Token update only if backend sends it
+      if (res.containsKey("remaining_tokens")) {
+        final parsed = int.tryParse(res["remaining_tokens"].toString());
         if (parsed != null) {
           remainingTokens = parsed;
           hasActivePack = parsed > 0;
@@ -152,7 +157,6 @@ class AskNowProvider extends ChangeNotifier {
     } catch (e) {
       lastErrorMessage = e.toString();
     } finally {
-      // 🔥 GUARANTEED EXIT
       isLoading = false;
       notifyListeners();
     }
@@ -177,7 +181,7 @@ class AskNowProvider extends ChangeNotifier {
     final product = response.productDetails.first;
     final param = PurchaseParam(productDetails: product);
 
-    _iap.buyNonConsumable(purchaseParam: param);
+    await _iap.buyConsumable(purchaseParam: param, autoConsume: true);
   }
 
   // ---------------------------------------------------------
@@ -185,8 +189,7 @@ class AskNowProvider extends ChangeNotifier {
   // ---------------------------------------------------------
   Future<void> _verifyAndActivate(PurchaseDetails purchase) async {
     if (_pendingUserId == null) {
-      isLoading = false;
-      lastErrorMessage = "User not ready for verification";
+      lastErrorMessage = "User not ready";
       notifyListeners();
       return;
     }
@@ -202,7 +205,6 @@ class AskNowProvider extends ChangeNotifier {
     );
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      isLoading = false;
       lastErrorMessage = "Verification failed";
       notifyListeners();
       return;
@@ -213,19 +215,18 @@ class AskNowProvider extends ChangeNotifier {
     remainingTokens = 8;
     hasActivePack = true;
     statusLoaded = true;
-    isLoading = false;
     notifyListeners();
   }
 
   // ---------------------------------------------------------
-  // REWARD ADS (2 ads = 1Q)
+  // REWARD ADS
   // ---------------------------------------------------------
   Future<void> earnedReward(int userId) async {
     try {
       final res = await AskNowService.addRewardQuestion(userId);
 
       if (res["success"] == true) {
-        final int total =
+        final total =
             int.tryParse(res["total_tokens"]?.toString() ?? "") ??
             remainingTokens;
 

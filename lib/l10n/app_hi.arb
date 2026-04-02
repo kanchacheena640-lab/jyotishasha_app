@@ -548,7 +548,7 @@
   "astrologyStudioSubtitle": "ग्रह, भाव, योग और दशा — सब कुछ सुंदर तरीके से व्यवस्थित।",
   "panchang_yes": "हाँ",
   "panchang_no": "नहीं",
-  "studioProfile": "ज्योतिष प्रोफ़ाइल",
+  "studioProfile": "प्रोफ़ाइल",
   "studioPlanets": "कुंडली में ग्रह",
   "studioBhava": "कुंडली के घर",
   "studioDasha": "ग्रह दशा",
@@ -580,7 +580,29 @@
   "muhurthBannerGold": "सोना खरीद",
   "muhurthBannerMore": "और भी शुभ कार्यों के लिए",
   "muhurthBannerCta": "अपने शुभ मुहूर्त देखने के लिए टैप करें",
-  "darshanInstruction": "ॐ का स्‍पर्श — करें दर्शन और सुने मंत्र",
+  "darshanInstruction": "देव दर्शन — शुभ दिन के लिए",
   "asknowEmptyHint": "नीचे अपना प्रश्न लिखें और परामर्श प्राप्‍त करें 💬",
-  "asknowInputHint": "अपना प्रश्न यहाँ लिखें..."
+  "asknowInputHint": "अपना प्रश्न यहाँ लिखें...",
+  "loveInsights":  "प्रेम विश्लेषण",
+  
+  "monthly": "मासिक",
+  "yearly": "वार्षिक",
+  "trendingGeneral": "सामान्य",
+  "trendingLove": "प्रेम",
+  "trendingFinance": "धन",
+
+  "transitAlertTitle": "ग्रहों की स्थिति",
+  "todaysPanchang": "आज का पंचांग",
+  
+  "transitNextChange": "अगला परिवर्तन",
+  "transitHouse": "{number}वाँ भाव",
+  "transitPlanetaryPositions": "नवग्रह गोचर",
+  "transitReadFull": "पूरा फल आदेश पढ़ें",
+  "transitLive": "Live",
+  "transitDegree": "डिग्री",
+  "trendingReports": "पॉपुलर रिपोर्ट",
+  "panchang_next": "अगला",
+  "panchang_month": "मास",
+  "panchang_karan": "करण",
+  "transitNextTransit": "अगला गोचर"
 }

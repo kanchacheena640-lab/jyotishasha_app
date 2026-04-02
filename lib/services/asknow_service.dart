@@ -92,7 +92,8 @@ class AskNowService {
     required String question,
     required Map<String, dynamic> profile,
   }) {
-    return _postJsonCleanAnswer("/api/smartchat", {
+    return _postJsonCleanAnswer("/api/chat/free", {
+      "user_id": userId, // 🔴 THIS WAS MISSING
       "question": question,
       "birth": buildBirthFromProfile(profile),
     });

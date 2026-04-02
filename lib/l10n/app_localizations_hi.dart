@@ -246,9 +246,6 @@ class AppLocalizationsHi extends AppLocalizations {
   String get exploreYourChart => 'अपनी कुंडली देखें';
 
   @override
-  String get today => 'आज';
-
-  @override
   String get tomorrow => 'कल';
 
   @override
@@ -1105,7 +1102,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get astrologyStudioSubtitle => 'ग्रह, भाव, योग और दशा — सब कुछ सुंदर तरीके से व्यवस्थित।';
 
   @override
-  String get studioProfile => 'ज्योतिष प्रोफ़ाइल';
+  String get studioProfile => 'प्रोफ़ाइल';
 
   @override
   String get studioPlanets => 'कुंडली में ग्रह';
@@ -1201,11 +1198,76 @@ class AppLocalizationsHi extends AppLocalizations {
   String get muhurthBannerCta => 'अपने शुभ मुहूर्त देखने के लिए टैप करें';
 
   @override
-  String get darshanInstruction => 'ॐ का स्‍पर्श — करें दर्शन और सुने मंत्र';
+  String get darshanInstruction => 'देव दर्शन — शुभ दिन के लिए';
 
   @override
   String get asknowEmptyHint => 'नीचे अपना प्रश्न लिखें और परामर्श प्राप्‍त करें 💬';
 
   @override
   String get asknowInputHint => 'अपना प्रश्न यहाँ लिखें...';
+
+  @override
+  String get loveInsights => 'प्रेम विश्लेषण';
+
+  @override
+  String get yourHoroscope => 'आपका राशिफल';
+
+  @override
+  String get today => 'आज';
+
+  @override
+  String get monthly => 'मासिक';
+
+  @override
+  String get yearly => 'वार्षिक';
+
+  @override
+  String get trendingGeneral => 'सामान्य';
+
+  @override
+  String get trendingLove => 'प्रेम';
+
+  @override
+  String get trendingFinance => 'धन';
+
+  @override
+  String get transitAlertTitle => 'ग्रहों की स्थिति';
+
+  @override
+  String get todaysPanchang => 'आज का पंचांग';
+
+  @override
+  String get transitNextChange => 'अगला परिवर्तन';
+
+  @override
+  String transitHouse(Object number) {
+    return '$numberवाँ भाव';
+  }
+
+  @override
+  String get transitPlanetaryPositions => 'नवग्रह गोचर';
+
+  @override
+  String get transitReadFull => 'पूरा फल आदेश पढ़ें';
+
+  @override
+  String get transitLive => 'Live';
+
+  @override
+  String get transitDegree => 'डिग्री';
+
+  @override
+  String get trendingReports => 'पॉपुलर रिपोर्ट';
+
+  @override
+  String get panchang_next => 'अगला';
+
+  @override
+  String get panchang_month => 'मास';
+
+  @override
+  String get panchang_karan => 'करण';
+
+  @override
+  String get transitNextTransit => 'अगला गोचर';
 }

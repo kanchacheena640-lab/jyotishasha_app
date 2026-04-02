@@ -6,176 +6,91 @@ class DailyProvider extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
 
-  // -----------------------------
-  // DAILY DATA
-  // -----------------------------
-  String? mainLine;
-  String? aspectLine;
-  String? remedyLine;
-  String? combinedText;
-
-  String? moonRashi;
-  String? moonNakshatra;
-  int? moonHouse;
-  double? moonDegree;
-  String? moonMotion;
-
-  // -----------------------------
-  // TOMORROW DATA
-  // -----------------------------
-  String? tMainLine;
-  String? tAspectLine;
-  String? tRemedyLine;
-  String? tCombinedText;
-
-  String? tMoonRashi;
-  String? tMoonNakshatra;
-  int? tMoonHouse;
-  double? tMoonDegree;
-  String? tMoonMotion;
-
-  // ⭐ Lucky Fields
+  // DAILY FIELDS
+  String? dailyTitle;
+  String? intro;
+  String? paragraph;
+  String? tips;
   String? luckyColor;
   String? luckyNumber;
-  String? luckyDirection;
 
-  // ===========================================================
-  // PRIVATE: COMMON API CALL
-  // ===========================================================
-  Future<Map<String, dynamic>?> _callApi(
-    String url,
-    Map<String, dynamic> payload,
-  ) async {
+  // CACHE (daily)
+  String? _lastSign;
+  String? _lastLang;
+
+  String? get lastLang => _lastLang;
+
+  Future<Map<String, dynamic>?> _get(String url) async {
     try {
-      print("🚀 API CALL → $url");
-      print("📦 PAYLOAD → $payload");
-
-      final res = await http.post(
-        Uri.parse(url),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
-
-      print("🌐 RESPONSE STATUS → ${res.statusCode}");
-      print("🌐 RAW RESPONSE → ${res.body}");
-
+      final res = await http.get(Uri.parse(url));
       if (res.statusCode == 200) {
-        return jsonDecode(res.body);
-      } else {
-        errorMessage = "Server Error: ${res.statusCode}";
-        return null;
+        return jsonDecode(res.body) as Map<String, dynamic>;
       }
+      errorMessage = "Server error ${res.statusCode}";
+      return null;
     } catch (e) {
-      print("❌ API EXCEPTION → $e");
-      errorMessage = "Error: $e";
+      errorMessage = e.toString();
       return null;
     }
   }
 
-  // ===========================================================
-  // DAILY API (backend ID compatible)
-  // ===========================================================
   Future<void> fetchDaily({
-    required String lagna,
-    required double lat,
-    required double lon,
+    required String sign,
     required String lang,
-    required int? backendUserId,
-    required int? backendProfileId,
+    bool force = false,
   }) async {
+    final s = sign.toLowerCase().trim();
+    final l = lang.toLowerCase().trim();
+
+    // Guard (cache hit)
+    if (!force &&
+        _lastSign == s &&
+        _lastLang == l &&
+        intro != null &&
+        paragraph != null) {
+      return;
+    }
+
     isLoading = true;
     errorMessage = null;
     notifyListeners();
 
-    // ⭐ FINAL CLEAN PAYLOAD
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
-
-    if (backendUserId != null) {
-      payload["backend_user_id"] = backendUserId;
-    }
-    if (backendProfileId != null) {
-      payload["backend_profile_id"] = backendProfileId;
-    }
-
-    final data = await _callApi(
-      "https://jyotishasha-backend.onrender.com/api/personalized/daily",
-      payload,
+    final data = await _get(
+      "https://jyotishasha-backend.onrender.com/api/daily-horoscope?sign=$s&lang=$l",
     );
 
     if (data != null) {
-      final result = data["result"] ?? {};
+      dailyTitle = data["heading"]?.toString();
+      intro = data["intro"]?.toString();
+      paragraph = data["paragraph"]?.toString();
+      tips = data["tips"]?.toString();
 
-      mainLine = result["main_line"];
-      aspectLine = result["aspect_line"];
-      remedyLine = result["remedy_line"];
-      combinedText = result["combined_text"];
+      luckyColor = data["lucky_color"]?.toString();
+      luckyNumber = data["lucky_number"]?.toString();
 
-      luckyColor = result["lucky_color"];
-      luckyNumber = result["lucky_number"];
-      luckyDirection = result["lucky_direction"];
-
-      final moon = data["moon"] ?? {};
-      moonRashi = moon["rashi"];
-      moonNakshatra = moon["nakshatra"];
-      moonHouse = moon["house"];
-      moonDegree = moon["degree"];
-      moonMotion = moon["motion"];
-
-      print("🎉 DAILY UPDATED (lang = $lang)");
+      _lastSign = s;
+      _lastLang = l;
     }
 
     isLoading = false;
     notifyListeners();
   }
 
-  // ===========================================================
-  // TOMORROW API
-  // ===========================================================
-  Future<void> fetchTomorrow({
-    required String lagna,
-    required double lat,
-    required double lon,
-    required String lang,
-    required int? backendUserId,
-    required int? backendProfileId,
-  }) async {
-    isLoading = true;
-    errorMessage = null;
-    notifyListeners();
-
-    final payload = {"lagna": lagna, "lat": lat, "lon": lon, "lang": lang};
-
-    if (backendUserId != null) {
-      payload["backend_user_id"] = backendUserId;
-    }
-    if (backendProfileId != null) {
-      payload["backend_profile_id"] = backendProfileId;
-    }
-
-    final data = await _callApi(
-      "https://jyotishasha-backend.onrender.com/api/personalized/tomorrow",
-      payload,
-    );
-
-    if (data != null) {
-      final result = data["result"] ?? {};
-
-      tMainLine = result["main_line"];
-      tAspectLine = result["aspect_line"];
-      tRemedyLine = result["remedy_line"];
-      tCombinedText = result["combined_text"];
-
-      final moon = data["moon"] ?? {};
-      tMoonRashi = moon["rashi"];
-      tMoonNakshatra = moon["nakshatra"];
-      tMoonHouse = moon["house"];
-      tMoonDegree = moon["degree"];
-      tMoonMotion = moon["motion"];
-
-      print("🎉 TOMORROW UPDATED (lang = $lang)");
-    }
-
+  /// Call this when profile changes OR language changes OR manual refresh needed.
+  void reset() {
     isLoading = false;
+    errorMessage = null;
+
+    dailyTitle = null;
+    intro = null;
+    paragraph = null;
+    tips = null;
+    luckyColor = null;
+    luckyNumber = null;
+
+    _lastSign = null;
+    _lastLang = null;
+
     notifyListeners();
   }
 }

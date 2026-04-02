@@ -32,7 +32,11 @@ class GlobalShareButton extends StatelessWidget {
                 : ShareTemplates.darshanEn;
             break;
 
+          case "horoscope":
           case "daily_horoscope":
+          case "monthly_horoscope":
+          case "yearly_horoscope":
+            // 🔒 ONE SINGLE VERIFIED TEMPLATE
             text = isHindi
                 ? ShareTemplates.dailyHoroscopeHi
                 : ShareTemplates.dailyHoroscopeEn;

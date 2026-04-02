@@ -1,7 +1,4 @@
 // lib/services/report_service.dart
-// -------------------------------------------
-// Google Play Billing → Backend Report Trigger
-// -------------------------------------------
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -9,9 +6,6 @@ import 'package:http/http.dart' as http;
 class ReportService {
   static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
 
-  /// ✅ Called AFTER Google Play purchase success
-  /// ❌ No price, no order_id
-  /// ⚠️ purchase_token sent only for future hardening
   Future<bool> sendReportRequest({
     required String name,
     required String email,
@@ -19,30 +13,49 @@ class ReportService {
     required String purchaseToken,
   }) async {
     try {
+      final product = birthDetails["product"]?.toString().trim();
+
+      // 🔒 HARD GUARD — PRODUCT MUST EXIST
+      if (product == null || product.isEmpty) {
+        print("❌ REPORT SERVICE ERROR: product is empty");
+        print("BirthDetails => $birthDetails");
+        return false;
+      }
+
       final payload = {
         "name": name,
         "email": email,
-        "product": "report-51", // 🔒 BACKEND EXPECTS THIS
+        "phone": birthDetails["phone"] ?? "",
+        "product": product,
+
+        // 👤 user details
         "dob": birthDetails["dob"],
         "tob": birthDetails["tob"],
         "pob": birthDetails["pob"],
-        "latitude": birthDetails["lat"],
-        "longitude": birthDetails["lng"],
-        "language": birthDetails["language"] ?? "en",
+        "latitude": birthDetails["latitude"],
+        "longitude": birthDetails["longitude"],
 
-        // future-proof (ignored by backend for now)
-        "purchase_token": purchaseToken,
-        "platform": "android",
+        // ❤️ relationship support (only when present)
+        if (birthDetails["boy_is_user"] != null)
+          "boy_is_user": birthDetails["boy_is_user"],
+
+        if (birthDetails["partner"] != null) "partner": birthDetails["partner"],
+
+        "language": birthDetails["language"] ?? "en",
       };
 
+      // 🔍 DEBUG (TEMP)
+      print("📤 FINAL WEBHOOK PAYLOAD => $payload");
+
       final res = await http.post(
-        Uri.parse("$_baseUrl/api/webhook"),
-        headers: {"Content-Type": "application/json"},
+        Uri.parse("$_baseUrl/webhook"),
+        headers: const {"Content-Type": "application/json"},
         body: jsonEncode(payload),
       );
 
       return res.statusCode == 200;
-    } catch (_) {
+    } catch (e) {
+      print("❌ ReportService exception: $e");
       return false;
     }
   }

@@ -6,6 +6,8 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 
 import 'package:jyotishasha_app/services/report_service.dart';
 import 'package:jyotishasha_app/features/reports/pages/report_success_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class ReportPaymentPage extends StatefulWidget {
   final Map<String, dynamic> selectedReport;
@@ -32,9 +34,29 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
   bool _hasTriggeredPurchase = false;
   bool _reportTriggered = false;
 
+  int? _backendUserId;
+
+  // --------------------------------------------------
+  // LOAD BACKEND USER ID (MANDATORY)
+  // --------------------------------------------------
+  Future<int?> _getBackendUserId() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return null;
+
+    final doc = await FirebaseFirestore.instance
+        .collection("users")
+        .doc(user.uid)
+        .get();
+
+    final raw = doc.data()?["backend_user_id"];
+    return raw is int ? raw : int.tryParse(raw?.toString() ?? "");
+  }
+
   @override
   void initState() {
     super.initState();
+
+    _initUser();
 
     _purchaseSub = _iap.purchaseStream.listen(
       _onPurchaseUpdates,
@@ -43,6 +65,10 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
         _showSnack("Payment error. Please try again.");
       },
     );
+  }
+
+  Future<void> _initUser() async {
+    _backendUserId = await _getBackendUserId();
   }
 
   @override
@@ -56,6 +82,11 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
   // --------------------------------------------------
   Future<void> _startGooglePayment() async {
     if (_isProcessing) return;
+
+    if (_backendUserId == null) {
+      _showSnack("User not ready. Please try again.");
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
@@ -79,15 +110,30 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
     final product = response.productDetails.first;
     final param = PurchaseParam(productDetails: product);
 
-    // One-time report purchase
-    _iap.buyNonConsumable(purchaseParam: param);
+    // ✅ CONSUMABLE (important)
+    _iap.buyConsumable(purchaseParam: param, autoConsume: true);
+  }
+
+  // --------------------------------------------------
+  // NORMALIZE DOB → yyyy-mm-dd (MANDATORY FOR BACKEND)
+  // --------------------------------------------------
+  String _normalizeDob(dynamic dob) {
+    if (dob == null) return "";
+    final s = dob.toString().trim();
+
+    // Case: DateTime.toString() → "1985-03-31 00:00:00.000"
+    if (s.contains(" ")) {
+      return s.split(" ").first; // yyyy-mm-dd
+    }
+
+    // Case: already yyyy-mm-dd
+    return s;
   }
 
   // --------------------------------------------------
   // PURCHASE STREAM HANDLER
   // --------------------------------------------------
   Future<void> _onPurchaseUpdates(List<PurchaseDetails> purchases) async {
-    // 🔒 double-fire protection
     if (!_isProcessing || !_hasTriggeredPurchase) return;
 
     for (final p in purchases) {
@@ -104,26 +150,87 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
         _reportTriggered = true;
 
         try {
-          // ✅ Always complete purchase first
+          // 🔥 RELATIONSHIP FUTURE REPORT (WEBHOOK BASED)
+          if (widget.selectedReport["id"] == "relationship_future_report") {
+            if (p.pendingCompletePurchase) {
+              await _iap.completePurchase(p);
+            }
 
+            if (widget.formData["love_payload"] == null) {
+              _endProcessing();
+              _showSnack("Invalid relationship data.");
+              return;
+            }
+
+            final love = widget.formData["love_payload"];
+
+            final ok = await ReportService().sendReportRequest(
+              name: love["user"]["name"],
+              email: love["user"]["email"] ?? "",
+              birthDetails: {
+                "product": "relationship_future_report",
+                "language": love["language"],
+
+                // 👤 user (same-level fields)
+                "dob": love["user"]["dob"],
+                "tob": love["user"]["tob"],
+                "pob": love["user"]["pob"],
+                "latitude": love["user"]["lat"],
+                "longitude": love["user"]["lng"],
+                "phone": love["user"]["phone"] ?? "",
+
+                // ❤️ relationship-specific
+                "boy_is_user": love["boy_is_user"],
+                "partner": love["partner"],
+              },
+              purchaseToken: p.verificationData.serverVerificationData,
+            );
+
+            _endProcessing();
+            if (!mounted) return;
+
+            if (ok) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ReportSuccessPage(
+                    email: "",
+                    reportTitle: "Relationship Future Report",
+                  ),
+                ),
+              );
+            } else {
+              _showSnack("Payment received but report failed.");
+            }
+            return; // ⛔ IMPORTANT
+          }
           if (p.pendingCompletePurchase) {
             await _iap.completePurchase(p);
           }
 
-          // ✅ Notify backend (PAID = frontend truth)
           final ok = await ReportService().sendReportRequest(
-            name: (widget.formData["name"] ?? "").toString(),
-            email: (widget.formData["email"] ?? "").toString(),
+            name: widget.formData["name"].toString(),
+            email: widget.formData["email"].toString(),
             birthDetails: {
-              "dob": widget.formData["dob"],
+              "user_id": _backendUserId,
+
+              "dob": _normalizeDob(widget.formData["dob"]),
               "tob": widget.formData["tob"],
               "pob": widget.formData["pob"],
-              "lat": widget.formData["lat"],
-              "lng": widget.formData["lng"],
+
+              // ✅ EXACT keys backend expects
+              "latitude": widget.formData["lat"],
+              "longitude": widget.formData["lng"],
+
+              // ✅ optional but website sends it
+              "phone": widget.formData["phone"] ?? "",
+
               "language": widget.formData["language"] ?? "en",
+
+              // ✅ REAL report slug (prompt selector)
+              "product": widget.selectedReport["id"],
             },
-            purchaseToken:
-                p.verificationData.serverVerificationData, // future-proof
+            purchaseToken: p.verificationData.serverVerificationData,
           );
 
           _endProcessing();
@@ -134,24 +241,18 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
               context,
               MaterialPageRoute(
                 builder: (_) => ReportSuccessPage(
-                  email: (widget.formData["email"] ?? "").toString(),
-                  reportTitle: (widget.selectedReport["title"] ?? "")
-                      .toString(),
+                  email: widget.formData["email"].toString(),
+                  reportTitle: widget.selectedReport["title"]?.toString() ?? "",
                 ),
               ),
             );
           } else {
-            _showSnack(
-              "Payment received, but report failed. Please contact support.",
-            );
+            _showSnack("Payment received but report failed.");
           }
         } catch (_) {
           _endProcessing();
-          _showSnack(
-            "Payment received, but report processing failed. Try again later.",
-          );
+          _showSnack("Payment received but processing failed.");
         }
-
         return;
       }
     }
@@ -178,97 +279,32 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
     final form = widget.formData;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Confirm & Pay",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-        ),
-      ),
-
-      // 🔒 Price not shown (Google controls final price)
+      appBar: AppBar(title: const Text("Confirm & Pay")),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.all(12),
         child: SizedBox(
-          width: double.infinity,
           height: 56,
           child: ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
             onPressed: _isProcessing ? null : _startGooglePayment,
             child: Text(
               _isProcessing ? "Processing..." : "Pay with Google Play",
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: Colors.white,
-              ),
             ),
           ),
         ),
       ),
-
-      body: SingleChildScrollView(
+      body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // REPORT SUMMARY
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.deepPurple.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    report["title"] ?? "",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.deepPurple.shade800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    "You will receive this report on email after payment confirmation.",
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // USER SUMMARY
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _summaryLine("Name", form["name"]),
-                  _summaryLine("Email", form["email"]),
-                  _summaryLine("DOB", form["dob"]),
-                  _summaryLine("TOB", form["tob"]),
-                  _summaryLine("POB", form["pob"]),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 80),
+            Text(report["title"] ?? "", style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 12),
+            Text("Product: ${report["id"]}"),
+            Text("Name: ${form["name"]}"),
+            Text("Email: ${form["email"]}"),
+            Text("DOB: ${form["dob"]}"),
+            Text("TOB: ${form["tob"]}"),
+            Text("POB: ${form["pob"]}"),
           ],
         ),
       ),

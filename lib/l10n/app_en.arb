@@ -98,13 +98,12 @@
   "adSpaceSilent": "Ad space (silent)",
 
   "todaysDayLord": "Today's Day Lord",
-  "darshanWithMantra": "Darshan with Mantra",
+  "darshanWithMantra": "Mantra & Darshan",
 
   "createManualKundali": "Create Manual Kundali",
   "enterNameDateBirthplace": "Enter name, date & birthplace",
   "exploreYourChart": "Explore Your Chart",
 
-  "today": "Today",
   "tomorrow": "Tomorrow",
   "weekly": "Weekly",
   "weeklyComingSoon": "Weekly horoscope is coming soon...",
@@ -427,7 +426,7 @@
   "astrologyStudio": "Astrology Studio",
   "astrologyStudioSubtitle": "Explore planets, houses, yogas and dasha — beautifully organized for you.",
 
-  "studioProfile": "Your Astro Profile",
+  "studioProfile": "Profile",
   "studioPlanets": "Your Planets",
   "studioBhava": "Your Bhava",
   "studioDasha": "Mahadasha",
@@ -459,9 +458,30 @@
   "muhurthBannerGold": "Gold purchase",
   "muhurthBannerMore": "and more auspicious events",
   "muhurthBannerCta": "Tap to see your Shubh Muhurth",
-  "darshanInstruction": "Touch ॐ for Darshan & Mantra",
+  "darshanInstruction": "Today’s Divine Blessings",
   "asknowEmptyHint": "Start your consultation by typing your question below 💬",
-  "asknowInputHint": "Type your question..."
-
+  "asknowInputHint": "Type your question...",
+  "loveInsights": "Love Insights",
+  "yourHoroscope": "Your Horoscope",
+  "today": "Today",
+  "monthly": "Monthly",
+  "yearly": "Yearly",
+  "trendingGeneral": "General",
+  "trendingLove": "Love",
+  "trendingFinance": "Finance",
+  "transitAlertTitle": "Celestial Insights",
+  "todaysPanchang": "Daily Panchang",
+  "transitNextChange": "Next Change",
+  "transitHouse": "House {number}",
+  "transitPlanetaryPositions": "PLANETARY POSITIONS",
+  "transitReadFull": "Read Full Prediction",
+  "transitLive": "LIVE",
+  "transitDegree": "Degree",
+  "trendingReports": "Trending Reports",
+  "panchang_next": "Next",
+  "panchang_month": "Month",
+  "panchang_karan": "Karan",
+  "transitNextTransit": "Next Transit"
+  
 
 }

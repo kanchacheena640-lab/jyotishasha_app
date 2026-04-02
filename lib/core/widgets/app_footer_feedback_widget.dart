@@ -17,75 +17,96 @@ class AppFooterFeedbackWidget extends StatelessWidget {
     }
   }
 
+  Future<void> _openPlayStore() async {
+    final Uri url = Uri.parse(
+      "https://play.google.com/store/apps/details?id=com.jyotishasha.app",
+    );
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _openPrivacy() async {
+    final Uri url = Uri.parse("https://www.jyotishasha.com/privacy-policy");
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
 
-    const jyotishashaGradient = LinearGradient(
-      colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
-    );
-
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      color: Colors.grey.shade100,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      color: const Color(0xFFF7F7F7),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          /// feedback hint
           Text(
             t.footerFeedbackHint,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: Colors.black54),
-          ),
-
-          const SizedBox(height: 16),
-
-          GestureDetector(
-            onTap: _openMail,
-            child: ShaderMask(
-              shaderCallback: (bounds) => jyotishashaGradient.createShader(
-                Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.mail_outline, size: 22, color: Colors.white),
-                  const SizedBox(width: 6),
-                  Text(
-                    t.footerFeedbackSend,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 18),
-
-          Text(
-            t.footerCopyright,
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 12, color: Colors.black54),
           ),
 
-          const SizedBox(height: 4),
+          const SizedBox(height: 8),
 
-          GestureDetector(
-            onTap: () {},
-            child: Text(
-              t.footerPrivacyTerms,
-              style: const TextStyle(
-                fontSize: 12,
-                decoration: TextDecoration.underline,
-                color: Colors.black54,
+          /// action buttons row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              GestureDetector(
+                onTap: _openMail,
+                child: Row(
+                  children: const [
+                    Icon(Icons.mail_outline, size: 18),
+                    SizedBox(width: 4),
+                    Text("Feedback", style: TextStyle(fontSize: 13)),
+                  ],
+                ),
               ),
-            ),
+
+              const SizedBox(width: 16),
+
+              GestureDetector(
+                onTap: _openPlayStore,
+                child: Row(
+                  children: const [
+                    Icon(
+                      Icons.star_rate_rounded,
+                      size: 18,
+                      color: Colors.orange,
+                    ),
+                    SizedBox(width: 4),
+                    Text("Rate App", style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              GestureDetector(
+                onTap: _openPrivacy,
+                child: Row(
+                  children: const [
+                    Icon(Icons.privacy_tip_outlined, size: 18),
+                    SizedBox(width: 4),
+                    Text("Privacy", style: TextStyle(fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 8),
+
+          /// bottom line
+          const Text(
+            "© 2025 Jyotishasha • v1.0.0",
+            style: TextStyle(fontSize: 11, color: Colors.black45),
           ),
         ],
       ),

@@ -238,5 +238,15 @@
     "category": "Self",
     "description": "Know legal dispute outcomes.",
     "fullDescription": "Court, conflicts & settlement chances."
+  },
+  {
+    "id": "relationship_future_report",
+    "title": "Relationship Future Report",
+    "title_hi": "रिलेशनशिप भविष्य रिपोर्ट",
+    "price": 199,
+    "image": "assets/images/reports/relationship_future_report.webp",
+    "category": "Love",
+    "description": "Understand the future of your relationship.",
+    "fullDescription": "Marriage potential, long-term stability, challenges, remedies and future relationship direction based on Vedic astrology."
   }
 ]

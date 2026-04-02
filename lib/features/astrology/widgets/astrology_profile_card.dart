@@ -26,7 +26,7 @@ class AstrologyProfileCard extends StatelessWidget {
     final nakshatra = _extractNakshatra(kundali);
 
     final moon = rashi.toLowerCase().replaceAll(" ", "_");
-    final moonImagePath = "assets/zodiac/$moon.png";
+    final moonImagePath = "assets/zodiac/$moon.webp";
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

@@ -2,12 +2,12 @@ class AdUnits {
   // -------------------------------
   // GOOGLE TEST AD UNITS (SAFE)
   // -------------------------------
-  static const String bannerAdUnit = "ca-app-pub-3940256099942544/6300978111";
+  static const String bannerAdUnit = "ca-app-pub-2039377363616016/5089405990";
 
   static const String interstitialAdUnit =
-      "ca-app-pub-3940256099942544/1033173712";
+      "ca-app-pub-2039377363616016/7020261301";
 
-  static const String rewardedAdUnit = "ca-app-pub-3940256099942544/5224354917";
+  static const String rewardedAdUnit = "ca-app-pub-2039377363616016/5515607946";
 
   // -------------------------------
   // NOTE:

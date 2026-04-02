@@ -13,6 +13,7 @@ import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 // CHECKOUT PAGE IMPORT (IMPORTANT)
 import 'package:jyotishasha_app/features/reports/pages/report_checkout_page.dart';
+import 'package:jyotishasha_app/features/love/pages/love_partner_form_page.dart';
 
 class ReportCatalogPage extends StatefulWidget {
   const ReportCatalogPage({super.key});
@@ -64,8 +65,6 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
             en["fullDescription_hi"] = hi["fullDescription_hi"];
           }
           if (hi["category_hi"] != null) en["category_hi"] = hi["category_hi"];
-
-          en["id"] = (en["slug"] ?? "").toString().trim().toLowerCase();
         }
       } catch (_) {
         debugPrint("⚠️ reports_hi.json missing");
@@ -417,13 +416,29 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                   rootNavigator: true,
                                 ).pop();
 
+                                // 🔥 SPECIAL CASE: Relationship Future Report
+                                if (r["id"] == "relationship_future_report") {
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) =>
+                                            const LovePartnerFormPage(),
+                                      ),
+                                    );
+                                  });
+                                  return;
+                                }
+
+                                // ✅ ALL OTHER REPORTS (unchanged flow)
                                 final profile =
                                     context
                                         .read<ProfileProvider>()
                                         .activeProfile ??
                                     {};
 
-                                // Safe navigation post-frame
                                 WidgetsBinding.instance.addPostFrameCallback((
                                   _,
                                 ) {

@@ -1,11 +1,8 @@
 // lib/features/panchang/panchang_page.dart
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
@@ -44,42 +41,19 @@ class _PanchangPageState extends State<PanchangPage> {
   // ⭐ GOOGLE PLACES — AUTOCOMPLETE (REST)
   // -------------------------------------------------------------------------
   Future<List<Map<String, String>>> fetchAutocomplete(String input) async {
-    if (input.length < 3) return [];
-
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
-    final url =
-        "https://maps.googleapis.com/maps/api/place/autocomplete/json"
-        "?input=$input&components=country:in&key=$key";
-
-    final response = await http.get(Uri.parse(url));
-    final data = jsonDecode(response.body);
-
-    if (data["status"] != "OK") return [];
-
-    return (data["predictions"] as List)
-        .map<Map<String, String>>(
-          (p) => {
-            "description": p["description"].toString(),
-            "place_id": p["place_id"].toString(),
-          },
-        )
-        .toList();
+    if (input.trim().length < 3) return [];
+    return await LocationService.fetchAutocomplete(input);
   }
 
   // -------------------------------------------------------------------------
   // ⭐ GOOGLE PLACES — GET LAT/LNG (REST)
   // -------------------------------------------------------------------------
   Future<Map<String, double>> fetchLatLng(String placeId) async {
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
-    final url =
-        "https://maps.googleapis.com/maps/api/place/details/json"
-        "?placeid=$placeId&key=$key";
-
-    final response = await http.get(Uri.parse(url));
-    final data = jsonDecode(response.body);
-
-    final loc = data["result"]["geometry"]["location"];
-    return {"lat": loc["lat"], "lng": loc["lng"]};
+    final res = await LocationService.fetchPlaceDetail(placeId);
+    if (res == null) {
+      throw Exception("Place details not found");
+    }
+    return {"lat": res["lat"] as double, "lng": res["lng"] as double};
   }
 
   // -------------------------------------------------------------------------
@@ -316,9 +290,54 @@ class _PanchangPageState extends State<PanchangPage> {
             t.panchang_rahu,
             "${d['rahu_kaal']?['start']} – ${d['rahu_kaal']?['end']}",
           ),
+          if (d['brahma_muhurta'] != null)
+            _highlight(
+              "Brahma Muhurta",
+              "${d['brahma_muhurta']['start']} – ${d['brahma_muhurta']['end']}",
+            ),
 
           const SizedBox(height: 32),
+          if (d['chaughadiya'] != null) ...[
+            const SizedBox(height: 24),
+            const Text(
+              "Chaughadiya (Day)",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
 
+            GridView.count(
+              crossAxisCount: 2,
+              childAspectRatio:
+                  2.6, // 🔥 height control (try 2.4–2.8 if needed)
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              children: (d['chaughadiya']['day'] as List)
+                  .map((c) => _chaughadiyaCard(c))
+                  .toList(),
+            ),
+
+            const SizedBox(height: 20),
+            const Text(
+              "Chaughadiya (Night)",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+
+            GridView.count(
+              crossAxisCount: 2,
+              childAspectRatio:
+                  2.6, // 🔥 height control (try 2.4–2.8 if needed)
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              children: (d['chaughadiya']['night'] as List)
+                  .map((c) => _chaughadiyaCard(c))
+                  .toList(),
+            ),
+          ],
           Center(
             child: Text(
               t.dataSyncedText,
@@ -385,4 +404,39 @@ class _PanchangPageState extends State<PanchangPage> {
       ],
     );
   }
+}
+
+Widget _chaughadiyaCard(Map<String, dynamic> c) {
+  final isShubh = c['nature_en'] == 'shubh';
+
+  return Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: isShubh ? Colors.green.shade50 : Colors.red.shade50,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(
+        color: isShubh ? Colors.green : Colors.red,
+        width: 0.8,
+      ),
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center, // 🔥 vertical compact
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          c['name'],
+          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "${c['start']} – ${c['end']}",
+          style: TextStyle(
+            fontSize: 14.5, // 🔥 time prominent
+            fontWeight: FontWeight.w700,
+            color: isShubh ? Colors.green.shade800 : Colors.red.shade800,
+          ),
+        ),
+      ],
+    ),
+  );
 }

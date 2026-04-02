@@ -17,6 +17,8 @@ import '../../features/reports/pages/report_catalog_page.dart';
 import '../../features/asknow/asknow_chat_page.dart';
 import '../../features/profile/profile_page.dart';
 import '../../features/subscription/subscription_page.dart';
+import 'package:firebase_analytics/observer.dart';
+import '../../main.dart';
 
 // ⚠️ Utility
 // optional: if not created yet, comment it
@@ -25,6 +27,8 @@ import '../../features/subscription/subscription_page.dart';
 final GoRouter appRouter = GoRouter(
   debugLogDiagnostics: true,
   initialLocation: '/splash',
+
+  observers: [FirebaseAnalyticsObserver(analytics: analytics)],
 
   // 🔐 Redirect based on Firebase Auth state
   redirect: (context, state) {

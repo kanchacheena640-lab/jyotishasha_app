@@ -17,7 +17,6 @@ import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 
-// Pages
 import '../astrology/astrology_page.dart';
 import '../reports/pages/report_catalog_page.dart';
 import '../profile/profile_page.dart';
@@ -36,11 +35,6 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime? _lastPressed;
 
   bool _initialized = false;
-  bool _profileListenerAttached = false;
-  bool _languageListenerAttached = false;
-
-  String? _lastActiveId;
-  String? _lastLang;
 
   @override
   void initState() {
@@ -49,187 +43,32 @@ class _DashboardPageState extends State<DashboardPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_initialized) {
         _initialized = true;
-
         context.read<ProfileProvider>().loadProfiles();
-
         _initFlow();
       }
-
-      _attachProfileSwitchListener();
-      _attachLanguageListener();
     });
   }
 
-  Future<void> _printAndSaveFcmToken() async {
+  // ------------------------------------------------------------
+  // INIT FLOW
+  // ------------------------------------------------------------
+  Future<void> _initFlow() async {
     try {
-      // 🔔 Android 13+ notification permission
-      final settings = await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      print("🔔 Notification permission: ${settings.authorizationStatus}");
-
-      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
-        print("❌ Notification permission NOT granted");
-        return;
-      }
-
-      // 🔥 Get FCM token
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-        print("❌ FCM token is NULL");
-        return;
-      }
-
-      print("🔥 FCM TOKEN => $token");
-
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // 🔹 1️⃣ Firestore me save (debug / backup / visibility)
-      await FirebaseFirestore.instance.collection("users").doc(user.uid).update(
-        {"fcm_token": token, "fcm_updated_at": FieldValue.serverTimestamp()},
-      );
-
-      // 🔹 2️⃣ Backend me bhi bhejo (REAL PUSH ke liye)
-      await _sendFcmToBackend(token);
+      await _loadAndRefreshAll();
+      await _printAndSaveFcmToken();
     } catch (e) {
-      print("❌ FCM TOKEN ERROR: $e");
+      debugPrint("Dashboard init error: $e");
     }
   }
 
   // ------------------------------------------------------------
-  // FCM to backend
-  // ------------------------------------------------------------
-
-  Future<void> _sendFcmToBackend(String token) async {
-    try {
-      // 🔐 Firebase JWT token nikalo
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      final jwtToken = await firebaseUser?.getIdToken();
-
-      if (jwtToken == null) {
-        print("❌ JWT token missing");
-        return;
-      }
-
-      final res = await http.post(
-        Uri.parse(
-          "https://jyotishasha-backend.onrender.com/api/users/update-fcm",
-        ),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $jwtToken",
-        },
-        body: jsonEncode({"fcm_token": token}),
-      );
-
-      print("📡 FCM → Backend status: ${res.statusCode}");
-      print("📡 FCM → Backend response: ${res.body}");
-    } catch (e) {
-      print("❌ BACKEND FCM ERROR: $e");
-    }
-  }
-
-  // ------------------------------------------------------------
-  // GET backend_user_id SAFELY
-  // ------------------------------------------------------------
-  Future<int?> _getBackendUserId() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-
-    final doc = await FirebaseFirestore.instance
-        .collection("users")
-        .doc(user.uid)
-        .get();
-
-    return doc.data()?["backend_user_id"];
-  }
-
-  // ------------------------------------------------------------
-  // PROFILE SWITCH LISTENER
-  // ------------------------------------------------------------
-  void _attachProfileSwitchListener() {
-    if (_profileListenerAttached) return;
-    _profileListenerAttached = true;
-
-    final profileProvider = context.read<ProfileProvider>();
-
-    profileProvider.addListener(() async {
-      if (!mounted) return;
-
-      final newId = profileProvider.activeProfileId;
-
-      if (newId != null && newId != _lastActiveId) {
-        _lastActiveId = newId;
-        await _loadAndRefreshAll();
-      }
-    });
-  }
-
-  // ------------------------------------------------------------
-  // LANGUAGE CHANGE LISTENER
-  // ------------------------------------------------------------
-  void _attachLanguageListener() {
-    if (_languageListenerAttached) return;
-    _languageListenerAttached = true;
-
-    final langProvider = context.read<LanguageProvider>();
-
-    langProvider.addListener(() async {
-      if (!mounted) return;
-
-      final newLang = langProvider.currentLang;
-
-      if (newLang != _lastLang) {
-        _lastLang = newLang;
-
-        print("🌐 LANG CHANGE → Refreshing Kundali + Daily + Panchang");
-
-        final kundaliProvider = context.read<FirebaseKundaliProvider>();
-        final profileProvider = context.read<ProfileProvider>();
-
-        await kundaliProvider.loadFromFirebaseProfile(context, lang: newLang);
-
-        final kd = kundaliProvider.kundaliData;
-        if (kd == null) return;
-
-        final lagna = kd["lagna_sign"] ?? "";
-        final lat = kd["location"]?["lat"] ?? 26.8467;
-        final lng = kd["location"]?["lng"] ?? 80.9462;
-
-        final backendUserId = await _getBackendUserId();
-        final backendProfileId =
-            profileProvider.activeProfile?["backend_profile_id"];
-
-        await context.read<DailyProvider>().fetchDaily(
-          lagna: lagna,
-          lat: lat,
-          lon: lng,
-          lang: newLang,
-          backendUserId: backendUserId,
-          backendProfileId: backendProfileId,
-        );
-
-        await context.read<PanchangProvider>().fetchPanchang(
-          lat: lat,
-          lng: lng,
-          lang: newLang,
-        );
-
-        print("🌐 LANG REFRESH DONE");
-      }
-    });
-  }
-
-  // ------------------------------------------------------------
-  // FULL REFRESH
+  // LOAD DATA
   // ------------------------------------------------------------
   Future<void> _loadAndRefreshAll() async {
     final kundaliProvider = context.read<FirebaseKundaliProvider>();
-    final profileProvider = context.read<ProfileProvider>();
     final lang = context.read<LanguageProvider>().currentLang;
 
     await kundaliProvider.loadFromFirebaseProfile(context, lang: lang);
@@ -237,22 +76,14 @@ class _DashboardPageState extends State<DashboardPage> {
     final kd = kundaliProvider.kundaliData;
     if (kd == null) return;
 
-    final lagna = kd["lagna_sign"] ?? "";
+    final sign = (kd["rashi"] ?? kd["lagna_sign"] ?? "aries")
+        .toString()
+        .toLowerCase();
+
     final lat = kd["location"]?["lat"] ?? 26.8467;
     final lng = kd["location"]?["lng"] ?? 80.9462;
 
-    final backendUserId = await _getBackendUserId();
-    final backendProfileId =
-        profileProvider.activeProfile?["backend_profile_id"];
-
-    await context.read<DailyProvider>().fetchDaily(
-      lagna: lagna,
-      lat: lat,
-      lon: lng,
-      lang: lang,
-      backendUserId: backendUserId,
-      backendProfileId: backendProfileId,
-    );
+    await context.read<DailyProvider>().fetchDaily(sign: sign, lang: lang);
 
     await context.read<PanchangProvider>().fetchPanchang(
       lat: lat,
@@ -262,18 +93,57 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   // ------------------------------------------------------------
-  // FIRST INIT
+  // FCM TOKEN SAVE
   // ------------------------------------------------------------
-  Future<void> _initFlow() async {
+  Future<void> _printAndSaveFcmToken() async {
     try {
+      final settings = await FirebaseMessaging.instance.requestPermission();
+
+      if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        return;
+      }
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      await _loadAndRefreshAll();
-      await _printAndSaveFcmToken();
-    } catch (_) {}
+      await FirebaseFirestore.instance.collection("users").doc(user.uid).update(
+        {"fcm_token": token, "fcm_updated_at": FieldValue.serverTimestamp()},
+      );
+
+      await _sendFcmToBackend(token);
+    } catch (e) {
+      debugPrint("FCM ERROR: $e");
+    }
   }
 
+  Future<void> _sendFcmToBackend(String token) async {
+    try {
+      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final jwtToken = await firebaseUser?.getIdToken();
+
+      if (jwtToken == null) return;
+
+      await http.post(
+        Uri.parse(
+          "https://jyotishasha-backend.onrender.com/api/users/update-fcm",
+        ),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $jwtToken",
+        },
+        body: jsonEncode({"fcm_token": token}),
+      );
+    } catch (e) {
+      debugPrint("Backend FCM error: $e");
+    }
+  }
+
+  // ------------------------------------------------------------
+  // PAGES
+  // ------------------------------------------------------------
   final List<Widget> _pages = const [
     DashboardHomeSection(),
     AstrologyPage(),
@@ -283,7 +153,7 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
 
   // ------------------------------------------------------------
-  // DOUBLE BACK EXIT
+  // BACK BUTTON
   // ------------------------------------------------------------
   Future<void> _handleBackPress() async {
     final now = DateTime.now();
@@ -306,10 +176,12 @@ class _DashboardPageState extends State<DashboardPage> {
       return;
     }
 
-    await Future.delayed(const Duration(milliseconds: 120));
     SystemNavigator.pop();
   }
 
+  // ------------------------------------------------------------
+  // BUILD
+  // ------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -321,21 +193,23 @@ class _DashboardPageState extends State<DashboardPage> {
       },
       child: Scaffold(
         backgroundColor: theme.scaffoldBackgroundColor,
-
         body: Column(
           children: [
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
-                child: _pages[_currentIndex],
+
+                // ⭐ KEY FIX prevents widget rebuild crash
+                child: KeyedSubtree(
+                  key: ValueKey(_currentIndex),
+                  child: _pages[_currentIndex],
+                ),
               ),
             ),
 
-            // ⭐ Show ads only on tabs 0, 2, 4
             if (_currentIndex == 0) const BannerAdWidget(),
           ],
         ),
-
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),

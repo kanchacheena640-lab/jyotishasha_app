@@ -548,7 +548,7 @@ abstract class AppLocalizations {
   /// No description provided for @darshanWithMantra.
   ///
   /// In en, this message translates to:
-  /// **'Darshan with Mantra'**
+  /// **'Mantra & Darshan'**
   String get darshanWithMantra;
 
   /// No description provided for @createManualKundali.
@@ -568,12 +568,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Explore Your Chart'**
   String get exploreYourChart;
-
-  /// No description provided for @today.
-  ///
-  /// In en, this message translates to:
-  /// **'Today'**
-  String get today;
 
   /// No description provided for @tomorrow.
   ///
@@ -2234,7 +2228,7 @@ abstract class AppLocalizations {
   /// No description provided for @studioProfile.
   ///
   /// In en, this message translates to:
-  /// **'Your Astro Profile'**
+  /// **'Profile'**
   String get studioProfile;
 
   /// No description provided for @studioPlanets.
@@ -2426,7 +2420,7 @@ abstract class AppLocalizations {
   /// No description provided for @darshanInstruction.
   ///
   /// In en, this message translates to:
-  /// **'Touch ॐ for Darshan & Mantra'**
+  /// **'Today’s Divine Blessings'**
   String get darshanInstruction;
 
   /// No description provided for @asknowEmptyHint.
@@ -2440,6 +2434,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Type your question...'**
   String get asknowInputHint;
+
+  /// No description provided for @loveInsights.
+  ///
+  /// In en, this message translates to:
+  /// **'Love Insights'**
+  String get loveInsights;
+
+  /// No description provided for @yourHoroscope.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Horoscope'**
+  String get yourHoroscope;
+
+  /// No description provided for @today.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get today;
+
+  /// No description provided for @monthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get monthly;
+
+  /// No description provided for @yearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get yearly;
+
+  /// No description provided for @trendingGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get trendingGeneral;
+
+  /// No description provided for @trendingLove.
+  ///
+  /// In en, this message translates to:
+  /// **'Love'**
+  String get trendingLove;
+
+  /// No description provided for @trendingFinance.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance'**
+  String get trendingFinance;
+
+  /// No description provided for @transitAlertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Celestial Insights'**
+  String get transitAlertTitle;
+
+  /// No description provided for @todaysPanchang.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily Panchang'**
+  String get todaysPanchang;
+
+  /// No description provided for @transitNextChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Change'**
+  String get transitNextChange;
+
+  /// No description provided for @transitHouse.
+  ///
+  /// In en, this message translates to:
+  /// **'House {number}'**
+  String transitHouse(Object number);
+
+  /// No description provided for @transitPlanetaryPositions.
+  ///
+  /// In en, this message translates to:
+  /// **'PLANETARY POSITIONS'**
+  String get transitPlanetaryPositions;
+
+  /// No description provided for @transitReadFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Read Full Prediction'**
+  String get transitReadFull;
+
+  /// No description provided for @transitLive.
+  ///
+  /// In en, this message translates to:
+  /// **'LIVE'**
+  String get transitLive;
+
+  /// No description provided for @transitDegree.
+  ///
+  /// In en, this message translates to:
+  /// **'Degree'**
+  String get transitDegree;
+
+  /// No description provided for @trendingReports.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending Reports'**
+  String get trendingReports;
+
+  /// No description provided for @panchang_next.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get panchang_next;
+
+  /// No description provided for @panchang_month.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get panchang_month;
+
+  /// No description provided for @panchang_karan.
+  ///
+  /// In en, this message translates to:
+  /// **'Karan'**
+  String get panchang_karan;
+
+  /// No description provided for @transitNextTransit.
+  ///
+  /// In en, this message translates to:
+  /// **'Next Transit'**
+  String get transitNextTransit;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

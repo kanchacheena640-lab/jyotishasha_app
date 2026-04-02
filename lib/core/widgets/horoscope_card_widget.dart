@@ -1,279 +1,298 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'dart:math';
+
+import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/state/monthly_provider.dart';
+import 'package:jyotishasha_app/core/state/yearly_provider.dart';
 
-// ======================================================
-// 🔮 Helper functions — deterministic daily + tomorrow
-// ======================================================
+enum HoroscopePeriod { today, monthly, yearly }
 
-// ⭐ TODAY lucky values
-String getTodayLuckyColor() {
-  final colors = [
-    "Red",
-    "Blue",
-    "Green",
-    "Purple",
-    "Pink",
-    "Yellow",
-    "Orange",
-    "White",
-    "Black",
-    "Gold",
-    "Silver",
-    "Turquoise",
-  ];
-  final seed = DateTime.now().toIso8601String().substring(0, 10).hashCode;
-  return colors[Random(seed).nextInt(colors.length)];
-}
-
-String getTodayLuckyNumber() {
-  final nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  final seed = (DateTime.now().millisecondsSinceEpoch ~/ 86400000);
-  return nums[Random(seed).nextInt(nums.length)];
-}
-
-String getTodayDirection() {
-  final dirs = [
-    "North",
-    "South",
-    "East",
-    "West",
-    "North-East",
-    "South-East",
-    "South-West",
-    "North-West",
-  ];
-  final seed = DateTime.now().day * 77;
-  return dirs[Random(seed).nextInt(dirs.length)];
-}
-
-// ⭐ TOMORROW lucky values
-String getTomorrowLuckyColor() {
-  final colors = [
-    "Red",
-    "Blue",
-    "Green",
-    "Purple",
-    "Pink",
-    "Yellow",
-    "Orange",
-    "White",
-    "Black",
-    "Gold",
-    "Silver",
-    "Turquoise",
-  ];
-  final tomorrow = DateTime.now().add(const Duration(days: 1));
-  final seed = tomorrow.toIso8601String().substring(0, 10).hashCode;
-  return colors[Random(seed).nextInt(colors.length)];
-}
-
-String getTomorrowLuckyNumber() {
-  final nums = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
-  final tomorrow = DateTime.now().add(const Duration(days: 1));
-  final seed = tomorrow.millisecondsSinceEpoch ~/ 86400000;
-  return nums[Random(seed).nextInt(nums.length)];
-}
-
-String getTomorrowDirection() {
-  final dirs = [
-    "North",
-    "South",
-    "East",
-    "West",
-    "North-East",
-    "South-East",
-    "South-West",
-    "North-West",
-  ];
-  final tomorrow = DateTime.now().add(const Duration(days: 1));
-  final seed = tomorrow.day * 77;
-  return dirs[Random(seed).nextInt(dirs.length)];
-}
-
-// ======================================================
-// 🔮 Horoscope Card Widget
-// ======================================================
 class HoroscopeCardWidget extends StatelessWidget {
-  final String title; // Today or Tomorrow
+  final HoroscopePeriod period;
 
-  const HoroscopeCardWidget({super.key, required this.title});
+  const HoroscopeCardWidget({super.key, required this.period});
 
   @override
   Widget build(BuildContext context) {
-    final daily = context.watch<DailyProvider>();
+    switch (period) {
+      case HoroscopePeriod.today:
+        return _todayCard(context);
 
-    final isToday = title.toLowerCase() == "today";
-    final isTomorrow = title.toLowerCase() == "tomorrow";
+      case HoroscopePeriod.monthly:
+        return _monthlyCard(context);
 
-    // ⭐ Provider-based text
-    final mainLine = daily.mainLine ?? "Loading...";
-    final aspect = daily.aspectLine ?? "";
-    final remedy = daily.remedyLine ?? "";
+      case HoroscopePeriod.yearly:
+        return _yearlyCard(context);
+    }
+  }
+}
 
-    // ⭐ Lucky Logic
-    final luckyColor = isToday ? getTodayLuckyColor() : getTomorrowLuckyColor();
+// ================= TODAY =================
+Widget _todayCard(BuildContext context) {
+  final d = context.watch<DailyProvider>();
 
-    final luckyNumber = isToday
-        ? getTodayLuckyNumber()
-        : getTomorrowLuckyNumber();
+  if (d.isLoading) {
+    return const SizedBox();
+  }
 
-    final direction = isToday ? getTodayDirection() : getTomorrowDirection();
+  if (d.errorMessage != null) {
+    return Text(d.errorMessage!, style: const TextStyle(color: Colors.red));
+  }
 
-    // ⭐ Convert lucky color → dot color
-    final colorMap = {
-      'red': Colors.red,
-      'blue': Colors.blue,
-      'green': Colors.green,
-      'yellow': Colors.yellow,
-      'pink': Colors.pink,
-      'purple': Colors.purple,
-      'orange': Colors.orange,
-      'white': Colors.white,
-      'black': Colors.black,
-      'brown': Colors.brown,
-      'grey': Colors.grey,
-      'gray': Colors.grey,
-      'gold': Color(0xFFFFD700),
-      'silver': Color(0xFFC0C0C0),
-      'turquoise': Colors.tealAccent,
-    };
+  return _card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _title(d.dailyTitle ?? "Today's Horoscope"),
 
-    final dotColor = colorMap[luckyColor.toLowerCase()] ?? Colors.deepPurple;
+        _para(d.intro),
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF5F8), Color(0xFFFCEFF9)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
-      ),
+        _para(d.paragraph),
 
+        /// Lucky indicators
+        if (d.luckyColor != null || d.luckyNumber != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6, bottom: 10),
+            child: Row(
+              children: [
+                if (d.luckyColor != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Lucky Color: ${d.luckyColor}",
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+
+                if (d.luckyColor != null && d.luckyNumber != null)
+                  const SizedBox(width: 10),
+
+                if (d.luckyNumber != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      "Lucky Number: ${d.luckyNumber}",
+                      style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+        /// Remedy highlight
+        if (d.tips != null)
+          Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(.08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              "Remedy: ${d.tips!}",
+              style: const TextStyle(fontSize: 13.5, height: 1.5),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+// ================= MONTHLY =================
+Widget _monthlyCard(BuildContext context) {
+  final m = context.watch<MonthlyProvider>();
+
+  if (m.isLoading) {
+    return const SizedBox();
+  }
+  if (m.errorMessage != null) {
+    return Text(m.errorMessage!, style: const TextStyle(color: Colors.red));
+  }
+
+  return _card(
+    child: SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 🌟 Title
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "$title’s Horoscope",
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5A189A),
-                ),
-              ),
-              const Icon(Icons.auto_awesome, color: Color(0xFF5A189A)),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // -----------------------
-          // ⭐ TODAY → Main line only
-          // -----------------------
-          if (isToday)
-            Text(
-              mainLine,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.grey[900],
-              ),
-            ),
-
-          // ------------------------------------
-          // ⭐ TOMORROW → Full content (3 lines)
-          // ------------------------------------
-          if (isTomorrow) ...[
-            Text(
-              mainLine,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.grey[900],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              aspect,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.grey[900],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              remedy,
-              style: TextStyle(
-                fontSize: 14,
-                height: 1.5,
-                color: Colors.grey[900],
-              ),
-            ),
-          ],
-
-          const SizedBox(height: 18),
-
-          // 🌈 Lucky info line
-          Row(
-            children: [
-              // Dot
-              Container(
-                width: 10,
-                height: 10,
-                decoration: BoxDecoration(
-                  color: dotColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.black26, width: 0.5),
-                ),
-              ),
-              const SizedBox(width: 8),
-
-              Text(
-                "Lucky Color: $luckyColor",
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF5A189A),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-
-              const SizedBox(width: 20),
-
-              Text(
-                "Lucky Number: $luckyNumber",
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  color: Color(0xFF5A189A),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // 🧭 Direction
-          Text(
-            "Favourable Direction: $direction",
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF5A189A),
-            ),
-          ),
+          _title(m.title ?? "Monthly Horoscope"),
+          _para(m.theme),
+          _para(m.careerMoney),
+          _para(m.loveRelationships),
+          _para(m.healthLifestyle),
+          _para(m.monthlyAdvice),
         ],
+      ),
+    ),
+  );
+}
+
+// ================= YEARLY =================
+Widget _yearlyCard(BuildContext context) {
+  final y = context.watch<YearlyProvider>();
+
+  if (y.isLoading) {
+    return const SizedBox(); // Home/scroll UI के लिए loader avoid
+  }
+
+  if (y.errorMessage != null) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Text(
+        y.errorMessage!,
+        style: const TextStyle(color: Colors.red, fontSize: 13.5),
       ),
     );
   }
+
+  if (y.data == null) {
+    return const SizedBox(); // empty state silently hide
+  }
+
+  // ---------- SAFE YEARLY DATA HANDLING ----------
+  final raw = y.data;
+
+  late final Map<String, dynamic> data;
+
+  if (raw is Map<String, dynamic>) {
+    data = raw;
+  } else {
+    return const SizedBox();
+  }
+
+  // 🔒 SAFE SECTION EXTRACTOR
+  Map<String, dynamic>? getSection(String key) {
+    final s = data[key];
+    if (s is Map<String, dynamic>) {
+      return s;
+    }
+    return null;
+  }
+
+  // 🔒 CONTENT NORMALIZER (NO CRASH)
+  List<String>? normalizeContent(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is List<String>) return raw;
+    if (raw is List) return raw.map((e) => e.toString()).toList();
+    if (raw is String) return [raw];
+    return null;
+  }
+
+  Widget section(String? title, dynamic content) {
+    final lines = normalizeContent(content);
+
+    if (title == null || lines == null || lines.isEmpty) {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 6),
+          child: Text(
+            title,
+            style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w700),
+          ),
+        ),
+        for (final p in lines)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Text(p, style: const TextStyle(fontSize: 14, height: 1.6)),
+          ),
+      ],
+    );
+  }
+
+  final intro = getSection("introduction");
+  final planet = getSection("planetary_overview");
+  final career = getSection("career_finance");
+  final love = getSection("love_relationships");
+  final health = getSection("health_wellness");
+  final spiritual = getSection("spirituality_remedies");
+  final summary = getSection("final_summary");
+
+  return _card(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _title(y.title ?? "Yearly Horoscope"),
+
+        section(intro?["heading"] as String?, intro?["content"]),
+        section(planet?["heading"] as String?, planet?["content"]),
+        section(career?["heading"] as String?, career?["content"]),
+        section(love?["heading"] as String?, love?["content"]),
+        section(health?["heading"] as String?, health?["content"]),
+        section(spiritual?["heading"] as String?, spiritual?["content"]),
+        section(summary?["heading"] as String?, summary?["content"]),
+      ],
+    ),
+  );
+}
+
+// ================= COMMON CARD =================
+Widget _card({required Widget child}) {
+  return Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A000000),
+          blurRadius: 8,
+          offset: Offset(0, 3),
+        ),
+      ],
+    ),
+    child: child,
+  );
+}
+
+// ================= UI HELPERS =================
+const TextStyle _titleStyle = TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+);
+
+const TextStyle _paraStyle = TextStyle(fontSize: 14, height: 1.6);
+
+Widget _title(String text) {
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(text, style: _titleStyle),
+  );
+}
+
+Widget _para(String? text) {
+  if (text == null || text.trim().isEmpty) {
+    return const SizedBox();
+  }
+
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Text(text, style: _paraStyle),
+  );
 }

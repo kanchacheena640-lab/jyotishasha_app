@@ -12,7 +12,8 @@ import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/features/astrology/widgets/astrology_tool_section.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
-import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
+import 'package:jyotishasha_app/features/love/pages/love_partner_form_page.dart';
+import 'package:jyotishasha_app/features/love/enums/love_tool.dart';
 
 class AstrologyPage extends StatefulWidget {
   final String? selectedSection;
@@ -152,10 +153,10 @@ class _AstrologyPageState extends State<AstrologyPage> {
 
             const SizedBox(height: 20),
 
-            /// ⭐ NEW PREMIUM ACTION ROW — Manual Kundali (Left) + Share (Right)
+            /// ⭐ NEW PREMIUM ACTION ROW — Love Astrology (Left) + Share (Right)
             Row(
               children: [
-                // ⭐ LEFT — Manual Kundali CTA
+                // ⭐ LEFT — Love Astrology
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
@@ -186,25 +187,40 @@ class _AstrologyPageState extends State<AstrologyPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const ManualKundaliFormPage(),
+                            builder: (_) => LovePartnerFormPage(
+                              tool: LoveTool.matchMaking, // default free entry
+                            ),
                           ),
                         );
                       },
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
-                          Icon(
-                            Icons.edit_calendar_rounded,
-                            color: Colors.white,
-                            size: 19,
+                        children: [
+                          TweenAnimationBuilder<double>(
+                            tween: Tween(begin: 1.0, end: 1.15),
+                            duration: const Duration(milliseconds: 700),
+                            curve: Curves.easeInOut,
+                            builder: (context, scale, child) {
+                              return Transform.scale(
+                                scale: scale,
+                                child: child,
+                              );
+                            },
+                            onEnd: () {}, // auto repeat feel
+                            child: const Icon(
+                              Icons.favorite_rounded,
+                              color: Colors.redAccent, // ❤️ laal dil
+                              size: 20,
+                            ),
                           ),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            "Manual Kundali",
-                            style: TextStyle(
+                            t.loveInsights,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
+                              letterSpacing: 0.3,
                             ),
                           ),
                         ],

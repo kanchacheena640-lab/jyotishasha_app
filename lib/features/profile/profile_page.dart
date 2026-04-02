@@ -53,6 +53,7 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     final provider = context.watch<ProfileProvider>();
     final theme = Theme.of(context);
+    final activeProfile = provider.activeProfile;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFEEFF5),
@@ -85,10 +86,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // ⭐ ACTIVE PROFILE
-                  if (provider.activeProfile != null)
+                  if (activeProfile != null)
                     Column(
                       children: [
-                        _activeCard(provider.activeProfile!, theme),
+                        _activeCard(activeProfile, theme),
 
                         const SizedBox(height: 12),
 
@@ -103,9 +104,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 final res = await Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => EditProfilePage(
-                                      profile: provider.activeProfile!,
-                                    ),
+                                    builder: (_) =>
+                                        EditProfilePage(profile: activeProfile),
                                   ),
                                 );
                                 if (res == true) provider.loadProfiles();

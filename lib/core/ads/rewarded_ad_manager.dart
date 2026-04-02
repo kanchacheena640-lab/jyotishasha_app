@@ -46,12 +46,12 @@ class RewardedAdManager {
     final RewardedAd ad = _rewardedAd!;
     _rewardedAd = null;
 
-    bool _completed = false;
+    bool completed = false;
 
     ad.fullScreenContentCallback = FullScreenContentCallback(
       onAdDismissedFullScreenContent: (RewardedAd ad) {
-        if (!_completed) {
-          _completed = true;
+        if (!completed) {
+          completed = true;
           print("📌 Ad Closed → Mark as completed");
           onAdCompleted(); // ✅ count 1 ad
         }

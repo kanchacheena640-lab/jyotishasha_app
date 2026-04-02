@@ -109,22 +109,7 @@ class BlogCarouselWidget extends StatelessWidget {
                             topLeft: Radius.circular(16),
                             topRight: Radius.circular(16),
                           ),
-                          child: Image.network(
-                            blog["image"] ?? "",
-                            height: 95,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, _, __) => Container(
-                              height: 95,
-                              color: const Color(0xFFECE4FF),
-                              child: const Center(
-                                child: Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ),
-                          ),
+                          child: _BlogImage(imageUrl: blog["image"]),
                         ),
 
                         // TEXT CONTENT
@@ -148,7 +133,6 @@ class BlogCarouselWidget extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 4),
-
                               Text(
                                 blog["tag"] ?? "Astrology",
                                 style: const TextStyle(
@@ -168,6 +152,38 @@ class BlogCarouselWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BlogImage extends StatelessWidget {
+  final String? imageUrl;
+  const _BlogImage({this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl?.trim();
+
+    // ❌ internet placeholder kabhi mat load karo
+    if (url == null || url.isEmpty || !url.startsWith('http')) {
+      return _fallback();
+    }
+
+    return Image.network(
+      url,
+      height: 95,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _fallback(),
+    );
+  }
+
+  Widget _fallback() {
+    return Container(
+      height: 95,
+      width: double.infinity,
+      color: const Color(0xFFECE4FF),
+      child: const Center(child: Icon(Icons.image, color: Colors.grey)),
     );
   }
 }

@@ -62,8 +62,19 @@ class AstrologyStudioWidget extends StatelessWidget {
           const SizedBox(height: 18),
 
           // ⭐ CLASSY CATEGORY BUTTONS
-          Column(
-            children: categories.map((cat) {
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 2.8,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final cat = categories[index];
+
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
@@ -75,50 +86,35 @@ class AstrologyStudioWidget extends StatelessWidget {
                   );
                 },
                 child: Container(
-                  margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.symmetric(
-                    vertical: 14,
-                    horizontal: 16,
+                    vertical: 12,
+                    horizontal: 14,
                   ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF7C3AED), Color(0xFF5B21B6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.deepPurple.withOpacity(0.25),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
                     children: [
-                      Text(cat["icon"]!, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 12),
+                      Text(cat["icon"]!, style: const TextStyle(fontSize: 18)),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           cat["title"]!,
                           style: const TextStyle(
-                            fontSize: 15,
+                            fontSize: 13.5,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
                           ),
                         ),
                       ),
-                      const Icon(
-                        Icons.arrow_forward_ios,
-                        size: 16,
-                        color: Colors.white,
-                      ),
                     ],
                   ),
                 ),
               );
-            }).toList(),
+            },
           ),
         ],
       ),

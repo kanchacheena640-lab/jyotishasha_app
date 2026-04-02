@@ -23,15 +23,18 @@ import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
 class AskNowChatPage extends StatefulWidget {
-  const AskNowChatPage({super.key});
+  final String? prefillQuestion;
+
+  const AskNowChatPage({super.key, this.prefillQuestion});
 
   @override
   State<AskNowChatPage> createState() => _AskNowChatPageState();
 }
 
 class _AskNowChatPageState extends State<AskNowChatPage> {
-  final TextEditingController _questionController = TextEditingController();
+  late final TextEditingController _questionController;
   final ScrollController _scrollController = ScrollController();
+  late final FocusNode _inputFocus;
 
   final List<Map<String, String>> chatMessages = [];
 
@@ -44,11 +47,31 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   // Provider listeners (for safe auto-send + error snack)
   VoidCallback? _providerListener;
   Timer? _lastErrorDebounce;
+  AskNowProvider? _askNowProvider;
 
   @override
   void initState() {
     super.initState();
+
+    // ✅ Prefill question (Trending → AskNow)
+    _questionController = TextEditingController(
+      text: widget.prefillQuestion ?? "",
+    );
+
+    _inputFocus = FocusNode();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.prefillQuestion != null &&
+          widget.prefillQuestion!.trim().isNotEmpty) {
+        _inputFocus.requestFocus();
+      }
+    });
+
+    // 🔥 MANDATORY: start billing listener
+    context.read<AskNowProvider>().initBilling();
+
     RewardedAdManager.load();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _syncChatStatus();
       _attachProviderListener();
@@ -60,6 +83,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     _lastErrorDebounce?.cancel();
     _detachProviderListener();
     _questionController.dispose();
+    _inputFocus.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -72,14 +96,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     if (userId == null || userId == 0) return;
 
     final status = await AskNowService.fetchChatStatus(userId);
-    final provider = context.read<AskNowProvider>();
-
-    provider.setFreeAvailable(status["free_available"] == true);
-    provider.remainingTokens =
-        int.tryParse((status["remaining_tokens"] ?? 0).toString()) ?? 0;
-    provider.hasActivePack = provider.remainingTokens > 0;
-    provider.statusLoaded = true;
-    provider.notifyListeners();
+    context.read<AskNowProvider>().applyStatusFromBackend(status);
   }
 
   // ---------------------------
@@ -124,7 +141,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   void _attachProviderListener() {
     if (!mounted) return;
 
-    final provider = context.read<AskNowProvider>();
+    _askNowProvider ??= context.read<AskNowProvider>();
+    final provider = _askNowProvider!;
+
     _providerListener ??= () {
       if (!mounted) return;
 
@@ -174,10 +193,8 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   }
 
   void _detachProviderListener() {
-    if (!mounted) return;
-    final provider = context.read<AskNowProvider>();
-    if (_providerListener != null) {
-      provider.removeListener(_providerListener!);
+    if (_providerListener != null && _askNowProvider != null) {
+      _askNowProvider!.removeListener(_providerListener!);
       _providerListener = null;
     }
   }
@@ -403,17 +420,6 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  // Reward CTA inside sheet (optional but useful)
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _startRewardFlow();
-                      },
-                      child: const Text("Or watch 2 ads to get 1 question"),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -436,95 +442,106 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
     return KeyboardDismissOnTap(
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(title: const Text("Ask Now 🔮")),
-        body: Column(
-          children: [
-            AskNowHeaderStatusWidget(
-              freeQ: provider.freeAvailable ? 1 : 0,
-              earnedQ: provider.remainingTokens,
-              onBuy: _showPackSheet,
-            ),
+        body: SafeArea(
+          top: true,
+          bottom: false,
+          child: Column(
+            children: [
+              AskNowHeaderStatusWidget(
+                freeQ: provider.freeAvailable ? 1 : 0,
+                earnedQ: provider.remainingTokens,
+                onBuy: _showPackSheet,
+              ),
 
-            // Reward CTA when no free and no tokens
-            if (showRewardCta)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    onPressed: _startRewardFlow,
-                    child: const Text("Watch 2 ads → Get 1 Question"),
+              if (showRewardCta)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      onPressed: _startRewardFlow,
+                      child: const Text("Watch 2 ads → Get 1 Question"),
+                    ),
                   ),
                 ),
-              ),
 
-            if (provider.isLoading)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  "✨ Connecting with stars…",
-                  style: TextStyle(color: Colors.grey),
+              if (provider.isLoading)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text(
+                    "✨ Connecting with stars…",
+                    style: TextStyle(color: Colors.grey),
+                  ),
                 ),
-              ),
 
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                itemCount: chatMessages.length,
-                itemBuilder: (_, i) {
-                  final msg = chatMessages[i];
-                  final isUser = msg["sender"] == "user";
-                  return Column(
-                    children: [
-                      Align(
-                        alignment: isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: isUser
-                                ? Colors.deepPurple
-                                : Colors.grey[200],
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Text(
-                            msg["text"] ?? "",
-                            style: TextStyle(
-                              color: isUser ? Colors.white : Colors.black87,
+              Expanded(
+                child: ListView.builder(
+                  controller: _scrollController,
+                  itemCount: chatMessages.length,
+                  itemBuilder: (_, i) {
+                    final msg = chatMessages[i];
+                    final isUser = msg["sender"] == "user";
+                    return Column(
+                      children: [
+                        Align(
+                          alignment: isUser
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isUser
+                                  ? Colors.deepPurple
+                                  : Colors.grey[200],
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Text(
+                              msg["text"] ?? "",
+                              style: TextStyle(
+                                color: isUser ? Colors.white : Colors.black87,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      if (!isUser) const BannerAdWidget(),
-                    ],
-                  );
-                },
+                        if (!isUser) const BannerAdWidget(),
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
 
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _questionController,
-                      decoration: InputDecoration(
-                        hintText: loc.asknowInputHint,
+              // ✅ BOTTOM INPUT — SAFE FROM NAV BAR + KEYBOARD
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 12,
+                  right: 12,
+                  top: 8,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _questionController,
+                        focusNode: _inputFocus,
+                        decoration: InputDecoration(
+                          hintText: loc.asknowInputHint,
+                        ),
+                        onSubmitted: (_) => _sendQuestion(),
                       ),
-                      onSubmitted: (_) => _sendQuestion(),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send),
-                    onPressed: _sendQuestion,
-                  ),
-                ],
+                    IconButton(
+                      icon: const Icon(Icons.send),
+                      onPressed: _sendQuestion,
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
