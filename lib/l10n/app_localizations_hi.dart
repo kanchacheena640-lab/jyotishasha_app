@@ -1270,4 +1270,10 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get transitNextTransit => 'अगला गोचर';
+
+  @override
+  String get viewFullMuhurthCalendar => 'पूरा मुहूर्त कैलेंडर देखें →';
+
+  @override
+  String get dashboard_share => 'शेयर';
 }

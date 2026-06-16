@@ -14,17 +14,16 @@ class PanchangCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context)!;
     final p = context.watch<PanchangProvider>();
-    final lang = context.watch<LanguageProvider>().currentLang;
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<PanchangProvider>().loadPanchang(lang: lang);
-    });
+    context.watch<LanguageProvider>();
 
     if (p.isLoading || p.fullPanchang == null) {
       return _loadingCard(t);
     }
 
-    final data = p.fullPanchang!;
+    final data = p.fullPanchang;
+    if (data == null) {
+      return _loadingCard(t);
+    }
     final bool panchakActive = data["panchak"]?["active"] == true;
     final String panchakLabel = panchakActive ? t.panchang_yes : t.panchang_no;
 

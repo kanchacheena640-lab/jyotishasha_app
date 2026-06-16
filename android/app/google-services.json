@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "657916208451-u48s7isvb2hste17hd3t029unv1gqfj3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jyotishasha.app",
+            "certificate_hash": "7b597128390b5c27ff7550cb9084b31a0138447a"
+          }
+        },
+        {
           "client_id": "657916208451-vf5res744jglt8r8bheubc5a41scsd9l.apps.googleusercontent.com",
           "client_type": 3
         }

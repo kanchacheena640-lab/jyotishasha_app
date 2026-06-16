@@ -2560,6 +2560,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Next Transit'**
   String get transitNextTransit;
+
+  /// No description provided for @viewFullMuhurthCalendar.
+  ///
+  /// In en, this message translates to:
+  /// **'View Full Muhurth Calendar →'**
+  String get viewFullMuhurthCalendar;
+
+  /// No description provided for @dashboard_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get dashboard_share;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

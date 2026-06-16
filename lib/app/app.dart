@@ -4,6 +4,7 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
 import 'package:jyotishasha_app/app/theme/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:jyotishasha_app/core/utils/global_context.dart';
 
 // ⭐ IMPORT THIS
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
@@ -14,6 +15,8 @@ class JyotishashaApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lang = context.watch<LanguageProvider>().currentLang;
+
+    globalKundaliContext = context;
 
     return MaterialApp.router(
       title: 'Jyotishasha',

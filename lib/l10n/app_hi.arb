@@ -604,5 +604,7 @@
   "panchang_next": "अगला",
   "panchang_month": "मास",
   "panchang_karan": "करण",
-  "transitNextTransit": "अगला गोचर"
+  "transitNextTransit": "अगला गोचर",
+  "viewFullMuhurthCalendar": "पूरा मुहूर्त कैलेंडर देखें →",
+  "dashboard_share": "शेयर"
 }

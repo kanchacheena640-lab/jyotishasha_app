@@ -14,14 +14,14 @@ import 'package:jyotishasha_app/core/state/panchang_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
-
+import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
+import 'package:jyotishasha_app/features/cards/presentation/cards_page.dart';
 
 import '../astrology/astrology_page.dart';
 import '../reports/pages/report_catalog_page.dart';
 import '../profile/profile_page.dart';
 import 'dashboard_home_section.dart';
-import '../asknow/asknow_chat_page.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -54,13 +54,38 @@ class _DashboardPageState extends State<DashboardPage> {
   // ------------------------------------------------------------
   Future<void> _initFlow() async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
+      debugPrint("STEP A: initFlow start");
 
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint("STEP B: user NULL");
+        return;
+      }
+
+      debugPrint("STEP C: user मिला ${user.uid}");
+
+      // 🔹 FCM (non-blocking)
+      _printAndSaveFcmToken();
+
+      debugPrint("STEP D: FCM triggered");
+
+      // 🔹 Core data load (blocking – required for UI)
       await _loadAndRefreshAll();
-      await _printAndSaveFcmToken();
+      debugPrint("STEP E: loadAndRefreshAll DONE");
+
+      // 🔹 Notifications (delayed + safe)
+      Future.delayed(const Duration(seconds: 2), () async {
+        if (!mounted) return;
+
+        try {
+          await context.read<NotificationProvider>().loadUnreadCount();
+          debugPrint("🔥 NOTIFICATION LOADED");
+        } catch (e) {
+          debugPrint("❌ Notification load failed: $e");
+        }
+      });
     } catch (e) {
-      debugPrint("Dashboard init error: $e");
+      debugPrint("❌ Dashboard init error: $e");
     }
   }
 
@@ -68,13 +93,19 @@ class _DashboardPageState extends State<DashboardPage> {
   // LOAD DATA
   // ------------------------------------------------------------
   Future<void> _loadAndRefreshAll() async {
+    debugPrint("STEP F: loadAll start");
+
     final kundaliProvider = context.read<FirebaseKundaliProvider>();
     final lang = context.read<LanguageProvider>().currentLang;
 
     await kundaliProvider.loadFromFirebaseProfile(context, lang: lang);
+    debugPrint("STEP G: kundali loaded");
 
     final kd = kundaliProvider.kundaliData;
-    if (kd == null) return;
+    if (kd == null) {
+      debugPrint("STEP H: kundali NULL");
+      return;
+    }
 
     final sign = (kd["rashi"] ?? kd["lagna_sign"] ?? "aries")
         .toString()
@@ -83,13 +114,17 @@ class _DashboardPageState extends State<DashboardPage> {
     final lat = kd["location"]?["lat"] ?? 26.8467;
     final lng = kd["location"]?["lng"] ?? 80.9462;
 
+    if (!mounted) return;
     await context.read<DailyProvider>().fetchDaily(sign: sign, lang: lang);
+    debugPrint("STEP I: daily done");
 
+    if (!mounted) return;
     await context.read<PanchangProvider>().fetchPanchang(
       lat: lat,
       lng: lng,
       lang: lang,
     );
+    debugPrint("STEP J: panchang done");
   }
 
   // ------------------------------------------------------------
@@ -97,25 +132,46 @@ class _DashboardPageState extends State<DashboardPage> {
   // ------------------------------------------------------------
   Future<void> _printAndSaveFcmToken() async {
     try {
+      // 🔹 Permission
       final settings = await FirebaseMessaging.instance.requestPermission();
 
       if (settings.authorizationStatus != AuthorizationStatus.authorized) {
+        debugPrint("❌ Permission not granted");
         return;
       }
 
-      final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) return;
+      // 🔹 Get token (with retry)
+      final token =
+          await FirebaseMessaging.instance.getToken() ??
+          await FirebaseMessaging.instance.deleteToken().then(
+            (_) => FirebaseMessaging.instance.getToken(),
+          );
+
+      if (token == null) {
+        debugPrint("❌ FCM token NULL");
+        return;
+      }
+
+      debugPrint("🔥 FCM TOKEN: $token");
+
+      // 🔥 IMPORTANT: Topic subscribe (FIX)
+      await FirebaseMessaging.instance.subscribeToTopic("general_0");
+      debugPrint("✅ Subscribed to general_0");
 
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
+      // 🔹 Save in Firestore
       await FirebaseFirestore.instance.collection("users").doc(user.uid).update(
         {"fcm_token": token, "fcm_updated_at": FieldValue.serverTimestamp()},
       );
 
+      // 🔹 Send to backend
       await _sendFcmToBackend(token);
+
+      debugPrint("✅ FCM SENT TO BACKEND");
     } catch (e) {
-      debugPrint("FCM ERROR: $e");
+      debugPrint("❌ FCM ERROR: $e");
     }
   }
 
@@ -148,7 +204,7 @@ class _DashboardPageState extends State<DashboardPage> {
     DashboardHomeSection(),
     AstrologyPage(),
     ReportCatalogPage(),
-    AskNowChatPage(),
+    CardsPage(),
     ProfilePage(),
   ];
 
@@ -188,7 +244,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop) _handleBackPress();
       },
       child: Scaffold(
@@ -214,7 +270,7 @@ class _DashboardPageState extends State<DashboardPage> {
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
           selectedItemColor: theme.colorScheme.primary,
-          unselectedItemColor: AppColors.textPrimary.withOpacity(0.5),
+          unselectedItemColor: AppColors.textPrimary.withValues(alpha: 0.5),
           backgroundColor: AppColors.surface,
           type: BottomNavigationBarType.fixed,
           items: [
@@ -234,9 +290,9 @@ class _DashboardPageState extends State<DashboardPage> {
               label: AppLocalizations.of(context)!.dashboard_reports,
             ),
             BottomNavigationBarItem(
-              icon: const Icon(Icons.chat_bubble_outline),
-              activeIcon: const Icon(Icons.chat),
-              label: AppLocalizations.of(context)!.dashboard_ask_now,
+              icon: const Icon(Icons.share_outlined),
+              activeIcon: const Icon(Icons.share),
+              label: AppLocalizations.of(context)!.dashboard_share,
             ),
             BottomNavigationBarItem(
               icon: const Icon(Icons.person_outline),

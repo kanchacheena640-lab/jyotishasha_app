@@ -18,10 +18,14 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'services/play_billing_stub.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:jyotishasha_app/features/love/providers/love_provider.dart';
 import 'package:jyotishasha_app/core/state/monthly_provider.dart';
 import 'package:jyotishasha_app/core/state/yearly_provider.dart';
 import 'package:jyotishasha_app/core/state/transit_provider.dart';
+import 'package:jyotishasha_app/core/state/notification_provider.dart';
+import 'package:jyotishasha_app/core/utils/global_context.dart';
+import 'package:jyotishasha_app/features/cards/provider/cards_provider.dart';
 
 class ForceIPv4 extends HttpOverrides {
   @override
@@ -34,8 +38,6 @@ class ForceIPv4 extends HttpOverrides {
 
 final FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
-BuildContext? globalKundaliContext;
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -44,6 +46,17 @@ Future<void> main() async {
 
   // await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  FirebaseMessaging.onMessage.listen((message) {
+    if (globalKundaliContext != null) {
+      final provider = Provider.of<NotificationProvider>(
+        globalKundaliContext!,
+        listen: false,
+      );
+
+      provider.increment(); // 🔥 unread +1
+    }
+  });
 
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
@@ -68,6 +81,8 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => PanchangProvider()),
         ChangeNotifierProvider(create: (_) => TransitProvider()),
         ChangeNotifierProvider(create: (_) => LoveProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        ChangeNotifierProvider(create: (_) => CardsProvider()),
 
         ChangeNotifierProvider(
           lazy: false,

@@ -1,7 +1,7 @@
 name: jyotishasha_app
 description: "Jyotishasha Astrology App"
 publish_to: 'none'
-version: 1.1.1+46
+version: 1.1.2+47
 
 environment:
   sdk: ^3.9.2
@@ -26,6 +26,7 @@ dependencies:
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
   flutter_dotenv: ^5.1.0
+  flutter_svg: ^2.0.10+1
   timezone: ^0.10.1
   provider: ^6.0.5
   geocoding: ^3.0.0
@@ -59,13 +60,19 @@ flutter:
   assets:
     - assets/icons/google.png
     - assets/icons/facebook.png
+    - assets/icons/app_icon.png
     - .env
     - assets/images/
+    - assets/planets/
     - assets/audio/
     - assets/zodiac/
     - assets/data/reports.json
     - assets/data/reports_hi.json
+    - assets/data/astro_cards.json
+    - assets/data/insight_cards.json
     - assets/images/reports/
+    - assets/cards/
+    - assets/svg/
 
 # ⭐ LOCALIZATION CONFIG (flutter ke bahar)
 l10n:

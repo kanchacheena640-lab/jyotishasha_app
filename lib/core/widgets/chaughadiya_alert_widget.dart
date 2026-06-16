@@ -153,44 +153,80 @@ class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
         " ⏰ $displayName (${slot['start']} - ${slot['end']}) $advice  •  🌙 ${p.tithiName}  •  🌅 Sun: ${p.sunrise}-${p.sunset}       ";
 
     return Container(
-      height: 40,
       width: double.infinity,
+      height: 64,
+      margin: const EdgeInsets.symmetric(vertical: 10),
+
       decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.08),
-        border: Border.symmetric(
-          horizontal: BorderSide(
-            color: statusColor.withValues(alpha: 0.2),
-            width: 0.5,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+
+        /// 🔵 BLUE BORDER
+        border: Border.all(color: const Color(0xFF4F46E5), width: 1.2),
+
+        /// 🔥 SOFT SHADOW
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-        ),
+        ],
       ),
+
       child: Row(
         children: [
+          /// 🔥 FIXED ALERT SECTION
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.only(left: 12, right: 8),
             child: FadeTransition(
               opacity: _blinkController,
-              child: Icon(Icons.circle, color: statusColor, size: 8),
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              itemCount: 20,
-              physics: const NeverScrollableScrollPhysics(),
-              itemBuilder: (context, index) => Center(
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 60),
-                  child: Text(
-                    tickerText,
+              child: Row(
+                children: const [
+                  Icon(Icons.auto_awesome, color: Color(0xFF4F46E5), size: 18),
+                  SizedBox(width: 4),
+                  Text(
+                    "ALERT",
                     style: TextStyle(
-                      color: isAshubh ? Colors.red : statusColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
+                      color: Color(0xFF4F46E5),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
                     ),
                   ),
-                ),
+                ],
+              ),
+            ),
+          ),
+
+          /// 🔥 FULL WIDTH TICKER
+          Expanded(
+            child: ClipRect(
+              child: ListView.builder(
+                controller: _scrollController,
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: 20,
+                itemBuilder: (_, __) {
+                  return Row(
+                    children: [
+                      /// 👈 START GAP REMOVE
+                      const SizedBox(width: 8),
+
+                      Text(
+                        tickerText,
+                        style: const TextStyle(
+                          color: Color(0xFF1E3A8A),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+
+                      /// 👉 END GAP CONTROL
+                      const SizedBox(width: 80),
+                    ],
+                  );
+                },
               ),
             ),
           ),

@@ -1270,4 +1270,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transitNextTransit => 'Next Transit';
+
+  @override
+  String get viewFullMuhurthCalendar => 'View Full Muhurth Calendar →';
+
+  @override
+  String get dashboard_share => 'Share';
 }

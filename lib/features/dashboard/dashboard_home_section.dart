@@ -4,25 +4,30 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 // Widgets
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
 import 'package:jyotishasha_app/core/widgets/transit_alert_widget.dart';
-import 'package:jyotishasha_app/core/widgets/panchang_card_widget.dart';
+
 import 'package:jyotishasha_app/core/widgets/chaughadiya_alert_widget.dart';
 import 'package:jyotishasha_app/core/widgets/trending_questions_widget.dart';
-import 'package:jyotishasha_app/core/widgets/shubh_muhurth_banner_widget.dart';
+
 import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
 import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
 import 'package:jyotishasha_app/features/reports/widgets/report_card.dart';
 import 'package:jyotishasha_app/features/reports/pages/report_checkout_page.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
+import 'package:jyotishasha_app/core/state/notification_provider.dart';
+import 'package:jyotishasha_app/core/widgets/shubh_muhurth_preview_widget.dart';
+
+import 'package:jyotishasha_app/features/cards/presentation/cards_page.dart';
 
 // State
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/transit_provider.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart'; // Ensure this is imported
+import 'package:jyotishasha_app/core/state/language_provider.dart';
 
 class DashboardHomeSection extends StatefulWidget {
   const DashboardHomeSection({super.key});
@@ -31,7 +36,8 @@ class DashboardHomeSection extends StatefulWidget {
   State<DashboardHomeSection> createState() => _DashboardHomeSectionState();
 }
 
-class _DashboardHomeSectionState extends State<DashboardHomeSection> {
+class _DashboardHomeSectionState extends State<DashboardHomeSection>
+    with WidgetsBindingObserver {
   // 🔵 Home par show hone wale random reports
   List<dynamic> homeReports = [];
 
@@ -39,8 +45,41 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
   void initState() {
     super.initState();
 
-    // Home ke liye reports.json load karo
+    // 🔥 ADD THIS
+    WidgetsBinding.instance.addObserver(this);
+
     _loadHomeReports();
+    _loadUnreadCount();
+  }
+
+  // 🔥 ADD THIS (IMPORTANT)
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 🔥 ADD THIS (AUTO REFRESH ON APP OPEN)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadUnreadCount(); // 🔔 refresh unread
+    }
+  }
+
+  // 🔔 unread count loader
+  Future<void> _loadUnreadCount() async {
+    User? user;
+
+    // wait until Firebase user ready
+    while (user == null) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      user = FirebaseAuth.instance.currentUser;
+    }
+
+    if (!mounted) return;
+
+    await context.read<NotificationProvider>().loadUnreadCount();
   }
 
   // ------------------------------------------------------------
@@ -91,6 +130,8 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
           force: true,
         ),
       context.read<TransitProvider>().fetchTransit(),
+
+      _loadUnreadCount(),
     ]);
   }
 
@@ -118,7 +159,7 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     /// ─────────────────────────────────────────
                     /// 2️⃣ CHAUGHADIYA LIVE TICKER
@@ -126,15 +167,15 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
                     /// ─────────────────────────────────────────
                     const ChaughadiyaAlertWidget(),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     /// ─────────────────────────────────────────
-                    /// 3️⃣ DAY LORD DARSHAN CTA
+                    /// 3️⃣ Trending Questions
                     /// Spiritual daily guidance entry point
                     /// ─────────────────────────────────────────
-                    _buildDayLordCTA(context, t),
+                    const TrendingQuestionsWidget(),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     /// ─────────────────────────────────────────
                     /// 4️⃣ LIVE TRANSIT ALERT
@@ -142,22 +183,49 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
                     /// ─────────────────────────────────────────
                     const TransitAlertWidget(),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     /// ─────────────────────────────────────────
-                    /// 5️⃣ TODAY'S PANCHANG SNAPSHOT
-                    /// Tithi, Nakshatra, Rahu Kaal, Abhijit etc.
+                    /// 5️⃣ Upcoming Muhurth Preview
                     /// ─────────────────────────────────────────
-                    const PanchangCardWidget(),
+                    ShubhMuhurthPreviewWidget(
+                      muhurthList: [
+                        {
+                          "event": t.localeName == "hi"
+                              ? "नामकरण"
+                              : "Naamkaran",
+                        },
+                        {"event": t.localeName == "hi" ? "विवाह" : "Marriage"},
+                        {
+                          "event": t.localeName == "hi"
+                              ? "गृह प्रवेश"
+                              : "Griha Pravesh",
+                        },
+                        {"event": t.localeName == "hi" ? "वाहन" : "Vehicle"},
+                        {
+                          "event": t.localeName == "hi"
+                              ? "संपत्ति"
+                              : "Property",
+                        },
+                        {"event": t.localeName == "hi" ? "सोना" : "Gold"},
+                        {"event": t.localeName == "hi" ? "यात्रा" : "Travel"},
+                        {
+                          "event": t.localeName == "hi"
+                              ? "शिशु जन्म"
+                              : "Childbirth",
+                        },
+                      ],
 
-                    const SizedBox(height: 24),
+                      onTapType: (type) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CardsPage(initialType: type),
+                          ),
+                        );
+                      },
 
-                    /// ─────────────────────────────────────────
-                    /// 6️⃣ UPCOMING SHUBH MUHURTH
-                    /// Quick access to auspicious activity dates
-                    /// ─────────────────────────────────────────
-                    ShubhMuhurthBannerWidget(
-                      onTap: () {
+                      onSeeMore: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -167,19 +235,12 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
                       },
                     ),
 
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     /// ─────────────────────────────────────────
                     /// 7️⃣ TRENDING ASTRO QUESTIONS
                     /// Entry point for AskNow / consultation funnel
                     /// ─────────────────────────────────────────
-                    _buildSectionHeader(t.trendingGeneral),
-
-                    const SizedBox(height: 12),
-
-                    const TrendingQuestionsWidget(),
-
-                    const SizedBox(height: 24),
 
                     /// ─────────────────────────────────────────
                     /// 8️⃣ ASTROLOGY STUDIO
@@ -196,7 +257,7 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
                     // 9️⃣ TRENDING REPORTS (HOME BOTTOM)
                     // Random paid reports show karega
                     // ------------------------------------------------------------
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
                     _buildSectionHeader(t.trendingReports),
 
@@ -365,7 +426,7 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection> {
     return Column(
       children: [
         Container(width: 40, height: 2, color: Colors.grey[300]),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Text(
           t.footerCopyright,
           style: TextStyle(

@@ -28,7 +28,7 @@ class TransitProvider extends ChangeNotifier {
     fetchTransit();
   }
 
-  /// PLANET LIST BUILDER
+  /// ================= PLANET LIST =================
   List<Map<String, dynamic>> get allPlanets {
     if (transitData == null) return [];
 
@@ -57,8 +57,14 @@ class TransitProvider extends ChangeNotifier {
       if (data != null) {
         String rashiName = data["rashi"] ?? "Aries";
 
-        String nextDate = "--";
+        /// 🔥 MOTION FIX (Vakri / Margi)
+        String motionRaw = data["motion"] ?? "Direct";
+        String motion = motionRaw.toLowerCase().contains("retro")
+            ? "Retrograde"
+            : "Direct";
 
+        /// 🔥 NEXT CHANGE
+        String nextDate = "--";
         if (future != null &&
             future[key] != null &&
             future[key] is List &&
@@ -66,12 +72,20 @@ class TransitProvider extends ChangeNotifier {
           nextDate = future[key][0]["entering_date"]?.toString() ?? "--";
         }
 
+        /// 🔥 FORMAT DATE (yyyy-mm-dd → dd-mm-yyyy)
+        if (nextDate.contains("-")) {
+          final parts = nextDate.split("-");
+          if (parts.length == 3) {
+            nextDate = "${parts[2]}-${parts[1]}-${parts[0]}";
+          }
+        }
+
         planetList.add({
           "name": key,
           "rashi": rashiName,
           "rashi_number": rashiToNumber[rashiName] ?? 1,
           "degree": data["degree"]?.toString() ?? "0",
-          "motion": data["motion"] ?? "Direct",
+          "motion": motion,
           "next_change": nextDate,
         });
       }
@@ -80,7 +94,7 @@ class TransitProvider extends ChangeNotifier {
     return planetList;
   }
 
-  /// FEATURED PLANET (used by TransitContentPage)
+  /// ================= FEATURED PLANET =================
   Map<String, dynamic>? get featuredPlanet {
     if (allPlanets.isEmpty) return null;
     return allPlanets.firstWhere(
@@ -89,7 +103,7 @@ class TransitProvider extends ChangeNotifier {
     );
   }
 
-  /// API 1 → CURRENT PLANETS
+  /// ================= CURRENT TRANSIT =================
   Future<void> fetchTransit() async {
     if (isLoading) return;
 
@@ -119,7 +133,7 @@ class TransitProvider extends ChangeNotifier {
     }
   }
 
-  /// API 2 → PERSONALIZED TRANSIT CONTENT
+  /// ================= PERSONALIZED CONTENT =================
   Future<void> fetchTransitContent({
     required String ascendant,
     required String planet,
@@ -163,7 +177,7 @@ class TransitProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// CONTENT HELPER
+  /// ================= CONTENT HELPER =================
   String get summaryText =>
       contentData?["summary"] ??
       "Select a planet to see your personalized impact.";

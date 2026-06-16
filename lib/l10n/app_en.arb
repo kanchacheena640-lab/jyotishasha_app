@@ -481,7 +481,10 @@
   "panchang_next": "Next",
   "panchang_month": "Month",
   "panchang_karan": "Karan",
-  "transitNextTransit": "Next Transit"
+  "transitNextTransit": "Next Transit",
+  "viewFullMuhurthCalendar": "View Full Muhurth Calendar →",
+  "dashboard_share": "Share"
+  
   
 
 }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'dart:ui' as ui;
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/core/state/transit_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -14,70 +14,29 @@ class TransitAlertWidget extends StatefulWidget {
   State<TransitAlertWidget> createState() => _TransitAlertWidgetState();
 }
 
-class _TransitAlertWidgetState extends State<TransitAlertWidget>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  late ScrollController _scrollController;
-
-  bool userTouching = false;
+class _TransitAlertWidgetState extends State<TransitAlertWidget> {
+  late PageController _pageController;
+  double _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
+    _pageController = PageController(viewportFraction: 0.83);
 
-    _scrollController = ScrollController();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startAutoScroll();
+    _pageController.addListener(() {
+      final page = _pageController.page ?? 0;
+      if ((page - _currentPage).abs() > 0.01) {
+        setState(() {
+          _currentPage = page;
+        });
+      }
     });
-  }
-
-  void _startAutoScroll() async {
-    await Future.delayed(const Duration(seconds: 2));
-
-    const double speed = 0.4;
-
-    while (mounted) {
-      if (userTouching) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        continue;
-      }
-
-      if (!_scrollController.hasClients ||
-          !_scrollController.position.hasContentDimensions) {
-        await Future.delayed(const Duration(milliseconds: 300));
-        continue;
-      }
-
-      final max = _scrollController.position.maxScrollExtent;
-      final current = _scrollController.offset;
-
-      double next = current + speed;
-
-      if (next >= max) {
-        _scrollController.jumpTo(0.1);
-      } else {
-        await _scrollController.animateTo(
-          next,
-          duration: const Duration(milliseconds: 40),
-          curve: Curves.linear,
-        );
-      }
-
-      await Future.delayed(const Duration(milliseconds: 16));
-    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -96,17 +55,44 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
 
     if (p.allPlanets.isEmpty) return const SizedBox.shrink();
 
+    final sortedPlanets = [...p.allPlanets];
+
+    sortedPlanets.sort((a, b) {
+      try {
+        final da = DateTime.parse(a["next_change"] ?? "");
+        final db = DateTime.parse(b["next_change"] ?? "");
+
+        return da.compareTo(db);
+      } catch (_) {
+        return 0;
+      }
+    });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const RotatingEarth(),
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.withValues(alpha: 0.22),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+                child: const RotatingEarth(),
+              ),
 
-              const SizedBox(width: 6),
-
+              const SizedBox(width: 10),
               Text(
                 t.localeName.startsWith("hi")
                     ? "वर्तमान गोचर"
@@ -117,34 +103,54 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
                   letterSpacing: 1.4,
                 ),
               ),
-
               const SizedBox(width: 8),
             ],
           ),
         ),
 
         SizedBox(
-          height: 190,
-          child: NotificationListener<UserScrollNotification>(
-            onNotification: (notification) {
-              if (notification.direction != ScrollDirection.idle) {
-                userTouching = true;
-              } else {
-                userTouching = false;
-              }
-              return false;
+          height: 210,
+          child: PageView.builder(
+            controller: _pageController,
+            padEnds: true,
+
+            itemCount: sortedPlanets.length,
+            itemBuilder: (context, index) {
+              final planet = sortedPlanets[index];
+
+              double diff = (_currentPage - index).abs();
+
+              /// 🔥 SCALE (smooth)
+              double scale = 1 - (diff * 0.08);
+              if (scale < 0.90) scale = 0.90;
+
+              /// 🔥 OPACITY
+              double opacity = 1 - (diff * 0.5);
+              if (opacity < 0.65) opacity = 0.65;
+
+              /// 🔥 NO BLUR
+              double blur = 0;
+
+              /// 🔥 PARALLAX (slight shift)
+              double translateX = diff * 12;
+
+              return Transform.translate(
+                offset: Offset(translateX, 0),
+                child: Opacity(
+                  opacity: opacity,
+                  child: Transform.scale(
+                    scale: scale,
+                    child: ImageFiltered(
+                      imageFilter: ui.ImageFilter.blur(
+                        sigmaX: blur,
+                        sigmaY: blur,
+                      ),
+                      child: _buildPlanetCard(context, planet, p, profileP, t),
+                    ),
+                  ),
+                ),
+              );
             },
-            child: ListView.builder(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: p.allPlanets.length,
-              itemBuilder: (context, index) {
-                final planet = p.allPlanets[index];
-                return _buildPlanetCard(context, planet, p, profileP, t);
-              },
-            ),
           ),
         ),
       ],
@@ -187,7 +193,6 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
       "Ketu": "केतु",
     };
 
-    // English → Hindi Rashi map
     const rashiHindi = {
       "Aries": "मेष",
       "Taurus": "वृषभ",
@@ -203,7 +208,6 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
       "Pisces": "मीन",
     };
 
-    // Hindi house names
     const houseHindi = {
       1: "पहले",
       2: "दूसरे",
@@ -215,46 +219,42 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
       8: "आठवें",
       9: "नौवें",
       10: "दसवें",
-      11: "11वें",
-      12: "12वें",
+      11: "ग्यारहवें",
+      12: "बारहवें",
     };
 
     int lagnaNum = rashiMap[lagna] ?? 1;
     int planetRashiNum = planet["rashi_number"] ?? 1;
-
     int house = (planetRashiNum - lagnaNum + 12) % 12 + 1;
-    String houseName = house.toString();
 
-    if (t.localeName.startsWith("hi")) {
-      houseName = houseHindi[house] ?? house.toString();
-    }
+    String houseName = t.localeName.startsWith("hi")
+        ? houseHindi[house] ?? house.toString()
+        : house.toString();
 
     String nextDate = planet["next_change"] ?? "";
 
-    if (nextDate.contains("-")) {
-      final parts = nextDate.split("-");
-      if (parts.length == 3) {
-        nextDate = "${parts[2]}-${parts[1]}-${parts[0]}";
-      }
+    try {
+      final parsedDate = DateTime.parse(nextDate);
+      nextDate =
+          "${parsedDate.day.toString().padLeft(2, '0')}-"
+          "${parsedDate.month.toString().padLeft(2, '0')}-"
+          "${parsedDate.year}";
+    } catch (e) {
+      // fallback (agar already formatted ho)
     }
 
-    /// planet name translate
     String planetName = planet["name"];
-    // rashi translate
     String rashiName = planet["rashi"];
 
     if (t.localeName.startsWith("hi")) {
-      rashiName = rashiHindi[rashiName] ?? rashiName;
-    }
-
-    if (t.localeName.startsWith("hi")) {
       planetName = planetHindi[planetName] ?? planetName;
+      rashiName = rashiHindi[rashiName] ?? rashiName;
     }
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
         onTap: () {
           final profile = profileP.activeProfile;
           if (profile == null) return;
@@ -274,161 +274,252 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget>
             );
           });
         },
-        child: Container(
-          width: 260,
-          margin: const EdgeInsets.only(right: 14, bottom: 10, top: 5),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFF8F7FF), Color(0xFFFFFFFF)],
-            ),
-            borderRadius: BorderRadius.circular(26),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 18,
-                spreadRadius: 1,
-                offset: const Offset(0, 5),
-              ),
-            ],
-            border: Border.all(
-              color: Colors.deepPurple.withValues(alpha: 0.08),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              /// HEADER
-              Row(
-                children: [
-                  _getPlanetIcon(planet["name"]),
-                  const SizedBox(width: 6),
+        child: Builder(
+          builder: (context) {
+            final base = planetColor(planet["name"]);
 
+            return Container(
+              width: MediaQuery.of(context).size.width * 0.78,
+              margin: const EdgeInsets.only(right: 12, top: 6, bottom: 10),
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  colors: [base.withOpacity(0.9), base.withOpacity(0.6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: planet["motion"] == "Retrograde"
+                        ? Colors.red.withOpacity(0.45)
+                        : base.withOpacity(0.25),
+                    blurRadius: 22,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  /// 🔥 TOP ROW
+                  Row(
+                    children: [
+                      FloatingPlanet(planet["name"]),
+                      const SizedBox(width: 8),
+
+                      Expanded(
+                        child: Text(
+                          planetName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: planet["motion"] == "Retrograde"
+                              ? Colors.red.withOpacity(0.9)
+                              : Colors.green.withOpacity(0.9),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              planet["motion"] == "Retrograde"
+                                  ? Icons.sync
+                                  : Icons.arrow_upward,
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 3),
+                            Text(
+                              planet["motion"],
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  /// 🔥 MAIN LINE
                   Text(
-                    planetName,
+                    t.localeName.startsWith("hi")
+                        ? "$planetName $rashiName में आपके $houseName भाव पर प्रभाव।"
+                        : "$planetName in $rashiName is impacting your $house house.",
                     style: const TextStyle(
-                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
                       fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      height: 1.3,
                     ),
                   ),
 
-                  const Spacer(),
+                  const SizedBox(height: 10),
 
+                  /// 🔥 CTA
                   Text(
                     t.localeName.startsWith("hi")
-                        ? "आप पर प्रभाव"
-                        : "Effects on You",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple,
+                        ? "अपना पूरा फल देखें →"
+                        : "Your Free Prediction →",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  /// 🔥 NEXT LINE (RIGHT)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.25),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        t.localeName.startsWith("hi")
+                            ? "अगला: $nextDate"
+                            : "Next: $nextDate",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
 
-              const SizedBox(height: 10),
+/// 🔥 FLOATING PLANET (TOP LEVEL WIDGET)
+class FloatingPlanet extends StatefulWidget {
+  final String planet;
+  const FloatingPlanet(this.planet, {super.key});
 
-              /// CURRENT POSITION
-              Text(
-                t.localeName.startsWith("hi")
-                    ? "वर्तमान में $planetName $rashiName राशि में (${planet["degree"]}°)"
-                    : "Currently $planetName in $rashiName (${planet["degree"]}°)",
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+  @override
+  State<FloatingPlanet> createState() => _FloatingPlanetState();
+}
 
-              const SizedBox(height: 8),
+class _FloatingPlanetState extends State<FloatingPlanet>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _floatAnim;
 
-              /// HOUSE INFO
-              Text(
-                t.localeName.startsWith("hi")
-                    ? "आपकी कुंडली में\n$planetName $houseName भाव में गोचर कर रहा है"
-                    : "According to your Birth Chart\n$planetName in $house house",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade700,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+  @override
+  void initState() {
+    super.initState();
 
-              const SizedBox(height: 8),
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
 
-              /// NEXT TRANSIT
-              Text(
-                t.localeName.startsWith("hi")
-                    ? "अगला परिवर्तन : $nextDate"
-                    : "Next change : $nextDate",
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.orange,
-                ),
-              ),
-            ],
+    _floatAnim = Tween(
+      begin: -3.0,
+      end: 3.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imagePath = "assets/planets/${widget.planet.toLowerCase()}.webp";
+
+    return AnimatedBuilder(
+      animation: _floatAnim,
+      builder: (_, child) {
+        return Transform.translate(
+          offset: Offset(0, _floatAnim.value),
+          child: child,
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withOpacity(0.15),
+              blurRadius: 12,
+              spreadRadius: 1,
+            ),
+          ],
+        ),
+        child: CircleAvatar(
+          radius: 22,
+          backgroundColor: Colors.transparent,
+          child: ClipOval(
+            child: Image.asset(
+              imagePath,
+              fit: BoxFit.cover,
+              width: 44,
+              height: 44,
+              errorBuilder: (_, __, ___) {
+                return const Icon(Icons.circle, color: Colors.white, size: 20);
+              },
+            ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _getPlanetIcon(String name) {
-    IconData icon;
-    Color color;
-
-    switch (name.toLowerCase()) {
-      case 'sun':
-        icon = Icons.wb_sunny_rounded;
-        color = Colors.orange;
-        break;
-
-      case 'moon':
-        icon = Icons.nightlight_round;
-        color = Colors.indigo;
-        break;
-
-      case 'mars':
-        icon = Icons.local_fire_department_rounded;
-        color = Colors.red;
-        break;
-
-      case 'mercury':
-        icon = Icons.psychology_rounded;
-        color = Colors.green;
-        break;
-
-      case 'jupiter':
-        icon = Icons.auto_awesome_rounded;
-        color = Colors.amber;
-        break;
-
-      case 'venus':
-        icon = Icons.favorite_rounded;
-        color = Colors.pink;
-        break;
-
-      case 'saturn':
-        icon = Icons.hourglass_bottom_rounded;
-        color = Colors.blueGrey;
-        break;
-
-      case 'rahu':
-        icon = Icons.visibility_rounded;
-        color = Colors.black87;
-        break;
-
-      case 'ketu':
-        icon = Icons.settings_input_antenna_rounded;
-        color = Colors.brown;
-        break;
-
-      default:
-        icon = Icons.circle;
-        color = Colors.deepPurple;
-    }
-
-    return Icon(icon, size: 24, color: color);
+/// 🔥 PLANET COLOR HELPER (TOP LEVEL FUNCTION)
+Color planetColor(String name) {
+  switch (name.toLowerCase()) {
+    case 'sun':
+      return const Color(0xFFF59E0B);
+    case 'moon':
+      return const Color(0xFF6366F1);
+    case 'mars':
+      return const Color(0xFFEF4444);
+    case 'mercury':
+      return const Color(0xFF10B981);
+    case 'jupiter':
+      return const Color(0xFFF59E0B);
+    case 'venus':
+      return const Color(0xFFEC4899);
+    case 'saturn':
+      return const Color(0xFF475569);
+    case 'rahu':
+      return const Color(0xFF111827);
+    case 'ketu':
+      return const Color(0xFF92400E);
+    default:
+      return const Color(0xFF7C3AED);
   }
 }

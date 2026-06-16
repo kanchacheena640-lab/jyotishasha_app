@@ -61,10 +61,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     _inputFocus = FocusNode();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.prefillQuestion != null &&
-          widget.prefillQuestion!.trim().isNotEmpty) {
-        _inputFocus.requestFocus();
-      }
+      _inputFocus.requestFocus();
     });
 
     // 🔥 MANDATORY: start billing listener

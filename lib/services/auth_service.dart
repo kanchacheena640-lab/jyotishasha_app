@@ -29,7 +29,15 @@ class AuthService {
       final userCred = await _auth.signInWithCredential(credential);
       final user = userCred.user;
 
-      if (user != null) await _createOrUpdateUser(user, "google");
+      if (user != null) {
+        debugPrint("🔥 LOGIN STEP 1: user मिला ${user.uid}");
+
+        Future.microtask(() {
+          _createOrUpdateUser(user, "google");
+        });
+
+        debugPrint("🔥 LOGIN STEP 2: backend sync started");
+      }
       return user;
     } catch (e) {
       debugPrint("❌ Google sign-in error: $e");
@@ -65,6 +73,8 @@ class AuthService {
   // ----------------------------------------------------------
   Future<void> _createOrUpdateUser(User user, String provider) async {
     try {
+      debugPrint("🔥 SYNC START");
+
       final docRef = _firestore.collection("users").doc(user.uid);
       final snap = await docRef.get();
       final now = DateTime.now().toIso8601String();
@@ -114,6 +124,8 @@ class AuthService {
       } else {
         debugPrint("⚠️ Backend sync failed");
       }
+
+      debugPrint("🔥 SYNC END");
     } catch (e) {
       debugPrint("❌ Sync error: $e");
     }

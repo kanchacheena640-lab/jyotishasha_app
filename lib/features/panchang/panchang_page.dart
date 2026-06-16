@@ -31,49 +31,20 @@ class _PanchangPageState extends State<PanchangPage> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final lang = context.read<LanguageProvider>().currentLang;
       context.read<PanchangProvider>().loadPanchang(lang: lang);
     });
   }
 
-  // -------------------------------------------------------------------------
-  // ⭐ GOOGLE PLACES — AUTOCOMPLETE (REST)
-  // -------------------------------------------------------------------------
-  Future<List<Map<String, String>>> fetchAutocomplete(String input) async {
-    if (input.trim().length < 3) return [];
-    return await LocationService.fetchAutocomplete(input);
-  }
-
-  // -------------------------------------------------------------------------
-  // ⭐ GOOGLE PLACES — GET LAT/LNG (REST)
-  // -------------------------------------------------------------------------
-  Future<Map<String, double>> fetchLatLng(String placeId) async {
-    final res = await LocationService.fetchPlaceDetail(placeId);
-    if (res == null) {
-      throw Exception("Place details not found");
-    }
-    return {"lat": res["lat"] as double, "lng": res["lng"] as double};
-  }
-
-  // -------------------------------------------------------------------------
-  // ⭐ Change Location Handler (with TIMEZONE)
-  // -------------------------------------------------------------------------
   Future<void> _changeLocation(double lat, double lng, String name) async {
     final lang = context.read<LanguageProvider>().currentLang;
     final p = context.read<PanchangProvider>();
 
-    // ⭐ AUTO TIMEZONE
-    final timezone = await LocationService.fetchTimeZone(lat, lng);
-
     setState(() => locationName = name);
-
-    p.fetchPanchang(lat: lat, lng: lng, lang: lang);
+    await p.loadPanchang(lat: lat, lng: lng, lang: lang);
   }
 
-  // -------------------------------------------------------------------------
-  // ⭐ Place Picker Dialog (REST)
-  // -------------------------------------------------------------------------
   void _openPlacePickerDialog() {
     final t = AppLocalizations.of(context)!;
 
@@ -101,7 +72,11 @@ class _PanchangPageState extends State<PanchangPage> {
                       }
 
                       setStateSB(() => loadingSuggestions = true);
-                      final data = await fetchAutocomplete(value);
+
+                      final data = await LocationService.fetchAutocomplete(
+                        value,
+                      );
+
                       setStateSB(() {
                         suggestions = data;
                         loadingSuggestions = false;
@@ -113,7 +88,6 @@ class _PanchangPageState extends State<PanchangPage> {
 
                   if (loadingSuggestions) const LinearProgressIndicator(),
 
-                  // ⭐ FIX: Proper height + ListView visible
                   if (suggestions.isNotEmpty)
                     SizedBox(
                       height: 250,
@@ -121,19 +95,32 @@ class _PanchangPageState extends State<PanchangPage> {
                         itemCount: suggestions.length,
                         itemBuilder: (context, index) {
                           final s = suggestions[index];
+
                           return ListTile(
                             leading: const Icon(Icons.location_on_outlined),
-                            title: Text(s["description"]!),
+                            title: Text(s["description"] ?? ""),
+
                             onTap: () async {
-                              _searchController.text = s["description"]!;
-                              final coords = await fetchLatLng(s["place_id"]!);
+                              final coords =
+                                  await LocationService.fetchPlaceDetail(
+                                    s["place_id"] ?? "",
+                                  );
+
+                              if (!mounted) return;
+
+                              // ✅ SAFE NULL CHECK (MAIN FIX)
+                              if (coords == null ||
+                                  coords["lat"] == null ||
+                                  coords["lng"] == null) {
+                                return;
+                              }
 
                               Navigator.pop(context);
 
                               _changeLocation(
-                                coords["lat"]!,
-                                coords["lng"]!,
-                                s["description"]!,
+                                coords["lat"] as double,
+                                coords["lng"] as double,
+                                s["description"] ?? "Unknown",
                               );
                             },
                           );
@@ -149,13 +136,8 @@ class _PanchangPageState extends State<PanchangPage> {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // BUILD UI
-  // -------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<PanchangProvider>();
-    final d = p.fullPanchang;
     final t = AppLocalizations.of(context)!;
 
     return Scaffold(
@@ -173,35 +155,48 @@ class _PanchangPageState extends State<PanchangPage> {
         actions: const [GlobalShareButton(currentPage: "panchang")],
       ),
 
-      body: p.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : d == null
-          ? _buildError()
-          : _buildContent(d),
+      // ✅ ONLY THIS PART WATCHES PROVIDER
+      body: Consumer<PanchangProvider>(
+        builder: (context, p, _) {
+          if (p.isLoading) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (p.hasError || p.fullPanchang == null) {
+            return _buildError(p, t);
+          }
+
+          return _buildContent(p, t);
+        },
+      ),
     );
   }
 
-  Widget _buildError() {
-    final t = AppLocalizations.of(context)!;
-    return Center(child: Text(t.loadingError));
+  Widget _buildError(PanchangProvider p, AppLocalizations t) {
+    final message = p.errorMessage ?? t.loadingError;
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Text(message, textAlign: TextAlign.center),
+      ),
+    );
   }
 
-  // -------------------------------------------------------------------------
-  // MAIN CONTENT UI
-  // -------------------------------------------------------------------------
-  Widget _buildContent(Map<String, dynamic> d) {
-    final t = AppLocalizations.of(context)!;
+  Widget _buildContent(PanchangProvider p, AppLocalizations t) {
+    final d = p.fullPanchang!;
 
+    final dateStr =
+        d['date']?.toString() ??
+        DateFormat('yyyy-MM-dd').format(DateTime.now());
     final formattedDate = DateFormat(
       'dd-MM-yyyy',
-    ).format(DateTime.parse(d['date']));
+    ).format(DateTime.parse(dateStr));
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // DATE + LOCATION
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -234,7 +229,6 @@ class _PanchangPageState extends State<PanchangPage> {
 
           const SizedBox(height: 16),
 
-          // SUNRISE + SUNSET
           Card(
             elevation: 2,
             color: AppColors.surface,
@@ -246,8 +240,8 @@ class _PanchangPageState extends State<PanchangPage> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _infoTile(t.panchang_sunrise, d['sunrise']),
-                  _infoTile(t.panchang_sunset, d['sunset']),
+                  _infoTile(t.panchang_sunrise, p.sunrise),
+                  _infoTile(t.panchang_sunset, p.sunset),
                 ],
               ),
             ),
@@ -259,21 +253,17 @@ class _PanchangPageState extends State<PanchangPage> {
             t.panchang_elements,
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
-
           const SizedBox(height: 12),
 
-          _dataRow(
-            t.panchang_tithi,
-            "${d['tithi']?['name']} (${d['tithi']?['paksha']})",
-          ),
+          _dataRow(t.panchang_tithi, "${p.tithiName} (${p.tithiPaksha})"),
           _dataRow(
             t.panchang_nakshatra,
-            "${d['nakshatra']?['name']} (Pada ${d['nakshatra']?['pada']})",
+            "${p.nakshatra} (Pada ${d['nakshatra']?['pada']?.toString() ?? '--'})",
           ),
-          _dataRow(t.panchang_yoga, d['yoga']?['name']),
-          _dataRow(t.panchang_karana, d['karan']?['name']),
-          _dataRow(t.panchang_vaar, d['weekday']),
-          _dataRow(t.panchang_panchak, d['panchak']?['message']),
+          _dataRow(t.panchang_yoga, p.yoga),
+          _dataRow(t.panchang_karana, p.karan),
+          _dataRow(t.panchang_vaar, p.weekday),
+          _dataRow(t.panchang_panchak, p.panchakMessage),
 
           const SizedBox(height: 24),
 
@@ -283,61 +273,61 @@ class _PanchangPageState extends State<PanchangPage> {
           ),
 
           _highlight(
-            t.panchang_abhijit,
-            "${d['abhijit_muhurta']?['start']} – ${d['abhijit_muhurta']?['end']}",
+            t.panchang_abhijit ?? "Abhijit Muhurta",
+            "${p.abhijitStart} – ${p.abhijitEnd}",
           ),
           _highlight(
-            t.panchang_rahu,
-            "${d['rahu_kaal']?['start']} – ${d['rahu_kaal']?['end']}",
+            t.panchang_rahu ?? "Rahu Kaal",
+            "${p.rahukaalStart} – ${p.rahukaalEnd}",
           ),
-          if (d['brahma_muhurta'] != null)
-            _highlight(
-              "Brahma Muhurta",
-              "${d['brahma_muhurta']['start']} – ${d['brahma_muhurta']['end']}",
-            ),
+          _highlight(
+            "Brahma Muhurta",
+            "${d['brahma_muhurta']?['start'] ?? '--'} – ${d['brahma_muhurta']?['end'] ?? '--'}",
+          ),
 
           const SizedBox(height: 32),
-          if (d['chaughadiya'] != null) ...[
-            const SizedBox(height: 24),
+
+          if (p.chaughadiyaDay.isNotEmpty) ...[
             const Text(
               "Chaughadiya (Day)",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-
             GridView.count(
               crossAxisCount: 2,
-              childAspectRatio:
-                  2.6, // 🔥 height control (try 2.4–2.8 if needed)
+              childAspectRatio: 2.2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              children: (d['chaughadiya']['day'] as List)
+              children: p.chaughadiyaDay
                   .map((c) => _chaughadiyaCard(c))
                   .toList(),
             ),
+          ],
 
-            const SizedBox(height: 20),
+          const SizedBox(height: 20),
+
+          if (p.chaughadiyaNight.isNotEmpty) ...[
             const Text(
               "Chaughadiya (Night)",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-
             GridView.count(
               crossAxisCount: 2,
-              childAspectRatio:
-                  2.6, // 🔥 height control (try 2.4–2.8 if needed)
+              childAspectRatio: 2.2,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
-              children: (d['chaughadiya']['night'] as List)
+              children: p.chaughadiyaNight
                   .map((c) => _chaughadiyaCard(c))
                   .toList(),
             ),
           ],
+
+          const SizedBox(height: 30),
           Center(
             child: Text(
               t.dataSyncedText,
@@ -347,17 +337,16 @@ class _PanchangPageState extends State<PanchangPage> {
               ),
             ),
           ),
-
           const SizedBox(height: 20),
           const BannerAdWidget(),
           const SizedBox(height: 20),
-          AppFooterFeedbackWidget(),
+          const AppFooterFeedbackWidget(),
         ],
       ),
     );
   }
 
-  Widget _dataRow(String k, String? v) {
+  Widget _dataRow(String k, String v) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -366,7 +355,7 @@ class _PanchangPageState extends State<PanchangPage> {
           Text(k, style: const TextStyle(fontWeight: FontWeight.w500)),
           Flexible(
             child: Text(
-              v ?? '--',
+              v,
               textAlign: TextAlign.end,
               style: const TextStyle(color: AppColors.textSecondary),
             ),
@@ -385,7 +374,7 @@ class _PanchangPageState extends State<PanchangPage> {
       child: ListTile(
         leading: Icon(
           Icons.star_border_outlined,
-          color: AppColors.primary.withOpacity(0.9),
+          color: AppColors.primary.withValues(alpha: 0.9),
         ),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
@@ -407,10 +396,10 @@ class _PanchangPageState extends State<PanchangPage> {
 }
 
 Widget _chaughadiyaCard(Map<String, dynamic> c) {
-  final isShubh = c['nature_en'] == 'shubh';
+  final isShubh = (c['nature_en'] ?? c['nature'] ?? '') == 'shubh';
 
   return Container(
-    padding: const EdgeInsets.all(10),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
     decoration: BoxDecoration(
       color: isShubh ? Colors.green.shade50 : Colors.red.shade50,
       borderRadius: BorderRadius.circular(12),
@@ -420,18 +409,18 @@ Widget _chaughadiyaCard(Map<String, dynamic> c) {
       ),
     ),
     child: Column(
-      mainAxisAlignment: MainAxisAlignment.center, // 🔥 vertical compact
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          c['name'],
+          c['name'] ?? '',
           style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         ),
         const SizedBox(height: 6),
         Text(
-          "${c['start']} – ${c['end']}",
+          "${c['start'] ?? ''} – ${c['end'] ?? ''}",
           style: TextStyle(
-            fontSize: 14.5, // 🔥 time prominent
+            fontSize: 14,
             fontWeight: FontWeight.w700,
             color: isShubh ? Colors.green.shade800 : Colors.red.shade800,
           ),

@@ -7,19 +7,12 @@ import 'package:intl/intl.dart';
 class PanchangProvider extends ChangeNotifier {
   Timer? _clockTimer;
 
-  PanchangProvider() {
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      notifyListeners();
-    });
-  }
   bool isLoading = false;
   String? errorMessage;
 
-  /// Selected date Panchang
-  Map<String, dynamic>? fullPanchang;
+  Map<String, dynamic>? fullPanchang; // ← purana naam
   Map<String, dynamic>? nextPanchang;
 
-  /// cache
   String? lastFetchDate;
   String? lastLang;
 
@@ -28,10 +21,15 @@ class PanchangProvider extends ChangeNotifier {
 
   final int cacheResetHour = 4;
 
-  // ------------------------------------------------------------
-  // SMART LOAD
-  // ------------------------------------------------------------
+  PanchangProvider() {
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      notifyListeners();
+    });
+  }
 
+  // =============================================================
+  // LOAD
+  // =============================================================
   Future<void> loadPanchang({
     double? lat,
     double? lng,
@@ -44,38 +42,39 @@ class PanchangProvider extends ChangeNotifier {
       fullPanchang = null;
       nextPanchang = null;
       lastFetchDate = null;
+      lastLang = null;
     }
 
     if (lastFetchDate == today &&
         lastLang == lang &&
         fullPanchang != null &&
-        nextPanchang != null &&
-        (lat == null || lat == savedLat) &&
-        (lng == null || lng == savedLng)) {
+        (lat == null || (lat - savedLat).abs() < 0.0001) &&
+        (lng == null || (lng - savedLng).abs() < 0.0001)) {
       return;
     }
 
     await fetchPanchang(lat: lat ?? savedLat, lng: lng ?? savedLng, lang: lang);
   }
 
-  // ------------------------------------------------------------
-  // API CALL
-  // ------------------------------------------------------------
-
+  // =============================================================
+  // FETCH
+  // =============================================================
   Future<void> fetchPanchang({
     required double lat,
     required double lng,
     required String lang,
   }) async {
     isLoading = true;
+    errorMessage = null;
     notifyListeners();
 
     savedLat = lat;
     savedLng = lng;
 
-    const endpoint = "https://jyotishasha-backend.onrender.com/api/panchang";
+    const String endpoint =
+        "https://jyotishasha-backend.onrender.com/api/panchang";
 
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
     final body = {
       "latitude": lat,
@@ -94,38 +93,20 @@ class PanchangProvider extends ChangeNotifier {
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
 
-        /// backend returns
-        /// { selected_date : {...}, next_date : {...} }
+        fullPanchang = decoded["selected_date"] as Map<String, dynamic>?;
+        nextPanchang = decoded["next_date"] as Map<String, dynamic>?;
 
-        final selected = decoded["selected_date"];
-        final next = decoded["next_date"];
-
-        if (selected != null && selected is Map<String, dynamic>) {
-          fullPanchang = selected;
-
-          /// safety check
-          if (next != null && next is Map<String, dynamic>) {
-            nextPanchang = next;
-          } else {
-            nextPanchang = null;
-          }
-
+        if (fullPanchang != null) {
           lastFetchDate = today;
           lastLang = lang;
           errorMessage = null;
         } else {
-          fullPanchang = null;
-          nextPanchang = null;
-          errorMessage = "Invalid Panchang data";
+          errorMessage = "Invalid panchang data";
         }
       } else {
-        fullPanchang = null;
-        nextPanchang = null;
-        errorMessage = "Server error ${res.statusCode}";
+        errorMessage = "Server error: ${res.statusCode}";
       }
     } catch (e) {
-      fullPanchang = null;
-      nextPanchang = null;
       errorMessage = "Network error: $e";
     }
 
@@ -133,149 +114,95 @@ class PanchangProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ------------------------------------------------------------
-  // Cache reset
-  // ------------------------------------------------------------
-
   bool _shouldResetCache(DateTime now) {
     if (lastFetchDate == null) return true;
 
     final last = DateTime.parse(lastFetchDate!);
     final today = DateTime(now.year, now.month, now.day);
+    final resetTime = DateTime(now.year, now.month, now.day, cacheResetHour);
 
-    if (now.isAfter(
-          DateTime(today.year, today.month, today.day, cacheResetHour),
-        ) &&
-        last.isBefore(today)) {
-      return true;
-    }
-
-    return false;
+    return now.isAfter(resetTime) && last.isBefore(today);
   }
 
-  // ------------------------------------------------------------
-  // SAFE GETTERS
-  // ------------------------------------------------------------
-
+  // =============================================================
+  // GETTERS (Purane naam ke hisaab se)
+  // =============================================================
   String get sunrise => fullPanchang?["sunrise"]?.toString() ?? "--";
-
   String get sunset => fullPanchang?["sunset"]?.toString() ?? "--";
 
   String get tithiName => fullPanchang?["tithi"]?["name"]?.toString() ?? "--";
-
   String get tithiPaksha =>
       fullPanchang?["tithi"]?["paksha"]?.toString() ?? "--";
 
   String get nakshatra =>
       fullPanchang?["nakshatra"]?["name"]?.toString() ?? "--";
-
   String get weekday => fullPanchang?["weekday"]?.toString() ?? "--";
-
   String get monthName => fullPanchang?["month_name"]?.toString() ?? "--";
 
   String get yoga => fullPanchang?["yoga"]?["name"]?.toString() ?? "--";
-
   String get karan => fullPanchang?["karan"]?["name"]?.toString() ?? "--";
 
   String get rahukaalStart =>
       fullPanchang?["rahu_kaal"]?["start"]?.toString() ?? "--";
-
   String get rahukaalEnd =>
       fullPanchang?["rahu_kaal"]?["end"]?.toString() ?? "--";
 
   String get abhijitStart =>
       fullPanchang?["abhijit_muhurta"]?["start"]?.toString() ?? "--";
-
   String get abhijitEnd =>
       fullPanchang?["abhijit_muhurta"]?["end"]?.toString() ?? "--";
 
+  String get brahmaStart =>
+      fullPanchang?["brahma_muhurta"]?["start"]?.toString() ?? "--";
+  String get brahmaEnd =>
+      fullPanchang?["brahma_muhurta"]?["end"]?.toString() ?? "--";
+
   String get panchakMessage =>
       fullPanchang?["panchak"]?["message"]?.toString() ?? "--";
+  bool get isPanchak => fullPanchang?["panchak"]?["active"] ?? false;
 
   bool get hasError => errorMessage != null;
 
-  // ------------------------------------------------------------
-  // CHAUGHADIYA LISTS
-  // ------------------------------------------------------------
-
   List<dynamic> get chaughadiyaDay =>
       fullPanchang?["chaughadiya"]?["day"] ?? [];
-
   List<dynamic> get chaughadiyaNight =>
       fullPanchang?["chaughadiya"]?["night"] ?? [];
 
-  // ------------------------------------------------------------
-  // CURRENT CHAUGHADIYA
-  // ------------------------------------------------------------
-
+  // Current Chaughadiya
   Map<String, dynamic>? getCurrentChaughadiya() {
     if (fullPanchang == null) return null;
 
     final now = DateTime.now();
-    // 24-घंटे के फॉर्मेट में अभी के कुल मिनट निकालें
     final currentMinutes = now.hour * 60 + now.minute;
 
-    final daySlots = chaughadiyaDay;
-    final nightSlots = chaughadiyaNight;
-    final allSlots = [...daySlots, ...nightSlots];
+    final sunriseMin = _toMinutes(sunrise);
+    final sunsetMin = _toMinutes(sunset);
 
-    if (allSlots.isEmpty) return null;
+    final isDay = currentMinutes >= sunriseMin && currentMinutes < sunsetMin;
+    final slots = isDay ? chaughadiyaDay : chaughadiyaNight;
 
-    for (int i = 0; i < allSlots.length; i++) {
-      final slot = allSlots[i];
-      final start = _toMinutes(slot["start"]?.toString() ?? "");
-      final end = _toMinutes(slot["end"]?.toString() ?? "");
+    if (slots.isEmpty) return null;
 
-      // 1. सामान्य स्लॉट (e.g., 14:00 से 15:25)
+    for (final slot in slots) {
+      final start = _toMinutes(slot["start"] ?? "");
+      final end = _toMinutes(slot["end"] ?? "");
+
       if (start < end) {
-        if (currentMinutes >= start && currentMinutes < end) {
-          return slot;
-        }
-      }
-      // 2. रात का स्लॉट जो 00:00 क्रॉस करता है (e.g., 23:00 से 01:00)
-      else if (start > end) {
-        if (currentMinutes >= start || currentMinutes < end) {
-          return slot;
-        }
+        if (currentMinutes >= start && currentMinutes < end) return slot;
+      } else {
+        if (currentMinutes >= start || currentMinutes < end) return slot;
       }
     }
-
-    // --- INDUSTRY STANDARD FALLBACK ---
-    // अगर कोई भी स्लॉट मैच नहीं हुआ (Borderline case),
-    // तो समय के सबसे करीब वाला स्लॉट दिखा दो ताकि UI खाली न रहे।
-    for (final slot in allSlots) {
-      final start = _toMinutes(slot["start"]?.toString() ?? "");
-      if (currentMinutes < start) return slot; // आने वाला पहला स्लॉट
-    }
-
-    return allSlots.first; // आखिरी रास्ता: पहला स्लॉट दिखाओ
+    return null;
   }
 
-  // ------------------------------------------------------------
-  // TIME PARSER
-  // ------------------------------------------------------------
-
   int _toMinutes(String time) {
-    if (time.isEmpty || !time.contains(":")) return 0;
+    if (time.isEmpty) return 0;
     try {
-      String cleanTime = time.trim().toUpperCase();
-      // Regex to handle both "3:05 AM" and "03:05 AM"
-      final parts = cleanTime.split(RegExp(r'[:\s]'));
-      int h = int.parse(parts[0]);
-      int m = int.parse(parts[1]);
-
-      if (cleanTime.contains("PM") && h != 12) h += 12;
-      if (cleanTime.contains("AM") && h == 12) h = 0;
-
-      return h * 60 + m;
-    } catch (e) {
-      // Fallback for 24-hour format
-      try {
-        final parts = time.split(':');
-        return int.parse(parts[0]) * 60 + int.parse(parts[1]);
-      } catch (_) {
-        return 0;
-      }
+      final parts = time.split(':');
+      return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+    } catch (_) {
+      return 0;
     }
   }
 

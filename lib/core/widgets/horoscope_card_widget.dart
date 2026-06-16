@@ -233,6 +233,7 @@ Widget _yearlyCard(BuildContext context) {
   final summary = getSection("final_summary");
 
   return _card(
+  child: SingleChildScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -246,6 +247,7 @@ Widget _yearlyCard(BuildContext context) {
         section(spiritual?["heading"] as String?, spiritual?["content"]),
         section(summary?["heading"] as String?, summary?["content"]),
       ],
+    ),
     ),
   );
 }
