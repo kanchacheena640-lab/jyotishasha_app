@@ -483,8 +483,21 @@
   "panchang_karan": "Karan",
   "transitNextTransit": "Next Transit",
   "viewFullMuhurthCalendar": "View Full Muhurth Calendar →",
-  "dashboard_share": "Share"
-  
-  
+  "dashboard_share": "Share",
 
+  "shareBranding": "Shared via Jyotishasha ✨",
+  "shareDownloadApp": "Download the Jyotishasha app:",
+  "shareVisitWebsite": "Visit our website:",
+
+  "eventDetailAppBarTitle": "Event",
+  "eventNoDataAvailable": "No event data available.",
+  "eventLoadError": "Something went wrong. Please try again later.",
+  "eventKnowMoreCta": "Know More",
+  "eventShareCta": "Share",
+
+  "authorityAppBarTitle": "Authority",
+  "authorityContentNotAvailableTitle": "Content not available",
+  "authorityContentNotAvailableBody": "This content is not available yet.",
+
+  "webViewLoadError": "Unable to load this page. Please check your connection and try again later."
 }

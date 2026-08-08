@@ -30,7 +30,7 @@ its repository contract.
 | `getUser(String firebaseUid) -> Future<User?>` | No public service method. `AuthService._createOrUpdateUser()` privately reads the root user document during sign-in. | The service operation is private, sign-in-coupled, and returns `void`, not `User?`. |
 | `saveUser(User user) -> Future<User>` | No public service method. `AuthService._createOrUpdateUser()` performs create/update writes. | The service accepts a Firebase SDK user plus provider name, applies timestamps and create/update branching, swallows sync failures, and returns `void`. |
 | `registerBackendUser(UserIdentity identity) -> Future<int?>` | `BackendAuthService.registerFirebaseUser(...) -> Future<int?>` | Closest direct match. The service accepts scalar fields rather than `UserIdentity` and converts HTTP/backend failure to `null`. |
-| `bootstrapProfile(Profile profile) -> Future<int?>` | No equivalent User service method. `UserBootstrapService.syncProfile(Map<String, dynamic>) -> Future<Map<String, dynamic>>` is a separate bootstrap boundary. | Input changes from a raw wire map to `Profile`; output loses the full backend response and retains only an identifier. These APIs are not behaviorally interchangeable. |
+| `bootstrapProfile(Map<String, dynamic> profileData) -> Future<Map<String, dynamic>>` | No equivalent User service method. `UserBootstrapService.syncProfile(Map<String, dynamic>) -> Future<Map<String, dynamic>>` is a separate bootstrap boundary. | Input and success-output behavior now preserve the full raw bootstrap boundary. The repository still differs from the legacy service only by ownership layer, not by payload shape. |
 | `updateMessagingToken(...) -> Future<void>` | No service method. `DashboardPage` writes FCM metadata directly to Firestore and separately posts the token to the backend. | The repository method represents only Firestore metadata persistence; current behavior spans presentation, Firebase Messaging, Firestore, authentication, and backend HTTP. |
 
 ### Missing methods
@@ -52,13 +52,14 @@ existing `UserService` class.
 ### Completeness assessment
 
 `UserRepository` aggregates capabilities that currently have no single service
-owner. Its `bootstrapProfile()` return type is insufficient to preserve the
-full `UserBootstrapService.syncProfile()` result. The current service layer,
+owner. Its corrected `bootstrapProfile()` return type now preserves the full
+`UserBootstrapService.syncProfile()` result. The current service layer,
 meanwhile, embeds user persistence inside authentication and presentation code.
 
-The existing `FirebaseUserRepository` also depends on
-`UserBootstrapService`. Therefore `UserBootstrapService` cannot delegate back
-to that repository without creating a dependency cycle.
+The earlier repository-to-service bootstrap dependency has been corrected.
+`FirebaseUserRepository` now owns the bootstrap HTTP boundary directly, so the
+previous `FirebaseUserRepository -> UserBootstrapService` dependency statement
+is obsolete.
 
 ## SessionRepository mapping
 

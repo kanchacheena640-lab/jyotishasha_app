@@ -1276,4 +1276,40 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get dashboard_share => 'शेयर';
+
+  @override
+  String get shareBranding => 'Jyotishasha के माध्यम से साझा किया गया ✨';
+
+  @override
+  String get shareDownloadApp => 'Jyotishasha ऐप डाउनलोड करें:';
+
+  @override
+  String get shareVisitWebsite => 'हमारी वेबसाइट पर जाएँ:';
+
+  @override
+  String get eventDetailAppBarTitle => 'इवेंट';
+
+  @override
+  String get eventNoDataAvailable => 'कोई इवेंट डेटा उपलब्ध नहीं है।';
+
+  @override
+  String get eventLoadError => 'कुछ गड़बड़ हो गई। कृपया बाद में पुनः प्रयास करें।';
+
+  @override
+  String get eventKnowMoreCta => 'और जानें';
+
+  @override
+  String get eventShareCta => 'शेयर करें';
+
+  @override
+  String get authorityAppBarTitle => 'प्राधिकरण';
+
+  @override
+  String get authorityContentNotAvailableTitle => 'सामग्री उपलब्ध नहीं है';
+
+  @override
+  String get authorityContentNotAvailableBody => 'यह सामग्री अभी उपलब्ध नहीं है।';
+
+  @override
+  String get webViewLoadError => 'यह पेज लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें और बाद में पुनः प्रयास करें।';
 }

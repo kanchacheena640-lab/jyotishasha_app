@@ -148,7 +148,7 @@ class ImageBgCard extends StatelessWidget {
     String safeCta = '';
 
     safeCta = (card.getCTA(lang)).trim();
-    Widget _buildAstroContent(CardModel card, String lang) {
+    Widget buildAstroContent(CardModel card, String lang) {
       final text = card.getContent(lang);
 
       return Center(
@@ -201,7 +201,7 @@ class ImageBgCard extends StatelessWidget {
       );
     }
 
-    Widget _buildGradientBg(int type) {
+    Widget buildGradientBg(int type) {
       final gradients = [
         [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
         [Color(0xFF1D2671), Color(0xFFC33764)],
@@ -220,7 +220,7 @@ class ImageBgCard extends StatelessWidget {
       );
     }
 
-    Widget _buildDecor(int type) {
+    Widget buildDecor(int type) {
       switch (type) {
         case 0:
           return Opacity(
@@ -260,7 +260,7 @@ class ImageBgCard extends StatelessWidget {
       }
     }
 
-    Widget _buildInsightCard(CardModel card, String lang) {
+    Widget buildInsightCard(CardModel card, String lang) {
       final text = card.getContent(lang);
       final decorType = _random.nextInt(4);
 
@@ -287,7 +287,7 @@ class ImageBgCard extends StatelessWidget {
           ),
 
           /// 🔹 DECOR (subtle)
-          Positioned.fill(child: _buildDecor(decorType)),
+          Positioned.fill(child: buildDecor(decorType)),
 
           /// 🔹 MAIN CONTENT (UNCHANGED POSITION)
           Center(
@@ -360,7 +360,7 @@ class ImageBgCard extends StatelessWidget {
       );
     }
 
-    Widget _buildMuhurthCard(CardModel card, String lang) {
+    Widget buildMuhurthCard(CardModel card, String lang) {
       final title = card.getTitle(lang);
 
       final raw = lang == 'hi'
@@ -484,11 +484,11 @@ class ImageBgCard extends StatelessWidget {
     }
 
     if (card.type == "insight") {
-      return BaseCard(card: card, child: _buildInsightCard(card, lang));
+      return BaseCard(card: card, child: buildInsightCard(card, lang));
     }
 
     if (card.type == "muhurth") {
-      return BaseCard(card: card, child: _buildMuhurthCard(card, lang));
+      return BaseCard(card: card, child: buildMuhurthCard(card, lang));
     }
 
     return BaseCard(
@@ -578,7 +578,7 @@ class ImageBgCard extends StatelessWidget {
                           final rahu = card.meta?['rahu']?.toString() ?? '';
 
                           if (card.type == "astro") {
-                            return _buildAstroContent(card, lang);
+                            return buildAstroContent(card, lang);
                           }
 
                           return RichText(

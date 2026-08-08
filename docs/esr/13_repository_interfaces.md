@@ -75,6 +75,13 @@ the live session boundary, sign-in/sign-out, and backend authorization token.
 This separation prevents persisted user data from becoming the application
 session controller.
 
+`UserRepository.bootstrapProfile(Map<String, dynamic>)` preserves the legacy
+bootstrap boundary exactly at both edges: raw request map in, complete decoded
+backend response map out. ESR-002 identified a dedicated bootstrap request and
+response contract as missing, so Slice-2 preserves the full raw map boundary
+temporarily rather than narrowing behavior or inventing unapproved typed
+models.
+
 ### Profiles
 
 `ProfileRepository` exposes list, individual lookup, active lookup, create,

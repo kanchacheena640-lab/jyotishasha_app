@@ -49,6 +49,10 @@ part list and remain interface-only.
 * Endpoint URLs, payload keys, status handling, timeouts, asset paths, Firebase
   collection paths, and active-profile fields follow the audited production
   boundaries.
+* `FirebaseUserRepository.bootstrapProfile()` preserves the legacy bootstrap
+  HTTP boundary exactly by posting the raw request map and returning the
+  complete decoded backend response map because ESR-002 did not define typed
+  bootstrap request or response contracts.
 * `BackendLoveRepository` receives `LoveTool` in its constructor because the
   interface request contract intentionally contains no endpoint selector.
 * `PlayBillingRepository` converts SDK products and purchase events to existing

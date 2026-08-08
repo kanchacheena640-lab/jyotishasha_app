@@ -8,7 +8,110 @@ import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
+import 'package:jyotishasha_app/core/utils/share_templates.dart';
 import 'package:jyotishasha_app/services/location_service.dart';
+
+import '../cards/data/card_model.dart';
+import '../cards/presentation/widgets/card_renderer.dart';
+
+// =============================================================================
+// F6.5 — Shareable Muhurth cards, built locally from this page's own already-
+// fetched backend data. No CardsProvider, no CardsPage dependency: only the
+// existing, unmodified CardModel / CardRenderer / BaseCard / captureAndShare
+// engine is reused, exactly as it already exists for the Cards module.
+// =============================================================================
+
+/// Muhurth API score (0–7) → an auspiciousness percentage for the shareable
+/// card's date line — the exact same mapping `CardsProvider.loadCards` uses
+/// for its own muhurth cards, duplicated here (not imported) so this page
+/// has zero dependency on CardsProvider.
+int muhurthScorePercent(int score) => switch (score) {
+  7 => 100,
+  6 => 90,
+  5 => 75,
+  4 => 60,
+  3 => 45,
+  _ => 35,
+};
+
+const List<String> _muhurthCardImages = [
+  'assets/cards/decor_01.webp',
+  'assets/cards/decor_02.webp',
+  'assets/cards/decor_03.webp',
+  'assets/cards/decor_04.webp',
+  'assets/cards/decor_05.webp',
+  'assets/cards/decor_06.webp',
+];
+
+/// Deterministic (not random) background-image pick — same result for the
+/// same entry on every rebuild, so the shared card doesn't flicker between
+/// a different background each time the page redraws.
+String pickMuhurthCardImage(String seed) {
+  final index = seed.hashCode.abs() % _muhurthCardImages.length;
+  return _muhurthCardImages[index];
+}
+
+// Same title strings CardsProvider.loadCards already uses for its muhurth
+// cards, duplicated here for the same "no CardsProvider dependency" reason.
+const Map<String, String> _muhurthTitlesEn = {
+  "naamkaran": "Naamkaran Muhurth",
+  "marriage": "Marriage Muhurth",
+  "grah_pravesh": "Griha Pravesh Muhurth",
+  "property": "Property Purchase Muhurth",
+  "gold": "Gold Purchase Muhurth",
+  "vehicle": "Vehicle Purchase Muhurth",
+  "travel": "Travel Muhurth",
+  "childbirth": "Childbirth Muhurth",
+};
+
+const Map<String, String> _muhurthTitlesHi = {
+  "naamkaran": "नामकरण मुहूर्त",
+  "marriage": "विवाह मुहूर्त",
+  "grah_pravesh": "गृह प्रवेश मुहूर्त",
+  "property": "संपत्ति क्रय मुहूर्त",
+  "gold": "सोना खरीद मुहूर्त",
+  "vehicle": "वाहन खरीद मुहूर्त",
+  "travel": "यात्रा मुहूर्त",
+  "childbirth": "शिशु जन्म मुहूर्त",
+};
+
+/// One upcoming-date line for the shareable card — "$formattedDate  •
+/// $percent% auspicious" — the exact same line format
+/// `CardsProvider.loadCards`'s `compactDates` already produces.
+String muhurthDateLine(String formattedDate, int score) =>
+    "$formattedDate  •  ${muhurthScorePercent(score)}% auspicious";
+
+/// Builds ONE [CardModel] for an activity's entire set of upcoming Muhurth
+/// dates, exactly as already returned by the existing backend call (no new
+/// backend call, no re-sorting — `dateLines` is expected in the same order
+/// the backend/`muhurthResults` already provided). F6.5.2: previously this
+/// built one card per date; now — mirroring the same one-card-per-activity
+/// shape `CardsProvider.loadCards` already uses for its own muhurth cards
+/// — it aggregates every upcoming date into a single shareable card. Feeds
+/// directly into the existing, untouched [CardRenderer] → [BaseCard] →
+/// `captureAndShare` engine (only the CardModel content mapping changed).
+CardModel buildMuhurthCardModel({
+  required String activity,
+  required List<String> dateLines,
+  required String image,
+}) {
+  final content = dateLines.join('\n');
+
+  return CardModel(
+    type: "muhurth",
+    designType: "muhurth",
+    muhurthType: activity,
+    image: image,
+    titleEn: _muhurthTitlesEn[activity] ?? "Shubh Muhurth",
+    titleHi: _muhurthTitlesHi[activity] ?? "शुभ मुहूर्त",
+    contentEn: content,
+    contentHi: content,
+    meta: {
+      "share_en": ShareTemplates.muhurthaEn,
+      "share_hi": ShareTemplates.muhurthaHi,
+    },
+  );
+}
 
 Widget adCard() {
   return Card(
@@ -28,7 +131,12 @@ Widget adCard() {
 Map<String, List<dynamic>> muhurthCache = {};
 
 class MuhurthPage extends StatefulWidget {
-  const MuhurthPage({super.key});
+  /// Preselects the activity/category shown — e.g. when opened from Home's
+  /// Muhurta widget for a specific capsule (F6.5). Falls back to the
+  /// default ("naamkaran") when null or not a recognized activity.
+  final String? initialActivity;
+
+  const MuhurthPage({super.key, this.initialActivity});
 
   @override
   State<MuhurthPage> createState() => _MuhurthPageState();
@@ -58,7 +166,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
     "childbirth",
   ];
 
-  String selectedActivity = "naamkaran";
+  late String selectedActivity;
   bool isLoading = false;
   List<dynamic> muhurthResults = [];
 
@@ -79,6 +187,9 @@ class _MuhurthPageState extends State<MuhurthPage> {
   @override
   void initState() {
     super.initState();
+    selectedActivity = activities.contains(widget.initialActivity)
+        ? widget.initialActivity!
+        : "naamkaran";
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMuhurth(); // Only once, after page fully builds
     });
@@ -418,7 +529,15 @@ class _MuhurthPageState extends State<MuhurthPage> {
                           final dataIndex = index - ((index + 1) ~/ 4);
                           final item = muhurthResults[dataIndex];
 
-                          return _buildMuhurthCard(item, t);
+                          // F6.5.2: ONE shareable card per activity, built
+                          // once from every upcoming date this page
+                          // already fetched — not one card per date. Every
+                          // row's link opens this same aggregated card.
+                          return _buildMuhurthCard(
+                            item,
+                            t,
+                            _buildActivityShareCard(),
+                          );
                         },
                       ),
               ),
@@ -429,12 +548,34 @@ class _MuhurthPageState extends State<MuhurthPage> {
     );
   }
 
+  // F6.5.2: ONE shareable card for the whole activity, built from every
+  // upcoming date `muhurthResults` already holds (same backend response
+  // already fetched — no new backend call, no re-sorting: dates are
+  // listed in the same order the backend returned them).
+  CardModel _buildActivityShareCard() {
+    final dateLines = muhurthResults.map((item) {
+      final rawDate = item["date"] ?? "--";
+      final formattedDate = rawDate != "--"
+          ? DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate))
+          : "--";
+      final score = int.tryParse(item["score"].toString()) ?? 0;
+      return muhurthDateLine(formattedDate, score);
+    }).toList();
+
+    return buildMuhurthCardModel(
+      activity: selectedActivity,
+      dateLines: dateLines,
+      image: pickMuhurthCardImage(selectedActivity),
+    );
+  }
+
   // MUHURTH CARD
-  Widget _buildMuhurthCard(dynamic item, AppLocalizations t) {
+  Widget _buildMuhurthCard(dynamic item, AppLocalizations t, CardModel shareCard) {
     final rawDate = item["date"] ?? "--";
     final formattedDate = rawDate != "--"
         ? DateFormat('dd-MM-yyyy').format(DateTime.parse(rawDate))
         : "--";
+    final isHindi = t.localeName.startsWith('hi');
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -506,7 +647,55 @@ class _MuhurthPageState extends State<MuhurthPage> {
                 ),
               ),
             ),
+
+            const SizedBox(height: 14),
+
+            // F6.5.1: the list stays clean — just a text link. The actual
+            // shareable CardRenderer (a full 9:16 card, not an inline
+            // preview) only appears on demand, inside the modal opened by
+            // _showShareCardPreview.
+            InkWell(
+              onTap: () => _showShareCardPreview(shareCard),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.ios_share_rounded,
+                    size: 15,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isHindi ? 'यह मुहूर्त शेयर करें →' : 'Share this Muhurta →',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // F6.5.1: full-size share-card preview, opened on demand from a list
+  // row's "Share this Muhurta →" link — never embedded inline in the list.
+  // Still the exact same, unmodified CardRenderer/BaseCard/captureAndShare
+  // engine; BaseCard's own built-in share icon keeps working exactly as it
+  // does in the Cards module. Closing the sheet returns to the list.
+  void _showShareCardPreview(CardModel card) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 24),
+          child: SizedBox(height: 480, child: CardRenderer(card: card)),
         ),
       ),
     );

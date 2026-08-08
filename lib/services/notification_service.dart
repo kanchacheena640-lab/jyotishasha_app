@@ -1,14 +1,53 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:jyotishasha_app/services/backend_auth_service.dart';
+import 'package:jyotishasha_app/core/repositories/implementations/backend_notification_repository.dart';
+import 'package:jyotishasha_app/core/repositories/notification_repository.dart';
+
+import '../core/models/notifications/notification_contracts.dart';
+import 'backend_auth_service.dart';
 
 class NotificationService {
-  static const baseUrl = "https://jyotishasha-backend.onrender.com";
+  NotificationService({NotificationRepository? notificationRepository})
+    : _notificationRepository =
+          notificationRepository ?? _buildDefaultRepository() {
+    _sharedRepository = _notificationRepository;
+  }
 
-  // ===============================
-  // 🔔 UNREAD COUNT
-  // ===============================
+  final NotificationRepository _notificationRepository;
+
+  static NotificationRepository _sharedRepository = _buildDefaultRepository();
+
+  static NotificationRepository get _repository => _sharedRepository;
+
+  static NotificationRepository _buildDefaultRepository() {
+    return BackendNotificationRepository(
+      backendTokenProvider: _requireBackendToken,
+      idTokenProvider: _requireIdToken,
+    );
+  }
+
+  static Future<String> _requireBackendToken() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw StateError('USER NULL');
+    }
+
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) {
+      throw StateError('TOKEN NULL');
+    }
+
+    return token;
+  }
+
+  static Future<String> _requireIdToken() async {
+    final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+    if (token == null) {
+      throw StateError('JWT TOKEN NULL');
+    }
+
+    return token;
+  }
+
   static Future<int> getUnreadCount() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
@@ -16,102 +55,58 @@ class NotificationService {
       return 0;
     }
 
-    try {
-      final firebaseUid = user.uid;
-      print("🔥 FIREBASE UID: $firebaseUid");
-
-      final token = await BackendAuthService.getBackendToken(firebaseUid);
-      print("🔥 TOKEN: $token");
-
-      if (token == null) {
-        print("❌ TOKEN NULL");
-        return 0;
-      }
-
-      final res = await http.get(
-        Uri.parse("$baseUrl/api/user-notifications/unread-count"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-      );
-
-      print("🔥 STATUS: ${res.statusCode}");
-      print("🔥 RESPONSE: ${res.body}");
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-        return data["unread_count"] ?? 0;
-      }
-
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) {
+      print("❌ TOKEN NULL");
       return 0;
+    }
+
+    try {
+      final response = await _repository.getUnreadCount();
+      return response.unreadCount ?? 0;
     } catch (e) {
       print("❌ Unread count error: $e");
       return 0;
     }
   }
 
-  // ===============================
-  // 📄 GET NOTIFICATIONS LIST
-  // ===============================
   static Future<List> getNotifications() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return [];
+    if (user == null) {
+      return [];
+    }
+
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) {
+      return [];
+    }
 
     try {
-      final firebaseUid = user.uid;
-      final token = await BackendAuthService.getBackendToken(firebaseUid);
-      print("FIREBASE UID: $firebaseUid");
-      print("TOKEN: $token");
-
-      if (token == null) return [];
-
-      final res = await http.get(
-        Uri.parse("$baseUrl/api/user-notifications"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-      );
-
-      if (res.statusCode == 200) {
-        final data = jsonDecode(res.body);
-
-        // 🔥 SAFE PARSE (important)
-        if (data is List) {
-          return data;
-        } else if (data["notifications"] != null) {
-          return data["notifications"];
-        }
-      }
-
-      return [];
+      final response = await _repository.getNotifications();
+      return response.notifications
+              ?.map((item) => item.toJson())
+              .toList(growable: false) ??
+          [];
     } catch (e) {
       print("❌ Get notifications error: $e");
       return [];
     }
   }
 
-  // ===============================
-  // ✅ MARK AS READ
-  // ===============================
   static Future<void> markAsRead(int notificationId) async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      return;
+    }
+
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) {
+      return;
+    }
 
     try {
-      final firebaseUid = user.uid;
-      final token = await BackendAuthService.getBackendToken(firebaseUid);
-
-      if (token == null) return;
-
-      await http.post(
-        Uri.parse("$baseUrl/api/user-notifications/mark-read"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({"notification_id": notificationId}),
+      await _repository.markAsRead(
+        MarkNotificationReadRequest(notificationId: notificationId),
       );
     } catch (e) {
       print("❌ Mark as read error: $e");

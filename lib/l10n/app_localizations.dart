@@ -2572,6 +2572,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share'**
   String get dashboard_share;
+
+  /// No description provided for @shareBranding.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared via Jyotishasha ✨'**
+  String get shareBranding;
+
+  /// No description provided for @shareDownloadApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Download the Jyotishasha app:'**
+  String get shareDownloadApp;
+
+  /// No description provided for @shareVisitWebsite.
+  ///
+  /// In en, this message translates to:
+  /// **'Visit our website:'**
+  String get shareVisitWebsite;
+
+  /// No description provided for @eventDetailAppBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Event'**
+  String get eventDetailAppBarTitle;
+
+  /// No description provided for @eventNoDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No event data available.'**
+  String get eventNoDataAvailable;
+
+  /// No description provided for @eventLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again later.'**
+  String get eventLoadError;
+
+  /// No description provided for @eventKnowMoreCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Know More'**
+  String get eventKnowMoreCta;
+
+  /// No description provided for @eventShareCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get eventShareCta;
+
+  /// No description provided for @authorityAppBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Authority'**
+  String get authorityAppBarTitle;
+
+  /// No description provided for @authorityContentNotAvailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Content not available'**
+  String get authorityContentNotAvailableTitle;
+
+  /// No description provided for @authorityContentNotAvailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This content is not available yet.'**
+  String get authorityContentNotAvailableBody;
+
+  /// No description provided for @webViewLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to load this page. Please check your connection and try again later.'**
+  String get webViewLoadError;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

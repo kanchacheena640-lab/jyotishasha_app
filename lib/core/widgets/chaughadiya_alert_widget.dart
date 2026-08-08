@@ -5,7 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../state/panchang_provider.dart';
 import '../state/language_provider.dart';
+import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
 
+/// "Current Timing" — premium redesign (F4.2.1) of the old inline-"ALERT"
+/// ticker. All backend data, the auto-scroll animation/timer, and the
+/// Panchang navigation are unchanged; only the surrounding presentation
+/// (heading above, container style, footer link below) was redesigned.
 class ChaughadiyaAlertWidget extends StatefulWidget {
   const ChaughadiyaAlertWidget({super.key});
 
@@ -13,20 +18,14 @@ class ChaughadiyaAlertWidget extends StatefulWidget {
   State<ChaughadiyaAlertWidget> createState() => _ChaughadiyaAlertWidgetState();
 }
 
-class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
-    with TickerProviderStateMixin {
+class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget> {
   late ScrollController _scrollController;
-  late AnimationController _blinkController;
   Timer? _scrollTimer;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
-    _blinkController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _startAutoScroll());
   }
@@ -95,10 +94,24 @@ class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
   @override
   void dispose() {
     _scrollTimer?.cancel();
-    _blinkController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
+
+  static const _tickerDecoration = BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.all(Radius.circular(22)),
+    border: Border.fromBorderSide(
+      BorderSide(color: Color(0xFFE4D9FA), width: 1),
+    ),
+    boxShadow: [
+      BoxShadow(
+        color: Color(0x0A000000), // ~4% black — very subtle
+        blurRadius: 8,
+        offset: Offset(0, 2),
+      ),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -107,18 +120,71 @@ class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
     final lang = context.watch<LanguageProvider>().currentLang;
     final isHi = lang == "hi";
 
-    if (p.isLoading || slot == null) {
-      return Container(
-        height: 40,
-        alignment: Alignment.center,
-        color: Colors.grey.withValues(alpha: 0.05),
-        child: Text(
-          isHi ? "पंचांग गणना जारी है..." : "Calculating Panchang...",
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
-        ),
-      );
-    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        const SizedBox(height: 24), // Header → Current Timing
+        _buildHeading(isHi),
+        const SizedBox(height: 12), // Heading → Ticker
+        if (p.isLoading || slot == null)
+          Container(
+            height: 44,
+            width: double.infinity,
+            alignment: Alignment.center,
+            decoration: _tickerDecoration,
+            child: Text(
+              isHi ? "पंचांग गणना जारी है..." : "Calculating Panchang...",
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            ),
+          )
+        else
+          _buildTicker(p, slot, lang, isHi),
+        const SizedBox(height: 8), // Ticker → Footer
+        _buildFooterLink(context, isHi),
+        // F6.6 visual audit: 24→16dp. This section's neighbor below is now
+        // Share Banner (not Ask Now — Share Banner was inserted between
+        // them in F5.4), and every other inter-section gap on Home is a
+        // clean 16dp; this stale 24dp left a visibly larger gap here than
+        // anywhere else on the page.
+        const SizedBox(height: 16), // Footer → Share Banner
+      ],
+    );
+  }
 
+  /// Centered "Current Timing" heading with small purple divider lines on
+  /// both sides.
+  Widget _buildHeading(bool isHi) {
+    Widget divider() => Container(
+      width: 24,
+      height: 1,
+      color: const Color(0xFF6B21A8).withValues(alpha: 0.3),
+    );
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        divider(),
+        const SizedBox(width: 10),
+        Text(
+          isHi ? "अभी का समय" : "Current Timing",
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F1B2E),
+          ),
+        ),
+        const SizedBox(width: 10),
+        divider(),
+      ],
+    );
+  }
+
+  Widget _buildTicker(
+    PanchangProvider p,
+    Map<String, dynamic> slot,
+    String lang,
+    bool isHi,
+  ) {
     final nature = (slot["nature"] ?? "").toString().toLowerCase();
 
     final name = isHi
@@ -133,14 +199,6 @@ class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
         .toLowerCase();
     final String advice = _getAdvice(slotName, lang);
 
-    Color statusColor = Colors.blue;
-
-    if (isShubh) {
-      statusColor = Colors.green;
-    } else if (isAshubh) {
-      statusColor = Colors.red;
-    }
-
     final displayName = isShubh
         ? "✅ ${name.toUpperCase()}"
         : isAshubh
@@ -154,83 +212,58 @@ class _ChaughadiyaAlertWidgetState extends State<ChaughadiyaAlertWidget>
 
     return Container(
       width: double.infinity,
-      height: 64,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-
-        /// 🔵 BLUE BORDER
-        border: Border.all(color: const Color(0xFF4F46E5), width: 1.2),
-
-        /// 🔥 SOFT SHADOW
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-
-      child: Row(
-        children: [
-          /// 🔥 FIXED ALERT SECTION
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 8),
-            child: FadeTransition(
-              opacity: _blinkController,
-              child: Row(
-                children: const [
-                  Icon(Icons.auto_awesome, color: Color(0xFF4F46E5), size: 18),
-                  SizedBox(width: 4),
+      height: 44,
+      decoration: _tickerDecoration,
+      // Insets the scrolling content so it never visually touches the
+      // border — the ticker data/animation inside is unchanged.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        child: ClipRect(
+          child: ListView.builder(
+            controller: _scrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 20,
+            itemBuilder: (_, __) {
+              return Row(
+                children: [
+                  const SizedBox(width: 8),
                   Text(
-                    "ALERT",
-                    style: TextStyle(
-                      color: Color(0xFF4F46E5),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
+                    tickerText,
+                    style: const TextStyle(
+                      color: Color(0xFF1E3A8A),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.3,
                     ),
                   ),
+                  const SizedBox(width: 80),
                 ],
-              ),
-            ),
+              );
+            },
           ),
+        ),
+      ),
+    );
+  }
 
-          /// 🔥 FULL WIDTH TICKER
-          Expanded(
-            child: ClipRect(
-              child: ListView.builder(
-                controller: _scrollController,
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: 20,
-                itemBuilder: (_, __) {
-                  return Row(
-                    children: [
-                      /// 👈 START GAP REMOVE
-                      const SizedBox(width: 8),
-
-                      Text(
-                        tickerText,
-                        style: const TextStyle(
-                          color: Color(0xFF1E3A8A),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-
-                      /// 👉 END GAP CONTROL
-                      const SizedBox(width: 80),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+  Widget _buildFooterLink(BuildContext context, bool isHi) {
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PanchangPage()),
+        );
+      },
+      child: Text(
+        isHi
+            ? "पूरा पंचांग व चौघड़िया देखें →"
+            : "View Full Panchang & Chaughadiya →",
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFF6B21A8),
+        ),
       ),
     );
   }

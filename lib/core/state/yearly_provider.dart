@@ -1,8 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+
+import '../models/horoscope/horoscope_contracts.dart';
+import '../repositories/horoscope_repository.dart';
+import '../repositories/implementations/http_horoscope_repository.dart';
 
 class YearlyProvider extends ChangeNotifier {
+  YearlyProvider({HoroscopeRepository? horoscopeRepository})
+    : _horoscopeRepository =
+          horoscopeRepository ?? HttpHoroscopeRepository();
+
+  final HoroscopeRepository _horoscopeRepository;
+
   bool isLoading = false;
   String? errorMessage;
 
@@ -14,20 +22,6 @@ class YearlyProvider extends ChangeNotifier {
   String? _lastSign;
   String? _lastLang;
   int? _lastYear;
-
-  Future<Map<String, dynamic>?> _get(String url) async {
-    try {
-      final res = await http.get(Uri.parse(url));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-      errorMessage = "Server error ${res.statusCode}";
-      return null;
-    } catch (e) {
-      errorMessage = e.toString();
-      return null;
-    }
-  }
 
   Future<void> fetchYearly({
     required String sign,
@@ -55,18 +49,28 @@ class YearlyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final res = await _get(
-      "https://jyotishasha-backend.onrender.com/api/yearly-horoscope"
-      "?sign=$s&year=$year&lang=$l",
-    );
+    try {
+      final yearly = await _horoscopeRepository.getYearlyHoroscope(
+        HoroscopeQuery(sign: s, language: l, year: year),
+      );
 
-    if (res != null) {
-      title = res["title"]?.toString();
-      data = res;
+      title = yearly.title?.toString();
+      final rawData = yearly.rawData;
+      data = rawData == null ? null : Map<String, dynamic>.from(rawData);
 
       _lastSign = s;
       _lastLang = l;
       _lastYear = year;
+    } catch (e) {
+      final message = e.toString();
+      final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(
+        message,
+      );
+      if (statusMatch != null) {
+        errorMessage = "Server error ${statusMatch.group(1)}";
+      } else {
+        errorMessage = message;
+      }
     }
 
     isLoading = false;

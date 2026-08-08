@@ -1,133 +1,69 @@
 // lib/services/profile_service.dart
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
+import 'package:jyotishasha_app/core/identity/firebase_current_user_identity_port.dart';
+import 'package:jyotishasha_app/core/repositories/implementations/firestore_profile_repository.dart';
 
 class ProfileService {
-  final _auth = FirebaseAuth.instance;
-  final _db = FirebaseFirestore.instance;
+  ProfileService()
+    : _currentUserIdentity = FirebaseCurrentUserIdentityPort(),
+      _profileRepository = FirestoreProfileRepository();
 
-  /// 🔹 Add New Profile (FIXED)
+  final CurrentUserIdentityPort _currentUserIdentity;
+  final FirestoreProfileRepository _profileRepository;
+
+  /// Add a new profile.
   Future<String?> addProfile(Map<String, dynamic> data) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return null;
-
-    final userRef = _db.collection('users').doc(uid);
-    final profiles = userRef.collection('profiles');
-
-    /// ⭐ AUTO-ACTIVATE FIRST PROFILE
-    final existing = await profiles.get();
-    data['isActive'] = existing.docs.isEmpty;
-
-    /// ⭐ FIX → Always store backend_profile_id (snake_case)
-    if (data.containsKey('backendProfileId')) {
-      data['backend_profile_id'] = data['backendProfileId'];
-      data.remove('backendProfileId');
-    }
-
-    final doc = await profiles.add(data);
-
-    /// ⭐ Update root user doc
-    if (data['isActive'] == true) {
-      await userRef.update({'activeProfileId': doc.id});
-    }
-
-    return doc.id;
+    return _profileRepository.addProfileCompat(firebaseUid: uid, data: data);
   }
 
-  /// 🔹 Fetch all profiles
+  /// Fetch all profiles.
   Future<List<Map<String, dynamic>>> getProfiles() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return [];
-
-    final snap = await _db
-        .collection('users')
-        .doc(uid)
-        .collection('profiles')
-        .orderBy('createdAt', descending: true)
-        .get();
-
-    return snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+    return _profileRepository.getProfilesCompat(uid);
   }
 
-  /// 🔹 Fetch Active Profile
+  /// Fetch the active profile.
   Future<Map<String, dynamic>?> getActiveProfile() async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return null;
-
-    final userRef = _db.collection('users').doc(uid);
-    final userDoc = await userRef.get();
-
-    final activeId = userDoc.data()?['activeProfileId'];
-    if (activeId == null) return null;
-
-    final profileDoc = await userRef.collection('profiles').doc(activeId).get();
-
-    if (!profileDoc.exists) return null;
-
-    return {'id': activeId, ...profileDoc.data()!};
+    return _profileRepository.getActiveProfileCompat(uid);
   }
 
-  /// 🔹 Set Active Profile
+  /// Set the active profile.
   Future<void> setActiveProfile(String profileId) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return;
-
-    final userRef = _db.collection('users').doc(uid);
-    final profiles = userRef.collection('profiles');
-
-    final all = await profiles.get();
-
-    // Set all inactive
-    for (final p in all.docs) {
-      await profiles.doc(p.id).update({'isActive': false});
-    }
-
-    // Activate selected
-    await profiles.doc(profileId).update({'isActive': true});
-
-    // Store in root document
-    await userRef.update({'activeProfileId': profileId});
+    await _profileRepository.setActiveProfile(
+      firebaseUid: uid,
+      profileId: profileId,
+    );
   }
 
-  /// 🔹 Delete Profile
+  /// Delete a profile.
   Future<bool> deleteProfile(String profileId) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return false;
-
-    final userRef = _db.collection('users').doc(uid);
-    final profiles = userRef.collection('profiles');
-
-    await profiles.doc(profileId).delete();
-
-    // Remove active id if deleted
-    final userDoc = await userRef.get();
-    if (userDoc.data()?['activeProfileId'] == profileId) {
-      await userRef.update({'activeProfileId': null});
-    }
-
-    return true;
+    return _profileRepository.deleteProfile(
+      firebaseUid: uid,
+      profileId: profileId,
+    );
   }
 
-  /// 🔹 UPDATE PROFILE (FIXED)
+  /// Update a profile.
   Future<bool> updateProfile(
     String profileId,
     Map<String, dynamic> data,
   ) async {
-    final uid = _auth.currentUser?.uid;
+    final uid = _currentUserIdentity.currentFirebaseUid;
     if (uid == null) return false;
-
-    final userRef = _db.collection('users').doc(uid);
-    final profiles = userRef.collection('profiles');
-
-    /// ⭐ FIX — convert camelCase → snake_case if needed
-    if (data.containsKey('backendProfileId')) {
-      data['backend_profile_id'] = data['backendProfileId'];
-      data.remove('backendProfileId');
-    }
-
-    await profiles.doc(profileId).update(data);
-
-    return true;
+    return _profileRepository.updateProfileCompat(
+      firebaseUid: uid,
+      profileId: profileId,
+      data: data,
+    );
   }
 }

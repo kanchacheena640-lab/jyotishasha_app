@@ -15,6 +15,12 @@ dependencies:
   http: ^1.2.2
   url_launcher: ^6.2.6
   in_app_purchase: ^3.2.0
+  # Report Purchase Lifecycle Architecture: explicit consumePurchase() is
+  # only exposed via the Android platform addition, not the cross-platform
+  # InAppPurchase facade. Already resolved transitively at 0.5.0 (see
+  # pubspec.lock) -- declared directly here because it's now imported
+  # directly, not just relied on transitively.
+  in_app_purchase_android: ^0.5.0
   firebase_messaging: ^15.1.0
   firebase_core: ^3.6.0
   firebase_analytics: ^11.4.0
@@ -45,6 +51,10 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
+  mocktail: ^1.0.5
+  fake_async: ^1.3.3
   flutter_lints: ^5.0.0
 
 flutter:

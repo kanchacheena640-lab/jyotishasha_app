@@ -606,5 +606,21 @@
   "panchang_karan": "करण",
   "transitNextTransit": "अगला गोचर",
   "viewFullMuhurthCalendar": "पूरा मुहूर्त कैलेंडर देखें →",
-  "dashboard_share": "शेयर"
+  "dashboard_share": "शेयर",
+
+  "shareBranding": "Jyotishasha के माध्यम से साझा किया गया ✨",
+  "shareDownloadApp": "Jyotishasha ऐप डाउनलोड करें:",
+  "shareVisitWebsite": "हमारी वेबसाइट पर जाएँ:",
+
+  "eventDetailAppBarTitle": "इवेंट",
+  "eventNoDataAvailable": "कोई इवेंट डेटा उपलब्ध नहीं है।",
+  "eventLoadError": "कुछ गड़बड़ हो गई। कृपया बाद में पुनः प्रयास करें।",
+  "eventKnowMoreCta": "और जानें",
+  "eventShareCta": "शेयर करें",
+
+  "authorityAppBarTitle": "प्राधिकरण",
+  "authorityContentNotAvailableTitle": "सामग्री उपलब्ध नहीं है",
+  "authorityContentNotAvailableBody": "यह सामग्री अभी उपलब्ध नहीं है।",
+
+  "webViewLoadError": "यह पेज लोड नहीं हो सका। कृपया अपना इंटरनेट कनेक्शन जांचें और बाद में पुनः प्रयास करें।"
 }

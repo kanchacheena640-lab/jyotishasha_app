@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
-import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_result_page.dart';
+import 'package:jyotishasha_app/features/kundali/kundali_overview_page.dart';
 import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/services/location_service.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -237,9 +237,15 @@ class _ManualKundaliFormPageState extends State<ManualKundaliFormPage> {
       }
 
       if (!mounted) return;
-      Navigator.push(
+      // F8.7 — replaces the form on the stack (not a plain push) so that
+      // pressing Back from the Kundali Overview shown next goes straight
+      // back to "My Kundali", not back through this form.
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const ManualKundaliResultPage()),
+        MaterialPageRoute(
+          builder: (_) =>
+              const KundaliOverviewPage(useManualProvider: true, autoLoad: false),
+        ),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);

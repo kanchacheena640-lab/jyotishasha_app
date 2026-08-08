@@ -1,8 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+
+import '../models/horoscope/horoscope_contracts.dart';
+import '../repositories/horoscope_repository.dart';
+import '../repositories/implementations/http_horoscope_repository.dart';
 
 class DailyProvider extends ChangeNotifier {
+  DailyProvider({HoroscopeRepository? horoscopeRepository})
+    : _horoscopeRepository =
+          horoscopeRepository ?? HttpHoroscopeRepository();
+
+  final HoroscopeRepository _horoscopeRepository;
+
   bool isLoading = false;
   String? errorMessage;
 
@@ -19,20 +27,6 @@ class DailyProvider extends ChangeNotifier {
   String? _lastLang;
 
   String? get lastLang => _lastLang;
-
-  Future<Map<String, dynamic>?> _get(String url) async {
-    try {
-      final res = await http.get(Uri.parse(url));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-      errorMessage = "Server error ${res.statusCode}";
-      return null;
-    } catch (e) {
-      errorMessage = e.toString();
-      return null;
-    }
-  }
 
   Future<void> fetchDaily({
     required String sign,
@@ -55,21 +49,31 @@ class DailyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final data = await _get(
-      "https://jyotishasha-backend.onrender.com/api/daily-horoscope?sign=$s&lang=$l",
-    );
+    try {
+      final data = await _horoscopeRepository.getDailyHoroscope(
+        HoroscopeQuery(sign: s, language: l),
+      );
 
-    if (data != null) {
-      dailyTitle = data["heading"]?.toString();
-      intro = data["intro"]?.toString();
-      paragraph = data["paragraph"]?.toString();
-      tips = data["tips"]?.toString();
+      dailyTitle = data.heading?.toString();
+      intro = data.intro?.toString();
+      paragraph = data.paragraph?.toString();
+      tips = data.tips?.toString();
 
-      luckyColor = data["lucky_color"]?.toString();
-      luckyNumber = data["lucky_number"]?.toString();
+      luckyColor = data.luckyColor?.toString();
+      luckyNumber = data.luckyNumber?.toString();
 
       _lastSign = s;
       _lastLang = l;
+    } catch (e) {
+      final message = e.toString();
+      final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(
+        message,
+      );
+      if (statusMatch != null) {
+        errorMessage = "Server error ${statusMatch.group(1)}";
+      } else {
+        errorMessage = message;
+      }
     }
 
     isLoading = false;

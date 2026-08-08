@@ -1,31 +1,36 @@
-// // This is a basic Flutter widget test.
-// //
-// // To perform an interaction with a widget in your test, use the WidgetTester
-// // utility in the flutter_test package. For example, you can send tap and scroll
-// // gestures. You can also use WidgetTester to find child widgets in the widget
-// // tree, read text, and verify that the values of widget properties are correct.
-// 🧪 TEMPORARILY DISABLED — TESTS NOT ACTIVE
+import 'dart:async';
 
-// import 'package:flutter/material.dart';
-// import 'package:flutter_test/flutter_test.dart';
+import 'package:fake_async/fake_async.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 
-// import 'package:jyotishasha_app/main.dart';
+import 'helpers/test_harness.dart';
+import 'helpers/widget_tester_extensions.dart';
+import 'mocks/common_mocks.dart';
 
-// void main() {
-//   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-//     // Build our app and trigger a frame.
-//     await tester.pumpWidget(const MyApp());
+void main() {
+  testWidgets('test harness pumps a widget', (tester) async {
+    await tester.pumpTestHarness(const Text('Testing foundation ready'));
 
-//     // Verify that our counter starts at 0.
-//     expect(find.text('0'), findsOneWidget);
-//     expect(find.text('1'), findsNothing);
+    await tester.pumpUntilFound(find.text('Testing foundation ready'));
 
-//     // Tap the '+' icon and trigger a frame.
-//     await tester.tap(find.byIcon(Icons.add));
-//     await tester.pump();
+    expect(find.text('Testing foundation ready'), findsOneWidget);
+  });
 
-//     // Verify that our counter has incremented.
-//     expect(find.text('0'), findsNothing);
-//     expect(find.text('1'), findsOneWidget);
-//   });
-// }
+  test('fake async controls timer execution', () {
+    fakeAsync((async) {
+      var fired = false;
+      Timer(const Duration(seconds: 1), () => fired = true);
+
+      async.elapse(const Duration(milliseconds: 999));
+      expect(fired, isFalse);
+
+      async.elapse(const Duration(milliseconds: 1));
+      expect(fired, isTrue);
+    });
+  });
+
+  test('common mocks are available', () {
+    expect(MockNavigatorObserver(), isA<NavigatorObserver>());
+  });
+}

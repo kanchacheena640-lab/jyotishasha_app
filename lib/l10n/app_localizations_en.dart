@@ -1276,4 +1276,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get dashboard_share => 'Share';
+
+  @override
+  String get shareBranding => 'Shared via Jyotishasha ✨';
+
+  @override
+  String get shareDownloadApp => 'Download the Jyotishasha app:';
+
+  @override
+  String get shareVisitWebsite => 'Visit our website:';
+
+  @override
+  String get eventDetailAppBarTitle => 'Event';
+
+  @override
+  String get eventNoDataAvailable => 'No event data available.';
+
+  @override
+  String get eventLoadError => 'Something went wrong. Please try again later.';
+
+  @override
+  String get eventKnowMoreCta => 'Know More';
+
+  @override
+  String get eventShareCta => 'Share';
+
+  @override
+  String get authorityAppBarTitle => 'Authority';
+
+  @override
+  String get authorityContentNotAvailableTitle => 'Content not available';
+
+  @override
+  String get authorityContentNotAvailableBody => 'This content is not available yet.';
+
+  @override
+  String get webViewLoadError => 'Unable to load this page. Please check your connection and try again later.';
 }

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
-import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 // Widgets
@@ -13,15 +11,13 @@ import 'package:jyotishasha_app/core/widgets/transit_alert_widget.dart';
 import 'package:jyotishasha_app/core/widgets/chaughadiya_alert_widget.dart';
 import 'package:jyotishasha_app/core/widgets/trending_questions_widget.dart';
 
-import 'package:jyotishasha_app/core/widgets/astrology_studio_widget.dart';
 import 'package:jyotishasha_app/features/muhurth/muhurth_page.dart';
-import 'package:jyotishasha_app/features/reports/widgets/report_card.dart';
-import 'package:jyotishasha_app/features/reports/pages/report_checkout_page.dart';
 import 'package:jyotishasha_app/core/widgets/app_footer_feedback_widget.dart';
+import 'package:jyotishasha_app/core/widgets/create_another_kundali_banner.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/widgets/shubh_muhurth_preview_widget.dart';
-
-import 'package:jyotishasha_app/features/cards/presentation/cards_page.dart';
+import 'package:jyotishasha_app/core/widgets/share_strip_widget.dart';
+import 'package:jyotishasha_app/core/widgets/todays_essentials_widget.dart';
 
 // State
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -38,40 +34,31 @@ class DashboardHomeSection extends StatefulWidget {
 
 class _DashboardHomeSectionState extends State<DashboardHomeSection>
     with WidgetsBindingObserver {
-  // 🔵 Home par show hone wale random reports
-  List<dynamic> homeReports = [];
-
   @override
   void initState() {
     super.initState();
 
-    // 🔥 ADD THIS
     WidgetsBinding.instance.addObserver(this);
 
-    _loadHomeReports();
     _loadUnreadCount();
   }
 
-  // 🔥 ADD THIS (IMPORTANT)
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // 🔥 ADD THIS (AUTO REFRESH ON APP OPEN)
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _loadUnreadCount(); // 🔔 refresh unread
+      _loadUnreadCount();
     }
   }
 
-  // 🔔 unread count loader
   Future<void> _loadUnreadCount() async {
     User? user;
 
-    // wait until Firebase user ready
     while (user == null) {
       await Future.delayed(const Duration(milliseconds: 300));
       user = FirebaseAuth.instance.currentUser;
@@ -82,41 +69,6 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
     await context.read<NotificationProvider>().loadUnreadCount();
   }
 
-  // ------------------------------------------------------------
-  // LOAD RANDOM REPORTS FOR HOME PAGE
-  // ------------------------------------------------------------
-  Future<void> _loadHomeReports() async {
-    try {
-      final lang = context.read<LanguageProvider>().currentLang;
-
-      // reports.json asset load
-      final data = await rootBundle.loadString("assets/data/reports.json");
-
-      final List<dynamic> list = jsonDecode(data);
-
-      // 🔁 language aware mapping
-      final processed = list.map((r) {
-        final report = Map<String, dynamic>.from(r);
-
-        if (lang == "hi" && report["title_hi"] != null) {
-          report["title"] = report["title_hi"];
-        }
-
-        return report;
-      }).toList();
-
-      // random shuffle
-      final shuffled = List.from(processed)..shuffle();
-
-      setState(() {
-        homeReports = shuffled.take(5).toList();
-      });
-    } catch (e) {
-      debugPrint("❌ Home reports load error: $e");
-    }
-  }
-
-  // ⭐ Professional Refresh Logic (Parallel Execution)
   Future<void> _onRefresh() async {
     final profile = context.read<ProfileProvider>().activeProfile ?? {};
     final sign = profile["rashi"] ?? profile["sign"];
@@ -130,7 +82,6 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
           force: true,
         ),
       context.read<TransitProvider>().fetchTransit(),
-
       _loadUnreadCount(),
     ]);
   }
@@ -148,46 +99,28 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              /// ─────────────────────────────────────────
-              /// 1️⃣ USER GREETING SECTION
-              /// Personalized welcome + quick astro context
-              /// ─────────────────────────────────────────
               const SliverToBoxAdapter(child: GreetingHeaderWidget()),
-
-              /// Main scrollable home content
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    const SizedBox(height: 16),
-
-                    /// ─────────────────────────────────────────
-                    /// 2️⃣ CHAUGHADIYA LIVE TICKER
-                    /// Real-time auspicious / inauspicious time indicator
-                    /// ─────────────────────────────────────────
+                    // ChaughadiyaAlertWidget supplies its own 24dp top/
+                    // bottom margins (F4.2.3 "Header → Current Timing" /
+                    // "Footer → Ask Now" spacing) — no extra gap needed
+                    // around it here.
                     const ChaughadiyaAlertWidget(),
-
+                    // Share strip moved here, immediately below Current
+                    // Timing and above Today's Essentials (F5.4 flow:
+                    // Current Timing → Share → Today's Essentials →
+                    // Ask Now).
+                    const ShareStripWidget(),
                     const SizedBox(height: 16),
-
-                    /// ─────────────────────────────────────────
-                    /// 3️⃣ Trending Questions
-                    /// Spiritual daily guidance entry point
-                    /// ─────────────────────────────────────────
+                    const TodaysEssentialsWidget(),
+                    const SizedBox(height: 16),
                     const TrendingQuestionsWidget(),
-
                     const SizedBox(height: 16),
-
-                    /// ─────────────────────────────────────────
-                    /// 4️⃣ LIVE TRANSIT ALERT
-                    /// Current planetary movement insights
-                    /// ─────────────────────────────────────────
                     const TransitAlertWidget(),
-
                     const SizedBox(height: 16),
-
-                    /// ─────────────────────────────────────────
-                    /// 5️⃣ Upcoming Muhurth Preview
-                    /// ─────────────────────────────────────────
                     ShubhMuhurthPreviewWidget(
                       muhurthList: [
                         {
@@ -215,16 +148,17 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
                               : "Childbirth",
                         },
                       ],
-
+                      // F6.5: Home no longer opens CardsPage — MuhurthPage
+                      // is now the sole destination, with the tapped
+                      // category preselected.
                       onTapType: (type) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => CardsPage(initialType: type),
+                            builder: (_) => MuhurthPage(initialActivity: type),
                           ),
                         );
                       },
-
                       onSeeMore: () {
                         Navigator.push(
                           context,
@@ -234,73 +168,16 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
                         );
                       },
                     ),
-
+                    // F8.8 — relocated from after the Footer (F8.7.3) to
+                    // here: Shubh Muhurth → Create Another Kundali →
+                    // Feedback/Footer, so the Footer stays the true last
+                    // section on Home. Presentation and navigation
+                    // unchanged — placement only.
+                    const SizedBox(height: 20),
+                    const CreateAnotherKundaliBanner(),
                     const SizedBox(height: 16),
-
-                    /// ─────────────────────────────────────────
-                    /// 7️⃣ TRENDING ASTRO QUESTIONS
-                    /// Entry point for AskNow / consultation funnel
-                    /// ─────────────────────────────────────────
-
-                    /// ─────────────────────────────────────────
-                    /// 8️⃣ ASTROLOGY STUDIO
-                    /// Deep dive into kundali analysis sections
-                    /// ─────────────────────────────────────────
-                    AstrologyStudioWidget(
-                      kundali:
-                          context.watch<ProfileProvider>().activeProfile ?? {},
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // ------------------------------------------------------------
-                    // 9️⃣ TRENDING REPORTS (HOME BOTTOM)
-                    // Random paid reports show karega
-                    // ------------------------------------------------------------
-                    const SizedBox(height: 16),
-
-                    _buildSectionHeader(t.trendingReports),
-
-                    const SizedBox(height: 12),
-
-                    // Reports list
-                    homeReports.isEmpty
-                        ? const SizedBox()
-                        : Column(
-                            children: homeReports.map((r) {
-                              return ReportCard(
-                                report: r,
-
-                                // Report tap hone par checkout page open
-                                onTap: () {
-                                  final profile =
-                                      context
-                                          .read<ProfileProvider>()
-                                          .activeProfile ??
-                                      {};
-
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ReportCheckoutPage(
-                                        selectedReport: r,
-                                        initialProfile: profile,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            }).toList(),
-                          ),
-
-                    /// ─────────────────────────────────────────
-                    /// 1️⃣0️⃣ APP FOOTER
-                    /// Copyright / policy links
-                    /// ─────────────────────────────────────────
                     const Divider(thickness: 0.6, color: Colors.black12),
-
                     const AppFooterFeedbackWidget(),
-
                     SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
                   ]),
                 ),
@@ -312,20 +189,7 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
     );
   }
 
-  // Helper for consistent Section Titles
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w800,
-        color: Colors.blueGrey[400],
-        letterSpacing: 1.5,
-      ),
-    );
-  }
 
-  // Premium Day Lord CTA (Localized & Glassmorphism Fix)
   Widget _buildDayLordCTA(BuildContext context, AppLocalizations t) {
     return GestureDetector(
       onTap: () => context.push('/darshan'),
@@ -421,7 +285,6 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
     );
   }
 
-  // Footer Logic (Localized)
   Widget _buildFooter(AppLocalizations t) {
     return Column(
       children: [

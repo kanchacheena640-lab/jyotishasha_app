@@ -1,13 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 
+/// "Shubh Muhurta" — F6.7 premium redesign, bringing this section into the
+/// same white-card / soft-lavender-border / subtle-shadow / centered-
+/// divider-heading design language already used by Current Timing,
+/// Today's Essentials, and Current Planetary Influence.
+///
+/// Presentation only: the category list (`muhurthList`), its order, and
+/// both navigation callbacks (`onTapType`, `onSeeMore`) are unchanged —
+/// same data, same taps, same destinations. `MuhurthPage`, the backend,
+/// and the Shareable Cards engine are untouched by this widget entirely.
+///
+/// Card content is Icon + Category Name. A "Next Date" line was part of
+/// the original spec, but no per-category date is available here without
+/// a new backend call from Home — this widget only ever receives static
+/// category labels from `dashboard_home_section.dart`, with no date data.
+/// Adding a fetch would be a business-logic/data change, not a UI
+/// redesign, so it was intentionally left out (see the F6.7 deliverable).
 class ShubhMuhurthPreviewWidget extends StatelessWidget {
   final List<Map<String, String>> muhurthList;
 
-  /// 🔥 Tap on capsule
+  /// Tap on a category card.
   final Function(String type)? onTapType;
 
-  /// 🔥 View More
+  /// "View All Upcoming Muhurth →".
   final VoidCallback? onSeeMore;
 
   const ShubhMuhurthPreviewWidget({
@@ -18,42 +34,42 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
   });
 
   // =========================
-  // 🔥 ICONS
+  // ICONS — same mapping as before, just rendered smaller/monochrome now.
   // =========================
 
   IconData _getIcon(String type) {
     switch (type) {
       case 'marriage':
-        return Icons.favorite;
+        return Icons.favorite_rounded;
 
       case 'grah_pravesh':
-        return Icons.home;
+        return Icons.home_rounded;
 
       case 'vehicle':
-        return Icons.directions_car;
+        return Icons.directions_car_rounded;
 
       case 'naamkaran':
-        return Icons.child_care;
+        return Icons.child_care_rounded;
 
       case 'gold':
-        return Icons.workspace_premium;
+        return Icons.workspace_premium_rounded;
 
       case 'travel':
-        return Icons.flight_takeoff;
+        return Icons.flight_takeoff_rounded;
 
       case 'property':
-        return Icons.house;
+        return Icons.house_rounded;
 
       case 'childbirth':
-        return Icons.pregnant_woman;
+        return Icons.pregnant_woman_rounded;
 
       default:
-        return Icons.auto_awesome;
+        return Icons.auto_awesome_rounded;
     }
   }
 
   // =========================
-  // 🔥 TYPE MAPPING
+  // TYPE MAPPING — unchanged.
   // =========================
 
   String _getType(String event) {
@@ -100,167 +116,145 @@ class ShubhMuhurthPreviewWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context)!;
+    final isHindi = AppLocalizations.of(
+      context,
+    )!.localeName.startsWith('hi');
 
-    const jyotishashaGradient = LinearGradient(
-      colors: [Color(0xFFFF9933), Color(0xFF8E2DE2)],
-      begin: Alignment.centerLeft,
-      end: Alignment.centerRight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _buildHeading(isHindi),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: muhurthList.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.0,
+          ),
+          itemBuilder: (context, index) {
+            final item = muhurthList[index];
+
+            final event = item['event_hi']?.isNotEmpty == true
+                ? item['event_hi']!
+                : (item['event'] ?? '');
+
+            final type = _getType(event);
+            final icon = _getIcon(type);
+
+            return _CategoryCard(
+              icon: icon,
+              label: event,
+              onTap: () => onTapType?.call(type),
+            );
+          },
+        ),
+        const SizedBox(height: 14),
+        InkWell(
+          onTap: onSeeMore,
+          child: Text(
+            isHindi
+                ? 'सभी आगामी मुहूर्त देखें →'
+                : 'View All Upcoming Muhurth →',
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B21A8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Centered heading with small purple divider lines on both sides — same
+  /// treatment as "Current Timing", "Today's Essentials", and "Current
+  /// Planetary Influence" (F6.6/F6.7).
+  Widget _buildHeading(bool isHindi) {
+    Widget divider() => Container(
+      width: 24,
+      height: 1,
+      color: const Color(0xFF6B21A8).withValues(alpha: 0.3),
     );
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          /// 🔥 Heading
-          ShaderMask(
-            shaderCallback: (bounds) => jyotishashaGradient.createShader(
-              Rect.fromLTWH(0, 0, bounds.width, bounds.height),
-            ),
-            child: Text(
-              t.shubhUpcomingTitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        divider(),
+        const SizedBox(width: 10),
+        Text(
+          isHindi ? 'शुभ मुहूर्त' : 'Shubh Muhurta',
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF1F1B2E),
           ),
+        ),
+        const SizedBox(width: 10),
+        divider(),
+      ],
+    );
+  }
+}
 
-          const SizedBox(height: 18),
+/// One compact category card — white background, 18dp radius, 1dp Soft
+/// Lavender border, subtle shadow: the exact same card language already
+/// used by Today's Essentials and the Current Planetary Influence card.
+/// No gradients, no coloured backgrounds, no oversized icons.
+class _CategoryCard extends StatelessWidget {
+  const _CategoryCard({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
-          /// 🔥 CAPSULE GRID
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: muhurthList.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.72,
-            ),
-            itemBuilder: (context, index) {
-              final item = muhurthList[index];
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-              final event = item['event_hi']?.isNotEmpty == true
-                  ? item['event_hi']!
-                  : (item['event'] ?? '');
-
-              final type = _getType(event);
-
-              final icon = _getIcon(type);
-
-              return GestureDetector(
-                onTap: () {
-                  onTapType?.call(type);
-                },
-
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFFF4EEFF), Color(0xFFE5D9FF)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-
-                    borderRadius: BorderRadius.circular(18),
-
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black12,
-                        blurRadius: 5,
-                        offset: Offset(1, 2),
-                      ),
-                    ],
-                  ),
-
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 10,
-                  ),
-
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      /// 🔥 ICON
-                      Icon(icon, size: 28, color: const Color(0xFF6D28D9)),
-
-                      const SizedBox(height: 8),
-
-                      /// 🔥 TITLE
-                      Text(
-                        event,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF3A0CA3),
-                          height: 1.15,
-                        ),
-                      ),
-                    ],
-                  ),
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE4D9FA)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 20, color: const Color(0xFF6B21A8)),
+              const SizedBox(height: 6),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F1B2E),
                 ),
-              );
-            },
-          ),
-
-          const SizedBox(height: 18),
-
-          /// 🔥 SEE MORE
-          GestureDetector(
-            onTap: onSeeMore,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
-
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF7C3AED), Color(0xFF5B21B6)],
-                ),
-
-                borderRadius: BorderRadius.circular(14),
-
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7C3AED).withValues(alpha: 0.26),
-
-                    blurRadius: 14,
-                    spreadRadius: 1,
-                  ),
-                ],
               ),
-
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.calendar_month_rounded,
-                    color: Colors.white,
-                    size: 18,
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  Text(
-                    t.viewFullMuhurthCalendar,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

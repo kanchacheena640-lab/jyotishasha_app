@@ -1,14 +1,26 @@
 // lib/features/reports/pages/report_payment_page.dart
 
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:provider/provider.dart';
 
-import 'package:jyotishasha_app/services/report_service.dart';
+import 'package:jyotishasha_app/core/models/love/love_contracts.dart';
+import 'package:jyotishasha_app/core/models/profile/birth_details.dart';
+import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
+import 'package:jyotishasha_app/core/state/report_purchase_provider.dart';
 import 'package:jyotishasha_app/features/reports/pages/report_success_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+/// Report Purchase Lifecycle Architecture (Bucket A): this page is now
+/// pure UI. All Google Play billing -- listening, backend confirmation,
+/// completePurchase()/consumePurchase(), and crash/restart recovery --
+/// lives in [ReportPurchaseProvider] (registered `lazy: false` in
+/// main.dart, so it's already listening before this page ever exists).
+/// This page only: (1) collects the report request shape from
+/// [formData]/[selectedReport], (2) tells the provider to start a
+/// purchase, and (3) reacts to the provider's state to show progress,
+/// errors, and the success screen -- the exact same relationship
+/// `SubscriptionPage` already has with `SubscriptionProvider`.
 class ReportPaymentPage extends StatefulWidget {
   final Map<String, dynamic> selectedReport;
   final Map<String, dynamic> formData;
@@ -24,21 +36,17 @@ class ReportPaymentPage extends StatefulWidget {
 }
 
 class _ReportPaymentPageState extends State<ReportPaymentPage> {
-  // 🔒 MUST match Play Console product ID
-  static const String _productId = "reports51";
-
-  final InAppPurchase _iap = InAppPurchase.instance;
-  StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
-
-  bool _isProcessing = false;
-  bool _hasTriggeredPurchase = false;
-  bool _reportTriggered = false;
-
   int? _backendUserId;
 
-  // --------------------------------------------------
-  // LOAD BACKEND USER ID (MANDATORY)
-  // --------------------------------------------------
+  /// De-duplication markers, matching the pattern already used by
+  /// `SubscriptionPage` (`_lastShownPurchaseError`) -- a provider
+  /// rebuild must never re-show an already-handled outcome, and a
+  /// success that happened while this page wasn't even mounted (app-
+  /// restart recovery, per Requirement 5) must never be retroactively
+  /// shown here either.
+  int _lastHandledSuccessCount = 0;
+  String? _lastShownError;
+
   Future<int?> _getBackendUserId() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
@@ -55,16 +63,15 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
   @override
   void initState() {
     super.initState();
-
     _initUser();
 
-    _purchaseSub = _iap.purchaseStream.listen(
-      _onPurchaseUpdates,
-      onError: (_) {
-        _endProcessing();
-        _showSnack("Payment error. Please try again.");
-      },
-    );
+    final provider = context.read<ReportPurchaseProvider>();
+    // This page may mount partway through an already-recovering purchase
+    // (e.g. the provider is mid-retry from a previous crash) -- baseline
+    // both markers to the provider's CURRENT counters so only outcomes
+    // that happen from this point on are shown here.
+    _lastHandledSuccessCount = provider.successCount;
+    provider.addListener(_onProviderChanged);
   }
 
   Future<void> _initUser() async {
@@ -73,210 +80,144 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
 
   @override
   void dispose() {
-    _purchaseSub?.cancel();
+    context.read<ReportPurchaseProvider>().removeListener(_onProviderChanged);
     super.dispose();
   }
 
-  // --------------------------------------------------
-  // START GOOGLE PLAY PAYMENT
-  // --------------------------------------------------
+  void _onProviderChanged() {
+    if (!mounted) return;
+    final provider = context.read<ReportPurchaseProvider>();
+
+    if (provider.successCount != _lastHandledSuccessCount) {
+      _lastHandledSuccessCount = provider.successCount;
+      _lastShownError = null;
+
+      final isRelationship = provider.lastSuccessWasRelationship == true;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReportSuccessPage(
+            email: isRelationship ? "" : widget.formData["email"].toString(),
+            reportTitle: isRelationship
+                ? "Relationship Future Report"
+                : widget.selectedReport["title"]?.toString() ?? "",
+          ),
+        ),
+      );
+      return;
+    }
+
+    final error = provider.errorMessage;
+    if (error != null && error != _lastShownError && !provider.isProcessing) {
+      _lastShownError = error;
+      _showSnack(_errorText(error));
+    }
+  }
+
+  String _errorText(String code) {
+    switch (code) {
+      case "cancelled":
+        return "Payment cancelled.";
+      case "billing_unavailable":
+        return "Google Play Billing not available.";
+      case "product_not_found":
+        return "Product not available. Please try again.";
+      case "report_failed":
+        return "Payment received but report failed. Tap Retry.";
+      case "unknown_pending_purchase":
+        return "We found a pending purchase we couldn't identify. Please contact support.";
+      default:
+        return "Payment error. Please try again.";
+    }
+  }
+
+  String _normalizeDob(dynamic dob) {
+    if (dob == null) return "";
+    final s = dob.toString().trim();
+
+    if (s.contains(" ")) {
+      return s.split(" ").first;
+    }
+
+    return s;
+  }
+
   Future<void> _startGooglePayment() async {
-    if (_isProcessing) return;
+    final provider = context.read<ReportPurchaseProvider>();
+    if (provider.isProcessing) return;
+
+    if (widget.selectedReport["id"] == "relationship_future_report") {
+      final love = widget.formData["love_payload"];
+      if (love == null) {
+        _showSnack("Invalid relationship data.");
+        return;
+      }
+      final loveMap = Map<String, dynamic>.from(love as Map);
+      final partner = LovePersonInput.fromJson(
+        Map<String, dynamic>.from(loveMap["partner"] as Map),
+      );
+
+      await provider.purchaseReport(
+        request: ReportGenerationRequest(
+          name: loveMap["user"]["name"]?.toString(),
+          email: loveMap["user"]["email"]?.toString() ?? "",
+          phone: loveMap["user"]["phone"]?.toString() ?? "",
+          product: "relationship_future_report",
+          birthDetails: BirthDetails(
+            dateOfBirth: loveMap["user"]["dob"]?.toString(),
+            timeOfBirth: loveMap["user"]["tob"]?.toString(),
+            placeOfBirth: loveMap["user"]["pob"]?.toString(),
+            latitude: (loveMap["user"]["lat"] as num?)?.toDouble(),
+            longitude: (loveMap["user"]["lng"] as num?)?.toDouble(),
+          ),
+          language: loveMap["language"]?.toString(),
+        ),
+        isRelationship: true,
+        boyIsUser: loveMap["boy_is_user"] as bool?,
+        partner: partner,
+      );
+      return;
+    }
 
     if (_backendUserId == null) {
       _showSnack("User not ready. Please try again.");
       return;
     }
 
-    setState(() {
-      _isProcessing = true;
-      _hasTriggeredPurchase = true;
-    });
-
-    final available = await _iap.isAvailable();
-    if (!available) {
-      _endProcessing();
-      _showSnack("Google Play Billing not available.");
-      return;
-    }
-
-    final response = await _iap.queryProductDetails({_productId});
-    if (response.error != null || response.productDetails.isEmpty) {
-      _endProcessing();
-      _showSnack("Product not available. Please try again.");
-      return;
-    }
-
-    final product = response.productDetails.first;
-    final param = PurchaseParam(productDetails: product);
-
-    // ✅ CONSUMABLE (important)
-    _iap.buyConsumable(purchaseParam: param, autoConsume: true);
-  }
-
-  // --------------------------------------------------
-  // NORMALIZE DOB → yyyy-mm-dd (MANDATORY FOR BACKEND)
-  // --------------------------------------------------
-  String _normalizeDob(dynamic dob) {
-    if (dob == null) return "";
-    final s = dob.toString().trim();
-
-    // Case: DateTime.toString() → "1985-03-31 00:00:00.000"
-    if (s.contains(" ")) {
-      return s.split(" ").first; // yyyy-mm-dd
-    }
-
-    // Case: already yyyy-mm-dd
-    return s;
-  }
-
-  // --------------------------------------------------
-  // PURCHASE STREAM HANDLER
-  // --------------------------------------------------
-  Future<void> _onPurchaseUpdates(List<PurchaseDetails> purchases) async {
-    if (!_isProcessing || !_hasTriggeredPurchase) return;
-
-    for (final p in purchases) {
-      if (p.productID != _productId) continue;
-
-      if (p.status == PurchaseStatus.error) {
-        _endProcessing();
-        _showSnack("Payment failed or cancelled.");
-        return;
-      }
-
-      if (p.status == PurchaseStatus.purchased) {
-        if (_reportTriggered) return;
-        _reportTriggered = true;
-
-        try {
-          // 🔥 RELATIONSHIP FUTURE REPORT (WEBHOOK BASED)
-          if (widget.selectedReport["id"] == "relationship_future_report") {
-            if (p.pendingCompletePurchase) {
-              await _iap.completePurchase(p);
-            }
-
-            if (widget.formData["love_payload"] == null) {
-              _endProcessing();
-              _showSnack("Invalid relationship data.");
-              return;
-            }
-
-            final love = widget.formData["love_payload"];
-
-            final ok = await ReportService().sendReportRequest(
-              name: love["user"]["name"],
-              email: love["user"]["email"] ?? "",
-              birthDetails: {
-                "product": "relationship_future_report",
-                "language": love["language"],
-
-                // 👤 user (same-level fields)
-                "dob": love["user"]["dob"],
-                "tob": love["user"]["tob"],
-                "pob": love["user"]["pob"],
-                "latitude": love["user"]["lat"],
-                "longitude": love["user"]["lng"],
-                "phone": love["user"]["phone"] ?? "",
-
-                // ❤️ relationship-specific
-                "boy_is_user": love["boy_is_user"],
-                "partner": love["partner"],
-              },
-              purchaseToken: p.verificationData.serverVerificationData,
-            );
-
-            _endProcessing();
-            if (!mounted) return;
-
-            if (ok) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const ReportSuccessPage(
-                    email: "",
-                    reportTitle: "Relationship Future Report",
-                  ),
-                ),
-              );
-            } else {
-              _showSnack("Payment received but report failed.");
-            }
-            return; // ⛔ IMPORTANT
-          }
-          if (p.pendingCompletePurchase) {
-            await _iap.completePurchase(p);
-          }
-
-          final ok = await ReportService().sendReportRequest(
-            name: widget.formData["name"].toString(),
-            email: widget.formData["email"].toString(),
-            birthDetails: {
-              "user_id": _backendUserId,
-
-              "dob": _normalizeDob(widget.formData["dob"]),
-              "tob": widget.formData["tob"],
-              "pob": widget.formData["pob"],
-
-              // ✅ EXACT keys backend expects
-              "latitude": widget.formData["lat"],
-              "longitude": widget.formData["lng"],
-
-              // ✅ optional but website sends it
-              "phone": widget.formData["phone"] ?? "",
-
-              "language": widget.formData["language"] ?? "en",
-
-              // ✅ REAL report slug (prompt selector)
-              "product": widget.selectedReport["id"],
-            },
-            purchaseToken: p.verificationData.serverVerificationData,
-          );
-
-          _endProcessing();
-          if (!mounted) return;
-
-          if (ok) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ReportSuccessPage(
-                  email: widget.formData["email"].toString(),
-                  reportTitle: widget.selectedReport["title"]?.toString() ?? "",
-                ),
-              ),
-            );
-          } else {
-            _showSnack("Payment received but report failed.");
-          }
-        } catch (_) {
-          _endProcessing();
-          _showSnack("Payment received but processing failed.");
-        }
-        return;
-      }
-    }
-  }
-
-  void _endProcessing() {
-    if (!mounted) return;
-    setState(() {
-      _isProcessing = false;
-      _hasTriggeredPurchase = false;
-    });
+    await provider.purchaseReport(
+      request: ReportGenerationRequest(
+        name: widget.formData["name"].toString(),
+        email: widget.formData["email"].toString(),
+        phone: widget.formData["phone"]?.toString() ?? "",
+        product: widget.selectedReport["id"]?.toString(),
+        birthDetails: BirthDetails(
+          dateOfBirth: _normalizeDob(widget.formData["dob"]),
+          timeOfBirth: widget.formData["tob"]?.toString(),
+          placeOfBirth: widget.formData["pob"]?.toString(),
+          latitude: (widget.formData["lat"] as num?)?.toDouble(),
+          longitude: (widget.formData["lng"] as num?)?.toDouble(),
+        ),
+        userId: _backendUserId,
+        language: widget.formData["language"]?.toString() ?? "en",
+      ),
+    );
   }
 
   void _showSnack(String msg) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
   @override
   Widget build(BuildContext context) {
     final report = widget.selectedReport;
     final form = widget.formData;
+    final provider = context.watch<ReportPurchaseProvider>();
+
+    final isProcessing = provider.isProcessing;
+    final canRetry =
+        !isProcessing &&
+        provider.errorMessage == "report_failed";
 
     return Scaffold(
       appBar: AppBar(title: const Text("Confirm & Pay")),
@@ -285,9 +226,17 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
         child: SizedBox(
           height: 56,
           child: ElevatedButton(
-            onPressed: _isProcessing ? null : _startGooglePayment,
+            onPressed: isProcessing
+                ? null
+                : (canRetry
+                      ? () => context
+                            .read<ReportPurchaseProvider>()
+                            .retryPendingReportPurchase()
+                      : _startGooglePayment),
             child: Text(
-              _isProcessing ? "Processing..." : "Pay with Google Play",
+              isProcessing
+                  ? "Processing..."
+                  : (canRetry ? "Retry" : "Pay with Google Play"),
             ),
           ),
         ),
@@ -307,16 +256,6 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
             Text("POB: ${form["pob"]}"),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _summaryLine(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Text(
-        "$label: ${value ?? "-"}",
-        style: const TextStyle(fontSize: 14),
       ),
     );
   }

@@ -1,17 +1,31 @@
-import 'dart:convert';
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import '../models/panchang/panchang_contracts.dart';
+import '../repositories/implementations/http_panchang_repository.dart';
+import '../repositories/panchang_repository.dart';
+
 class PanchangProvider extends ChangeNotifier {
+  PanchangProvider({PanchangRepository? panchangRepository})
+    : _panchangRepository = panchangRepository ?? HttpPanchangRepository() {
+    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      notifyListeners();
+    });
+  }
+
+  final PanchangRepository _panchangRepository;
   Timer? _clockTimer;
 
   bool isLoading = false;
   String? errorMessage;
 
-  Map<String, dynamic>? fullPanchang; // ← purana naam
+  Map<String, dynamic>? fullPanchang;
   Map<String, dynamic>? nextPanchang;
+
+  Map<String, dynamic>? get selectedDate => fullPanchang;
+  Map<String, dynamic>? get nextDate => nextPanchang;
 
   String? lastFetchDate;
   String? lastLang;
@@ -21,15 +35,6 @@ class PanchangProvider extends ChangeNotifier {
 
   final int cacheResetHour = 4;
 
-  PanchangProvider() {
-    _clockTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      notifyListeners();
-    });
-  }
-
-  // =============================================================
-  // LOAD
-  // =============================================================
   Future<void> loadPanchang({
     double? lat,
     double? lng,
@@ -56,9 +61,6 @@ class PanchangProvider extends ChangeNotifier {
     await fetchPanchang(lat: lat ?? savedLat, lng: lng ?? savedLng, lang: lang);
   }
 
-  // =============================================================
-  // FETCH
-  // =============================================================
   Future<void> fetchPanchang({
     required double lat,
     required double lng,
@@ -71,43 +73,36 @@ class PanchangProvider extends ChangeNotifier {
     savedLat = lat;
     savedLng = lng;
 
-    const String endpoint =
-        "https://jyotishasha-backend.onrender.com/api/panchang";
-
     final String today = DateFormat('yyyy-MM-dd').format(DateTime.now());
 
-    final body = {
-      "latitude": lat,
-      "longitude": lng,
-      "date": today,
-      "language": lang,
-    };
-
     try {
-      final res = await http.post(
-        Uri.parse(endpoint),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
+      final response = await _panchangRepository.getPanchang(
+        PanchangRequest(
+          latitude: lat,
+          longitude: lng,
+          date: today,
+          language: lang,
+        ),
       );
 
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(res.body);
+      fullPanchang = _toRawMap(response.selectedDate);
+      nextPanchang = _toRawMap(response.nextDate);
 
-        fullPanchang = decoded["selected_date"] as Map<String, dynamic>?;
-        nextPanchang = decoded["next_date"] as Map<String, dynamic>?;
-
-        if (fullPanchang != null) {
-          lastFetchDate = today;
-          lastLang = lang;
-          errorMessage = null;
-        } else {
-          errorMessage = "Invalid panchang data";
-        }
+      if (fullPanchang != null) {
+        lastFetchDate = today;
+        lastLang = lang;
+        errorMessage = null;
       } else {
-        errorMessage = "Server error: ${res.statusCode}";
+        errorMessage = "Invalid panchang data";
       }
     } catch (e) {
-      errorMessage = "Network error: $e";
+      final message = e.toString();
+      final statusMatch = RegExp(r'Panchang API error (\d+)').firstMatch(message);
+      if (statusMatch != null) {
+        errorMessage = "Server error: ${statusMatch.group(1)}";
+      } else {
+        errorMessage = "Network error: $e";
+      }
     }
 
     isLoading = false;
@@ -124,9 +119,6 @@ class PanchangProvider extends ChangeNotifier {
     return now.isAfter(resetTime) && last.isBefore(today);
   }
 
-  // =============================================================
-  // GETTERS (Purane naam ke hisaab se)
-  // =============================================================
   String get sunrise => fullPanchang?["sunrise"]?.toString() ?? "--";
   String get sunset => fullPanchang?["sunset"]?.toString() ?? "--";
 
@@ -168,7 +160,6 @@ class PanchangProvider extends ChangeNotifier {
   List<dynamic> get chaughadiyaNight =>
       fullPanchang?["chaughadiya"]?["night"] ?? [];
 
-  // Current Chaughadiya
   Map<String, dynamic>? getCurrentChaughadiya() {
     if (fullPanchang == null) return null;
 
@@ -204,6 +195,12 @@ class PanchangProvider extends ChangeNotifier {
     } catch (_) {
       return 0;
     }
+  }
+
+  Map<String, dynamic>? _toRawMap(PanchangDay? day) {
+    final json = day?.toJson();
+    if (json == null) return null;
+    return Map<String, dynamic>.from(json);
   }
 
   @override

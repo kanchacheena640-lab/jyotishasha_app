@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/features/profile/add_profile_page.dart';
 import 'package:jyotishasha_app/features/profile/edit_profile_page.dart';
@@ -35,6 +36,15 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     await Future.delayed(const Duration(milliseconds: 600));
+
+    // Token cleanup happens while the user is still identified, before
+    // signing out — unsubscribes from app-wide topics, deletes the
+    // on-device FCM token, and clears the local sync marker so the next
+    // login performs a fresh synchronization instead of possibly skipping
+    // it as "unchanged".
+    try {
+      await fcmTokenManager.clearOnLogout();
+    } catch (_) {}
 
     try {
       await GoogleSignIn().signOut();

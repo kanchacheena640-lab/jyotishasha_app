@@ -4,7 +4,7 @@
 
 ESR Version: 1.0
 
-Last Updated: 2026-06-29
+Last Updated: 2026-07-03
 
 ---
 
@@ -45,16 +45,26 @@ docs/esr/05_esr_tracker.md
 
 Current Phase:
 
-ESR-003
+ESR-031
 
 Current Status:
 
 * ESR-000 : COMPLETE
 * ESR-001 : COMPLETE
 * ESR-002 : COMPLETE
-* ESR-003 : IN PROGRESS
+* ESR-003 : COMPLETE
+* ESR-010 : COMPLETE
+* ESR-013 : DEFERRED
+* ESR-014 : COMPLETE
+* ESR-015 : COMPLETE
+* ESR-018 : COMPLETE
+* ESR-022 : NO MIGRATION REQUIRED
+* ESR-023 : COMPLETE
+* ESR-025 : NO MIGRATION REQUIRED
+* ESR-030 : COMPLETE
+* ESR-031 : COMPLETE
 
-Completed Slices:
+Historical ESR-003 Slice Snapshot:
 
 * ✅ Slice-1 — Network Boundary Audit
 * ✅ Slice-2 — Repository Interfaces
@@ -62,11 +72,13 @@ Completed Slices:
 * ✅ Slice-4 Part-1 — ProfileService
 * ✅ Slice-4 Part-2 — AuthService
 
-Next Task:
+Current Focus:
 
-ESR-003 Slice-4 Part-3
+Final Git Commit
 
-UserBootstrapService
+Remaining Work:
+
+* Final Git Commit
 
 ---
 
@@ -210,7 +222,7 @@ When resuming this project:
 
 ---
 
-## Last Verified State
+## Historical Record - Last Verified State
 
 ESR-003 Slice-4 Part-2
 
@@ -301,7 +313,7 @@ The phase is considered COMPLETE only when all of the following are satisfied:
 
 ---
 
-## Current Progress Snapshot
+## Historical Record - Current Progress Snapshot
 
 ESR-003
 
@@ -365,6 +377,72 @@ There is currently no standalone UserService in the production codebase.
 User persistence responsibilities are distributed across AuthService, BackendAuthService, UserBootstrapService, and direct Firestore access.
 
 Until a future approved ESR phase explicitly consolidates those responsibilities, UserBootstrapService remains an independent bootstrap boundary and must not be renamed or treated as UserService.
+
+---
+
+## Appended Reconciliation — 2026-07-03
+
+Historical archive record. The authoritative current state is reflected in `## Architecture Status` above.
+
+Status Update
+
+* Current Phase: ESR-031
+* ESR-003: COMPLETE
+* ESR-013: DEFERRED
+* ESR-030: COMPLETE
+* ESR-031: COMPLETE
+
+ESR-030 Completion
+
+* ESR-030 COMPLETE
+* ProfileRepositoryAdapter removed from production runtime
+* FirestoreProfileRepository is now the production runtime owner
+* No public contract changes
+* No ProfileProvider changes
+* No runtime behavior changes
+* Migration Analyzer: PASS
+* Characterization: PASS
+* flutter run: Not Assessable (environment)
+* Manual Verification: Not Assessable (environment)
+
+Final Reconciliation Recorded At The Time
+
+* Completed implementation areas: Profile, Daily Horoscope, Monthly Horoscope, Yearly Horoscope, Personalized Horoscope, Panchang, Notification, Reports
+* No Migration Required: Billing, Checkout, Cross Feature Integration
+* Deferred: Kundali
+* Remaining work only:
+  * Remove unused ProfileRepositoryAdapter source file if no production references remain
+  * Global Pre-Commit Validation
+  * Final Git Commit
+
+---
+
+## Appended Validation Update — 2026-07-03
+
+Historical archive record. The authoritative current state is reflected in `## Architecture Status` above.
+
+Latest ESR-030 / ESR-031 Validation
+
+* Migration Analyzer: PASS
+* Characterization: PASS
+* flutter run: PASS
+* Manual Verification: PASS
+
+Manual Verification Evidence
+
+* Login: PASS
+* Dashboard: PASS
+* Profile CRUD: PASS
+* Notifications: PASS
+* Reports Purchase: PASS
+* Love Report: PASS
+* Horoscope: PASS
+* Panchang: PASS
+
+Closure Status
+
+* ESR-030 validation record superseded by completed production verification
+* ESR-031 final validation is now recorded as PASS for analyzer, characterization, flutter run, and manual verification
 
 ---
 

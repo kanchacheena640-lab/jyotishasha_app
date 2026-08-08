@@ -1,12 +1,10 @@
 // lib/features/reports/pages/report_catalog_page.dart
 
-import 'dart:convert';
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/repositories/implementations/asset_report_repository.dart';
+import 'package:jyotishasha_app/core/repositories/report_repository.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
@@ -23,6 +21,8 @@ class ReportCatalogPage extends StatefulWidget {
 }
 
 class _ReportCatalogPageState extends State<ReportCatalogPage> {
+  final ReportRepository _reportRepository = AssetReportRepository();
+
   List<dynamic> reports = [];
   bool loading = true;
 
@@ -42,40 +42,16 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
     try {
       setState(() => loading = true);
 
-      final enData = await rootBundle.loadString("assets/data/reports.json");
-      final List<dynamic> enList = jsonDecode(enData);
-
-      try {
-        final hiData = await rootBundle.loadString(
-          "assets/data/reports_hi.json",
-        );
-        final List<dynamic> hiList = jsonDecode(hiData);
-
-        final len = math.min(enList.length, hiList.length);
-
-        for (int i = 0; i < len; i++) {
-          final en = enList[i] as Map<String, dynamic>;
-          final hi = hiList[i] as Map<String, dynamic>;
-
-          if (hi["title_hi"] != null) en["title_hi"] = hi["title_hi"];
-          if (hi["description_hi"] != null) {
-            en["description_hi"] = hi["description_hi"];
-          }
-          if (hi["fullDescription_hi"] != null) {
-            en["fullDescription_hi"] = hi["fullDescription_hi"];
-          }
-          if (hi["category_hi"] != null) en["category_hi"] = hi["category_hi"];
-        }
-      } catch (_) {
-        debugPrint("⚠️ reports_hi.json missing");
-      }
+      final lang = context.read<LanguageProvider>().currentLang;
+      final catalog = await _reportRepository.getCatalog(language: lang);
+      final mapped = catalog.map((item) => item.toJson()).toList(growable: false);
 
       setState(() {
-        reports = enList;
+        reports = mapped;
         loading = false;
       });
     } catch (e) {
-      debugPrint("❌ ERROR loading reports: $e");
+      debugPrint("ERROR loading reports: $e");
       setState(() => loading = false);
     }
   }
@@ -416,7 +392,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                   rootNavigator: true,
                                 ).pop();
 
-                                // 🔥 SPECIAL CASE: Relationship Future Report
+                                // SPECIAL CASE: Relationship Future Report
                                 if (r["id"] == "relationship_future_report") {
                                   WidgetsBinding.instance.addPostFrameCallback((
                                     _,
@@ -432,7 +408,7 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                   return;
                                 }
 
-                                // ✅ ALL OTHER REPORTS (unchanged flow)
+                                // ALL OTHER REPORTS (unchanged flow)
                                 final profile =
                                     context
                                         .read<ProfileProvider>()

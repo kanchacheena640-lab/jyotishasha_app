@@ -1,6 +1,7 @@
 // lib/core/state/kundali_provider.dart
 
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -81,6 +82,16 @@ class KundaliProvider with ChangeNotifier {
     notifyListeners();
 
     try {
+      // Bucket A compatibility fix: the backend now requires a verified
+      // Firebase ID token (Authorization: Bearer <id_token>) and derives
+      // firebase_uid from it instead of trusting the body — this request
+      // body never sent firebase_uid anyway, so it's unchanged below.
+      final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+      if (idToken == null) {
+        _errorMessage = "Not signed in.";
+        return null;
+      }
+
       final payload = {
         "name": name,
         "dob": dob,
@@ -93,7 +104,10 @@ class KundaliProvider with ChangeNotifier {
 
       final res = await http.post(
         Uri.parse(bootstrapUrl),
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $idToken",
+        },
         body: jsonEncode(payload),
       );
 

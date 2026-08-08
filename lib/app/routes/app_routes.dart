@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 import 'package:jyotishasha_app/features/astrology/astrology_tool_detail_page.dart';
+import 'package:jyotishasha_app/features/events/event_dispatcher_page.dart';
+import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 
 // 🌅 Entry Screens
 import '../../features/splash/splash_page.dart';
@@ -13,6 +15,7 @@ import '../../features/birth/birth_detail_page.dart';
 // 🏠 Main Sections
 import '../../features/dashboard/dashboard_page.dart';
 import '../../features/astrology/astrology_page.dart';
+import '../../features/kundali/kundali_overview_page.dart';
 import '../../features/reports/pages/report_catalog_page.dart';
 import '../../features/asknow/asknow_chat_page.dart';
 import '../../features/profile/profile_page.dart';
@@ -73,6 +76,13 @@ final GoRouter appRouter = GoRouter(
     // 🏠 Main sections
     GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
     GoRoute(path: '/astrology', builder: (_, __) => const AstrologyPage()),
+    // F8.1 — temporary entry point for the new Kundali Overview foundation
+    // page. AstrologyPage and Home are untouched; this route is purely
+    // additive and does not change any existing navigation flow.
+    GoRoute(
+      path: '/kundali/overview',
+      builder: (_, __) => const KundaliOverviewPage(),
+    ),
     GoRoute(path: '/reports', builder: (_, __) => const ReportCatalogPage()),
     GoRoute(path: '/asknow', builder: (_, __) => const AskNowChatPage()),
     GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
@@ -94,6 +104,19 @@ final GoRouter appRouter = GoRouter(
           title: args['title'] ?? 'Detail',
           data: args['data'],
           kundaliData: args['kundali'] ?? {},
+        );
+      },
+    ),
+
+    // 🔔 Generic notification-tap landing page (Notification Platform V2)
+    GoRoute(
+      path: '/event',
+      builder: (context, state) {
+        final extra = state.extra;
+        return EventDispatcherPage(
+          destination: extra is NotificationDispatchDestination
+              ? extra
+              : null,
         );
       },
     ),

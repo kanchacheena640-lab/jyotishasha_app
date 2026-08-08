@@ -1,51 +1,57 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:jyotishasha_app/core/models/horoscope/horoscope_contracts.dart';
+import 'package:jyotishasha_app/core/repositories/horoscope_repository.dart';
+import 'package:jyotishasha_app/core/repositories/implementations/http_horoscope_repository.dart';
 
 class PersonalizedHoroscopeService {
-  static const String baseUrl = "https://jyotishasha-backend.onrender.com";
+  PersonalizedHoroscopeService({HoroscopeRepository? horoscopeRepository})
+    : _horoscopeRepository =
+          horoscopeRepository ?? HttpHoroscopeRepository();
+
+  final HoroscopeRepository _horoscopeRepository;
 
   Future<Map<String, dynamic>> fetchDaily(String profileId) async {
-    final url = Uri.parse(
-      "$baseUrl/api/personalized/daily?profile_id=$profileId",
+    return _fetchProfileHoroscope(
+      profileId: profileId,
+      fetch: _horoscopeRepository.getPersonalizedDaily,
+      failureMessage: "Failed to load daily horoscope",
     );
-
-    final response = await http.get(url);
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && data["ok"] == true) {
-      return data;
-    } else {
-      throw Exception("Failed to load daily horoscope");
-    }
   }
 
   Future<Map<String, dynamic>> fetchTomorrow(String profileId) async {
-    final url = Uri.parse(
-      "$baseUrl/api/personalized/tomorrow?profile_id=$profileId",
+    return _fetchProfileHoroscope(
+      profileId: profileId,
+      fetch: _horoscopeRepository.getPersonalizedTomorrow,
+      failureMessage: "Failed to load tomorrow horoscope",
     );
-
-    final response = await http.get(url);
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && data["ok"] == true) {
-      return data;
-    } else {
-      throw Exception("Failed to load tomorrow horoscope");
-    }
   }
 
   Future<Map<String, dynamic>> fetchWeekly(String profileId) async {
-    final url = Uri.parse(
-      "$baseUrl/api/personalized/weekly?profile_id=$profileId",
+    return _fetchProfileHoroscope(
+      profileId: profileId,
+      fetch: _horoscopeRepository.getPersonalizedWeekly,
+      failureMessage: "Failed to load weekly horoscope",
     );
+  }
 
-    final response = await http.get(url);
-    final data = jsonDecode(response.body);
+  Future<Map<String, dynamic>> _fetchProfileHoroscope({
+    required String profileId,
+    required Future<PersonalizedHoroscopeResponse> Function(int profileId)
+    fetch,
+    required String failureMessage,
+  }) async {
+    final parsedProfileId = int.tryParse(profileId);
+    if (parsedProfileId == null) {
+      throw Exception(failureMessage);
+    }
 
-    if (response.statusCode == 200 && data["ok"] == true) {
-      return data;
-    } else {
-      throw Exception("Failed to load weekly horoscope");
+    try {
+      final response = await fetch(parsedProfileId);
+      if (response.ok == true) {
+        return response.toJson();
+      }
+      throw Exception(failureMessage);
+    } catch (_) {
+      throw Exception(failureMessage);
     }
   }
 }

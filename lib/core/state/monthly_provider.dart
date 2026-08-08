@@ -1,8 +1,16 @@
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
+
+import '../models/horoscope/horoscope_contracts.dart';
+import '../repositories/horoscope_repository.dart';
+import '../repositories/implementations/http_horoscope_repository.dart';
 
 class MonthlyProvider extends ChangeNotifier {
+  MonthlyProvider({HoroscopeRepository? horoscopeRepository})
+    : _horoscopeRepository =
+          horoscopeRepository ?? HttpHoroscopeRepository();
+
+  final HoroscopeRepository _horoscopeRepository;
+
   bool isLoading = false;
   String? errorMessage;
 
@@ -19,20 +27,6 @@ class MonthlyProvider extends ChangeNotifier {
   String? _lastSign;
   String? _lastLang;
   String? _lastMonth; // yyyy-MM
-
-  Future<Map<String, dynamic>?> _get(String url) async {
-    try {
-      final res = await http.get(Uri.parse(url));
-      if (res.statusCode == 200) {
-        return jsonDecode(res.body) as Map<String, dynamic>;
-      }
-      errorMessage = "Server error ${res.statusCode}";
-      return null;
-    } catch (e) {
-      errorMessage = e.toString();
-      return null;
-    }
-  }
 
   Future<void> fetchMonthly({
     required String sign,
@@ -66,22 +60,32 @@ class MonthlyProvider extends ChangeNotifier {
     errorMessage = null;
     notifyListeners();
 
-    final data = await _get(
-      "https://jyotishasha-backend.onrender.com/api/monthly-horoscope?sign=$s&lang=$l",
-    );
+    try {
+      final data = await _horoscopeRepository.getMonthlyHoroscope(
+        HoroscopeQuery(sign: s, language: l),
+      );
 
-    if (data != null) {
-      title = data["title"]?.toString();
-      theme = data["theme"]?.toString();
-      careerMoney = data["career_money"]?.toString();
-      loveRelationships = data["love_relationships"]?.toString();
-      healthLifestyle = data["health_lifestyle"]?.toString();
-      monthlyAdvice = data["monthly_advice"]?.toString();
-      keyDates = (data["key_dates"] as List?)?.cast<String>();
+      title = data.title?.toString();
+      theme = data.theme?.toString();
+      careerMoney = data.careerMoney?.toString();
+      loveRelationships = data.loveRelationships?.toString();
+      healthLifestyle = data.healthLifestyle?.toString();
+      monthlyAdvice = data.monthlyAdvice?.toString();
+      keyDates = data.keyDates;
 
       _lastSign = s;
       _lastLang = l;
       _lastMonth = m;
+    } catch (e) {
+      final message = e.toString();
+      final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(
+        message,
+      );
+      if (statusMatch != null) {
+        errorMessage = "Server error ${statusMatch.group(1)}";
+      } else {
+        errorMessage = message;
+      }
     }
 
     isLoading = false;

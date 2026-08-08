@@ -1,9 +1,9 @@
 // lib/core/widgets/greeting_header_widget.dart
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:go_router/go_router.dart';
 
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -11,9 +11,9 @@ import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/services/notification_service.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
-import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
-import 'package:jyotishasha_app/features/panchang/panchang_page.dart';
-import '../../features/cards/presentation/cards_page.dart';
+import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
+import 'package:jyotishasha_app/core/state/welcome_gift_provider.dart';
+import 'package:jyotishasha_app/features/welcome_gift/welcome_gift_page.dart';
 
 class GreetingHeaderWidget extends StatefulWidget {
   const GreetingHeaderWidget({super.key});
@@ -35,46 +35,111 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
       final provider = context.read<NotificationProvider>();
       await provider.loadUnreadCount();
     });
+
+    // Welcome Gift — decide the card's visibility (never claimed vs.
+    // already claimed) before the user can interact with anything below.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<WelcomeGiftProvider>().loadStatus();
+    });
   }
 
   String _getGreeting(String lang) {
     return (lang == "hi") ? "नमस्कार" : "Namaskar";
   }
 
-  String _zodiacAsset(String? sign) {
-    if (sign == null || sign.isEmpty) return 'assets/zodiac/leo.webp';
+  static const Map<String, String> _zodiacSlugByKey = {
+    'aries': 'aries',
+    'taurus': 'taurus',
+    'gemini': 'gemini',
+    'cancer': 'cancer',
+    'leo': 'leo',
+    'virgo': 'virgo',
+    'libra': 'libra',
+    'scorpio': 'scorpio',
+    'sagittarius': 'sagittarius',
+    'capricorn': 'capricorn',
+    'aquarius': 'aquarius',
+    'pisces': 'pisces',
+    'मेष': 'aries',
+    'वृषभ': 'taurus',
+    'मिथुन': 'gemini',
+    'कर्क': 'cancer',
+    'सिंह': 'leo',
+    'कन्या': 'virgo',
+    'तुला': 'libra',
+    'वृश्चिक': 'scorpio',
+    'धनु': 'sagittarius',
+    'मकर': 'capricorn',
+    'कुंभ': 'aquarius',
+    'मीन': 'pisces',
+  };
 
-    final map = {
-      'aries': 'aries',
-      'taurus': 'taurus',
-      'gemini': 'gemini',
-      'cancer': 'cancer',
-      'leo': 'leo',
-      'virgo': 'virgo',
-      'libra': 'libra',
-      'scorpio': 'scorpio',
-      'sagittarius': 'sagittarius',
-      'capricorn': 'capricorn',
-      'aquarius': 'aquarius',
-      'pisces': 'pisces',
-      'मेष': 'aries',
-      'वृषभ': 'taurus',
-      'मिथुन': 'gemini',
-      'कर्क': 'cancer',
-      'सिंह': 'leo',
-      'कन्या': 'virgo',
-      'तुला': 'libra',
-      'वृश्चिक': 'scorpio',
-      'धनु': 'sagittarius',
-      'मकर': 'capricorn',
-      'कुंभ': 'aquarius',
-      'मीन': 'pisces',
-    };
+  static const Map<String, String> _zodiacEnglishNames = {
+    'aries': 'Aries',
+    'taurus': 'Taurus',
+    'gemini': 'Gemini',
+    'cancer': 'Cancer',
+    'leo': 'Leo',
+    'virgo': 'Virgo',
+    'libra': 'Libra',
+    'scorpio': 'Scorpio',
+    'sagittarius': 'Sagittarius',
+    'capricorn': 'Capricorn',
+    'aquarius': 'Aquarius',
+    'pisces': 'Pisces',
+  };
 
+  static const Map<String, String> _zodiacHindiNames = {
+    'aries': 'मेष',
+    'taurus': 'वृषभ',
+    'gemini': 'मिथुन',
+    'cancer': 'कर्क',
+    'leo': 'सिंह',
+    'virgo': 'कन्या',
+    'libra': 'तुला',
+    'scorpio': 'वृश्चिक',
+    'sagittarius': 'धनु',
+    'capricorn': 'मकर',
+    'aquarius': 'कुंभ',
+    'pisces': 'मीन',
+  };
+
+  /// F4.1.5 typography polish — the zodiac line now reads "♋ Cancer"
+  /// instead of "You are Cancer,".
+  static const Map<String, String> _zodiacSymbol = {
+    'aries': '♈',
+    'taurus': '♉',
+    'gemini': '♊',
+    'cancer': '♋',
+    'leo': '♌',
+    'virgo': '♍',
+    'libra': '♎',
+    'scorpio': '♏',
+    'sagittarius': '♐',
+    'capricorn': '♑',
+    'aquarius': '♒',
+    'pisces': '♓',
+  };
+
+  /// Normalizes a raw profile sign string (English or Hindi) to a
+  /// canonical slug, used to look up the display name and symbol.
+  String _zodiacSlug(String? sign) {
+    if (sign == null || sign.isEmpty) return 'leo';
     final key = sign.toLowerCase().trim();
-    final slug = map[key] ?? 'leo';
+    return _zodiacSlugByKey[key] ?? 'leo';
+  }
 
-    return 'assets/zodiac/$slug.webp';
+  String _zodiacDisplayName(String? sign, String lang) {
+    final slug = _zodiacSlug(sign);
+    final names = lang == 'hi' ? _zodiacHindiNames : _zodiacEnglishNames;
+    return names[slug] ?? (lang == 'hi' ? _zodiacHindiNames['leo']! : _zodiacEnglishNames['leo']!);
+  }
+
+  /// "Hi Ravi" / "नमस्ते, Ravi" — the name stays in Latin script in Hindi
+  /// too, matching this app's established convention.
+  String _hiGreeting(String lang, String name) {
+    return lang == 'hi' ? 'नमस्ते, $name' : 'Hi $name';
   }
 
   @override
@@ -105,15 +170,16 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(36)),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFCFBFF),
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black12,
-            blurRadius: 15,
-            offset: Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -140,72 +206,180 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
       return first[0].toUpperCase() + first.substring(1).toLowerCase();
     }
 
+    // GreetingHeaderWidget is now a pure header: Container → Top Row →
+    // Greeting Block → END. No secondary content is rendered here.
+    //
+    // `_buildHoroscopeCard` and `_buildQuickActions` used to be rendered
+    // below the top row; `_buildHoroscopeCard` is kept intact (unmodified,
+    // unreferenced) for reuse later, and `_buildQuickActions` was removed
+    // entirely per F4.1.3 "Header Architecture Cleanup".
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        /// 🔹 HEADER ROW
+        /// 🔹 TOP ROW (F4.1.6 "Minimal Premium Header") — no zodiac icon
+        /// at all; greeting starts flush at the card's left padding,
+        /// language chip + bell on the right.
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            /// LEFT SIDE (ICON + TEXT)
             Expanded(
-              child: Row(
-                children: [
-                  _buildZodiacIcon(sign),
-                  const SizedBox(width: 14),
+              child: Text(
+                _hiGreeting(lang, formattedName()),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1F1B2E),
+                  letterSpacing: 0.1,
+                  height: 1.1,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _buildLanguageSwitch(context, lang),
+            const SizedBox(width: 10),
+            _buildNotificationBell(context),
+          ],
+        ),
+        const SizedBox(height: 12),
+        /// 🔹 Zodiac line + Astrology Profile CTA — unchanged content,
+        /// typography, and spacing (see `_buildGreetingBlock`).
+        _buildGreetingBlock(context, lang, sign),
+      ],
+    );
+  }
 
-                  /// 🔥 TEXT BLOCK (RESPONSIVE)
-                  Expanded(
-                    child: Text(
-                      lang == "hi"
-                          ? "नमस्कार ${formattedName()}"
-                          : "Namaskar ${formattedName()}",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1A1A1A),
-                        letterSpacing: 0.2,
-                      ),
+  /// "♋ Cancer" (zodiac symbol + name) → Welcome Gift card (replaces the
+  /// former "Your Astrology Profile" CTA row in this same slot — see
+  /// `_buildWelcomeGiftCard`). "Hi Ravi" now lives in the top row
+  /// alongside the language chip + bell — see `_buildActualContent`.
+  Widget _buildGreetingBlock(BuildContext context, String lang, String? sign) {
+    final zodiac = _zodiacDisplayName(sign, lang);
+    final symbol = _zodiacSymbol[_zodiacSlug(sign)] ?? _zodiacSymbol['leo']!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$symbol $zodiac',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF4C1D95),
+            height: 1.3,
+          ),
+        ),
+        const SizedBox(height: 10),
+        _buildWelcomeGiftCard(context, lang),
+        const SizedBox(height: 6),
+      ],
+    );
+  }
+
+  /// Welcome Gift card — replaces the former "Your Astrology Profile" CTA
+  /// row in this slot. Shown only while `WelcomeGiftProvider.isClaimed`
+  /// is false (and the flag has finished loading); once claimed, this
+  /// renders nothing and never reappears, per spec. Tapping opens the new,
+  /// standalone `WelcomeGiftPage` — no reused screen.
+  Widget _buildWelcomeGiftCard(BuildContext context, String lang) {
+    final gift = context.watch<WelcomeGiftProvider>();
+
+    if (gift.isLoading || gift.isClaimed) return const SizedBox.shrink();
+
+    final isHindi = lang == 'hi';
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const WelcomeGiftPage()),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9F5FF),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE4D9FA)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    isHindi ? '🎁 वेलकम गिफ्ट' : '🎁 Welcome Gift',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B21A8),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isHindi
+                        ? '5 पर्सनलाइज़्ड प्रीमियम रिपोर्ट पाएं\n(जन्म कुंडली पर आधारित)'
+                        : 'Unlock 5 Personalized Premium Reports\n(Birth Chart Based)',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F1B2E),
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    isHindi
+                        ? '+ 15 दिनों की प्रीमियम मेंबरशिप'
+                        : '+ 15 Days Premium Membership',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    isHindi ? 'फ्री एक्सेस पाएं →' : 'Claim Free Access →',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF6B21A8),
                     ),
                   ),
                 ],
               ),
             ),
-
-            const SizedBox(width: 8),
-
-            /// 🔔 NOTIFICATION BELL (RIGHT)
-            _buildNotificationBell(context),
           ],
         ),
-
-        const SizedBox(height: 22),
-
-        /// 🔮 HOROSCOPE CARD
-        _buildHoroscopeCard(context, intro, lang),
-      ],
+      ),
     );
   }
 
+  /// Compact, premium redesign: smaller footprint, calmer two-tone gradient
+  /// (was a 3-stop vivid gradient), tighter padding, shorter preview text,
+  /// and no CTA row — quick actions now live in their own section below.
+  /// Same title/preview/"Read More" content and navigation as before.
   Widget _buildHoroscopeCard(BuildContext context, String? intro, String lang) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4F46E5), Color(0xFF7C3AED), Color(0xFF9333EA)],
+          colors: [Color(0xFF4F46E5), Color(0xFF6D5AE6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withValues(alpha: 0.25),
-            blurRadius: 25,
-            offset: const Offset(0, 12),
+            color: const Color(0xFF4F46E5).withValues(alpha: 0.18),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -216,29 +390,29 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           Text(
             lang == "hi" ? "आज का राशिफल" : "TODAY'S HOROSCOPE",
             style: const TextStyle(
-              fontSize: 11,
+              fontSize: 10,
               fontWeight: FontWeight.w800,
               color: Colors.white70,
-              letterSpacing: 1.2,
+              letterSpacing: 1.1,
             ),
           ),
 
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
 
           /// TEXT
           Text(
             intro ?? "Loading...",
-            maxLines: 4,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
               color: Colors.white,
-              height: 1.3,
+              height: 1.35,
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           /// READ MORE
           Align(
@@ -255,157 +429,53 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
               child: Text(
                 lang == "hi" ? "और पढ़ें →" : "Read More →",
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  decoration: TextDecoration.underline,
+                  color: Colors.white.withValues(alpha: 0.95),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
           ),
-
-          const SizedBox(height: 18),
-
-          /// DIVIDER
-          Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-
-          const SizedBox(height: 16),
-
-          /// 🔥 CTA ROW
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              /// 🔱 MANTRA & DARSHAN
-              SizedBox(
-                width: 110,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const DarshanPage()),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.auto_awesome,
-                          size: 20,
-                          color: Color(0xFFFF6B6B),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        lang == "hi" ? "मंत्र & दर्शन" : "Mantra & Darshan",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              /// 📅 PANCHANG
-              SizedBox(
-                width: 90,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PanchangPage()),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.12),
-                        ),
-                        child: const Icon(
-                          Icons.calendar_month_rounded,
-                          size: 20,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        lang == "hi" ? "पंचांग" : "Panchang",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              /// ✨ DIVINE WISHES
-              SizedBox(
-                width: 110,
-                child: InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const CardsPage()),
-                    );
-                  },
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              blurRadius: 12,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.favorite_rounded,
-                          size: 20,
-                          color: Color(0xFFFBBF24),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        lang == "hi" ? "दिव्य शुभकामनाएँ" : "Divine Wishes",
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
         ],
+      ),
+    );
+  }
+
+  /// Shared height for the language chip and notification bell (F4.1.7) —
+  /// the bell's own diameter (previous padding 6.63 × 2 + icon 15) is the
+  /// baseline both controls are now built to, so they visually belong to
+  /// the same design system.
+  static const double _headerControlHeight = 28.0;
+
+  /// A single compact chip showing only the active language (not a
+  /// segmented EN/HI toggle) — tapping it switches to the other language,
+  /// reusing the same `LanguageProvider.setLanguage` call as before.
+  Widget _buildLanguageSwitch(BuildContext context, String lang) {
+    final languageProvider = context.read<LanguageProvider>();
+    final nextCode = lang == 'en' ? 'hi' : 'en';
+
+    return GestureDetector(
+      onTap: () => languageProvider.setLanguage(nextCode),
+      child: Container(
+        // F4.1.7 polish: height matched to the bell's diameter
+        // (_headerControlHeight) so both controls share the same visual
+        // height; radius is now half that height, keeping a true pill
+        // shape instead of a fixed 20 that no longer matched the height.
+        height: _headerControlHeight,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1A1A),
+          borderRadius: BorderRadius.circular(_headerControlHeight / 2),
+        ),
+        child: Text(
+          lang.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 8.5,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
@@ -425,18 +495,31 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.all(10),
+        // F4.1.7 polish: explicit width/height (_headerControlHeight,
+        // matching the language chip) instead of padding-derived sizing;
+        // icon centered via Stack's `alignment`.
+        width: _headerControlHeight,
+        height: _headerControlHeight,
         decoration: BoxDecoration(
-          color: Colors.grey[100],
+          color: Colors.white,
           shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFECE8F5), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
+            ),
+          ],
         ),
         child: Stack(
+          alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
             const Icon(
               Icons.notifications_none_rounded,
-              size: 24,
-              color: Color(0xFF1A1A1A),
+              size: 15,
+              color: Color(0xFF1F1B2E),
             ),
 
             if (count > 0)
@@ -482,13 +565,6 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildZodiacIcon(String? sign) {
-    return CircleAvatar(
-      radius: 28,
-      backgroundImage: AssetImage(_zodiacAsset(sign)),
     );
   }
 
@@ -562,13 +638,17 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                     ? n["id"]
                     : int.tryParse("${n["id"]}");
 
-                final route = n["data"]?["route"];
+                // Same NotificationDispatcher used by the FCM tap path
+                // (main.dart) — Notification Center and FCM must resolve
+                // to the identical destination shape for the identical
+                // EventDispatcherPage.
+                final destination =
+                    NotificationDispatcher.fromNotificationCenterItem(n);
 
                 print("CLICKED ID: $id");
 
                 // 🔹 Extract dependencies first
                 final provider = context.read<NotificationProvider>();
-                final navigator = Navigator.of(context);
 
                 // 🔥 MARK AS READ
                 if (id != null) {
@@ -580,15 +660,17 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                 // 🔄 REFRESH BELL COUNT
                 await provider.loadUnreadCount();
 
+                if (!mounted) return;
+
                 // 🔄 REFRESH LIST UI
                 setState(() {
                   _future = NotificationService.getNotifications();
                 });
 
-                // 🚀 NAVIGATION (if exists)
-                if (route != null && route.toString().isNotEmpty) {
-                  navigator.pushNamed(route);
-                }
+                // 🚀 NAVIGATION — same '/event' route + destination-object
+                // convention as the FCM tap path.
+                if (!context.mounted) return;
+                context.push('/event', extra: destination);
               },
 
               title: Text(

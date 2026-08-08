@@ -46,3 +46,61 @@ app.*.map.json
 
 # Environment Secrets
 .env
+
+# ---------------------------------------------------------------
+# Machine/profile-level noise (project is stored inside the user
+# profile directory on this machine — see audit 2026-08-08)
+# ---------------------------------------------------------------
+
+# Build tool caches (not project-local — these are global tool homes)
+/.gradle/
+/.android/
+/.m2/
+/.nuget/
+
+# Editor / AI-tool config & extension data (nothing here is currently tracked)
+/.vscode/
+/.gemini/
+/.copilot/
+/.continue/
+
+# Misc dev-tool caches/config unrelated to this Flutter app
+/.config/
+/.chocolatey/
+/.jupyter/
+/.ipython/
+/.cache/
+/.astropy/
+**/.ipynb_checkpoints/
+
+# Windows user-profile hive files (this folder doubles as %USERPROFILE%)
+/NTUSER.DAT*
+/ntuser.ini
+/ntuser.dat.LOG1
+/ntuser.dat.LOG2
+
+# Other machine-level app config/history files found at root
+/.gitconfig
+/.claude.json
+/.claude.json.tmp.*
+/.python_history
+/.lesshst
+/.emulator_console_auth_token
+/.filmora_tray_version
+
+# Stray personal scratch files found at root (not part of the app)
+/Basic Syntax.ipynb
+/Untitled.ipynb
+/Untitled1.ipynb
+/firstassingnment.ipynb
+/flutter.zip
+/jyotishasha_app.zip
+/postgresql_17.exe
+/postgresql_17.exe-20250925005453
+
+# Signing key safety net (file itself untouched, just excluded from staging)
+/jyotishasha-release.keystore
+*.keystore
+
+# Python IDLE editor config (another profile-level leftover)
+/.idlerc

@@ -1,26 +1,16 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:jyotishasha_app/core/repositories/implementations/firebase_user_repository.dart';
+import 'package:jyotishasha_app/core/repositories/user_repository.dart';
 
 class UserBootstrapService {
-  static const String baseUrl = "https://jyotishasha-backend.onrender.com";
+  UserBootstrapService({
+    UserRepository? userRepository,
+  }) : _userRepository = userRepository ?? FirebaseUserRepository();
+
+  final UserRepository _userRepository;
 
   Future<Map<String, dynamic>> syncProfile(
     Map<String, dynamic> profileData,
-  ) async {
-    final url = Uri.parse("$baseUrl/api/user/bootstrap");
-
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(profileData),
-    );
-
-    final data = jsonDecode(response.body);
-
-    if (response.statusCode == 200 && data["ok"] == true) {
-      return data;
-    } else {
-      throw Exception("Bootstrap failed: ${data["error"]}");
-    }
+  ) {
+    return _userRepository.bootstrapProfile(profileData);
   }
 }
