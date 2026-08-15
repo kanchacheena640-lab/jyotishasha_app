@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
+import 'package:jyotishasha_app/features/alerts/alerts_dashboard_page.dart';
 import 'package:jyotishasha_app/features/premium_report/birth_chart_report_reader.dart';
 import 'package:jyotishasha_app/features/premium_report/premium_report_type.dart';
 import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
@@ -22,8 +23,15 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 /// [PremiumReportType] — no backend id. The former intermediate landing
 /// page has been removed from the navigation flow entirely (simplified
 /// per spec: Explore → report, one screen, no detour). Alerts is not one
-/// of the 5 Premium Reports (see [PremiumReportType]), so it keeps the
-/// same visual-tap-feedback-only, no-op behavior as before.
+/// of the 5 Premium Reports (see [PremiumReportType]) — it is not an
+/// AI-generated report at all — so it opens the separate
+/// [AlertsDashboardPage] instead, navigated to unconditionally exactly
+/// like every other card here. The entitlement decision (was Alerts
+/// this profile's entitled/selected section) is never made on this
+/// page — it is the backend's own `GET /api/alerts/current` call,
+/// surfaced inside [AlertsDashboardPage] itself exactly like
+/// [BirthChartReportReader] already surfaces its own per-segment denial
+/// via its locked-section UI, reusing the same [SubscriptionPage].
 class ExplorePage extends StatelessWidget {
   const ExplorePage({super.key});
 
@@ -293,7 +301,8 @@ class _ExploreCategory {
   final String titleHi;
 
   /// Null only for Alerts — not one of the 5 Premium Reports, so it has
-  /// no report-reader destination.
+  /// no [BirthChartReportReader] destination; [_ReportHubCard] routes it
+  /// to [AlertsDashboardPage] instead (see that field's own check below).
   final PremiumReportType? reportType;
 }
 
@@ -305,8 +314,11 @@ class _ExploreCategory {
 /// For the 5 Premium Report categories (`category.reportType != null`),
 /// tapping opens [BirthChartReportReader] directly with that type — no
 /// intermediate landing page, no backend id passed. Alerts
-/// (`reportType == null`) keeps the prior deliberate no-op, giving only
-/// ripple/press feedback with no destination.
+/// (`reportType == null`, the only category with no [PremiumReportType])
+/// opens [AlertsDashboardPage] instead, unconditionally, the same way
+/// every other card here navigates — [AlertsDashboardPage] itself shows
+/// the existing subscription/paywall UX when the backend says this
+/// profile isn't entitled, no second/bespoke paywall.
 class _ReportHubCard extends StatelessWidget {
   const _ReportHubCard({required this.category, required this.isHindi});
 
@@ -324,7 +336,10 @@ class _ReportHubCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: reportType == null
-            ? () {}
+            ? () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AlertsDashboardPage()),
+              )
             : () {
                 Navigator.push(
                   context,

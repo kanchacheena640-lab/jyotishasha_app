@@ -7,6 +7,7 @@ import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/billing_repository.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
+import 'package:jyotishasha_app/features/alerts/alerts_dashboard_page.dart';
 import 'package:jyotishasha_app/features/explore/explore_page.dart';
 import 'package:jyotishasha_app/features/premium_report/birth_chart_report_reader.dart';
 import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
@@ -292,17 +293,25 @@ void main() {
     );
 
     testWidgets(
-      'tapping Alerts (not one of the 5 Premium Reports) stays on '
-      'ExplorePage — no destination wired for it',
+      'tapping Alerts (not one of the 5 Premium Reports) opens '
+      'AlertsDashboardPage directly — no intermediate landing page, no '
+      'no-op placeholder',
       (tester) async {
         await pump(tester, data: {'active': false, 'status': 'none'});
 
+        // AlertsDashboardPage makes a real backend call on mount (see
+        // alerts_dashboard_page_test.dart for state assertions, with an
+        // injected fake repository) — this navigation-only test can't
+        // inject one through ExplorePage's real tap path, so it relies
+        // on HttpAlertsDashboardRepository's own null-token handling (no
+        // Firebase app in this headless environment -> treated as "not
+        // signed in" -> a failure result, not a crash), same convention
+        // as the Career-card navigation test above.
         await tester.ensureVisible(find.text('Alerts'));
         await tester.tap(find.text('Alerts'));
         await tester.pumpAndSettle();
 
-        expect(find.byType(ExplorePage), findsOneWidget);
-        expect(find.byType(BirthChartReportReader), findsNothing);
+        expect(find.byType(AlertsDashboardPage), findsOneWidget);
       },
     );
   });
