@@ -84,7 +84,12 @@ void main() {
       expectMarkersInOrder(greeting, const [
         'await NotificationService.markAsRead(id);',
         'await provider.loadUnreadCount();',
-        '_future = NotificationService.getNotifications();',
+        // N5: the literal getNotifications() call was extracted into a
+        // small _load() helper (defaults to NotificationService.
+        // getNotifications(), overridable via NotificationPreview's new
+        // testability constructor param) -- same reload-after-mark-read
+        // order, same underlying call by default, source line updated.
+        '_future = _load();',
       ]);
     });
   });

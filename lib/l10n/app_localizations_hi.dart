@@ -1320,6 +1320,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get notificationDetailAntardashaLabel => 'अंतर्दशा';
 
   @override
+  String get bellEmptyState => 'अभी कोई सूचना नहीं है।';
+
+  @override
   String get authorityAppBarTitle => 'प्राधिकरण';
 
   @override

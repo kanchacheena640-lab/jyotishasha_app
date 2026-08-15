@@ -502,6 +502,8 @@
   "notificationDetailMahadashaLabel": "Mahadasha",
   "notificationDetailAntardashaLabel": "Antardasha",
 
+  "bellEmptyState": "No notifications yet.",
+
   "authorityAppBarTitle": "Authority",
   "authorityContentNotAvailableTitle": "Content not available",
   "authorityContentNotAvailableBody": "This content is not available yet.",

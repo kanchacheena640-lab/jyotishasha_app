@@ -48,8 +48,22 @@ class NotificationService {
     return token;
   }
 
+  // N5: FirebaseAuth.instance itself (not just `.currentUser`) throws
+  // when no Firebase app has been initialized -- this app's headless
+  // widget-test environment, never real production (Firebase is always
+  // initialized there). Treated identically to "not signed in", matching
+  // the exact precedent already established for
+  // HttpPremiumAiReportRepository's own _requireBackendToken().
+  static User? _currentUserOrNull() {
+    try {
+      return FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<int> getUnreadCount() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentUserOrNull();
     if (user == null) {
       print("❌ USER NULL");
       return 0;
@@ -71,7 +85,7 @@ class NotificationService {
   }
 
   static Future<List> getNotifications() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentUserOrNull();
     if (user == null) {
       return [];
     }
@@ -94,7 +108,7 @@ class NotificationService {
   }
 
   static Future<void> markAsRead(int notificationId) async {
-    final user = FirebaseAuth.instance.currentUser;
+    final user = _currentUserOrNull();
     if (user == null) {
       return;
     }

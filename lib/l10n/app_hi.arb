@@ -625,6 +625,8 @@
   "notificationDetailMahadashaLabel": "महादशा",
   "notificationDetailAntardashaLabel": "अंतर्दशा",
 
+  "bellEmptyState": "अभी कोई सूचना नहीं है।",
+
   "authorityAppBarTitle": "प्राधिकरण",
   "authorityContentNotAvailableTitle": "सामग्री उपलब्ध नहीं है",
   "authorityContentNotAvailableBody": "यह सामग्री अभी उपलब्ध नहीं है।",

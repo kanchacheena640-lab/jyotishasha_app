@@ -2657,6 +2657,12 @@ abstract class AppLocalizations {
   /// **'Antardasha'**
   String get notificationDetailAntardashaLabel;
 
+  /// No description provided for @bellEmptyState.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet.'**
+  String get bellEmptyState;
+
   /// No description provided for @authorityAppBarTitle.
   ///
   /// In en, this message translates to:

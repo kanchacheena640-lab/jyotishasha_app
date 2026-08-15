@@ -1320,6 +1320,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationDetailAntardashaLabel => 'Antardasha';
 
   @override
+  String get bellEmptyState => 'No notifications yet.';
+
+  @override
   String get authorityAppBarTitle => 'Authority';
 
   @override
