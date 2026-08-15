@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jyotishasha_app/features/darshan/darshan_page.dart';
 import 'package:jyotishasha_app/features/astrology/astrology_tool_detail_page.dart';
 import 'package:jyotishasha_app/features/events/event_dispatcher_page.dart';
+import 'package:jyotishasha_app/features/events/notification_detail_page.dart';
+import 'package:jyotishasha_app/features/events/transit_article_page.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 
 // 🌅 Entry Screens
@@ -108,15 +110,44 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    // 🔔 Generic notification-tap landing page (Notification Platform V2)
+    // 🔔 Generic notification-tap landing page (Notification Platform V2) —
+    // AstroEvent-backed types only (event/transit/panchang/panchak: a real
+    // numeric AstroEvent id). See NotificationNavigationService._resolveRoute()
+    // for the numeric-vs-not decision that sends a destination here.
     GoRoute(
       path: '/event',
       builder: (context, state) {
         final extra = state.extra;
         return EventDispatcherPage(
-          destination: extra is NotificationDispatchDestination
-              ? extra
-              : null,
+          destination: extra is NotificationDispatchDestination ? extra : null,
+        );
+      },
+    ),
+
+    // 🔔 N1 — content-only notification-tap landing page: Personalized
+    // Alerts (semantic catalog ids) and Dasha/Dasha-pre (composite ids),
+    // plus any other type with no resolvable AstroEvent integer id. Never
+    // fetches by id — renders the notification's own title/body/payload.
+    GoRoute(
+      path: '/notification-detail',
+      builder: (context, state) {
+        final extra = state.extra;
+        return NotificationDetailPage(
+          destination: extra is NotificationDispatchDestination ? extra : null,
+        );
+      },
+    ),
+
+    // 🔔 N3 — Personalized Planetary Transit notification-tap landing page
+    // (`type: "transit"`). Opens the backend-resolved Planet-in-House
+    // article (`data.url`) in-app via the existing Authority resource
+    // pattern. See NotificationNavigationService._resolveRoute().
+    GoRoute(
+      path: '/transit-article',
+      builder: (context, state) {
+        final extra = state.extra;
+        return TransitArticlePage(
+          destination: extra is NotificationDispatchDestination ? extra : null,
         );
       },
     ),

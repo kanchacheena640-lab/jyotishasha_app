@@ -1,7 +1,6 @@
 // lib/core/widgets/greeting_header_widget.dart
 
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -14,6 +13,7 @@ import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 import 'package:jyotishasha_app/core/state/welcome_gift_provider.dart';
 import 'package:jyotishasha_app/features/welcome_gift/welcome_gift_page.dart';
+import 'package:jyotishasha_app/main.dart' show notificationNavigationService;
 
 class GreetingHeaderWidget extends StatefulWidget {
   const GreetingHeaderWidget({super.key});
@@ -640,8 +640,7 @@ class _NotificationPreviewState extends State<NotificationPreview> {
 
                 // Same NotificationDispatcher used by the FCM tap path
                 // (main.dart) — Notification Center and FCM must resolve
-                // to the identical destination shape for the identical
-                // EventDispatcherPage.
+                // to the identical destination shape.
                 final destination =
                     NotificationDispatcher.fromNotificationCenterItem(n);
 
@@ -667,10 +666,17 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                   _future = NotificationService.getNotifications();
                 });
 
-                // 🚀 NAVIGATION — same '/event' route + destination-object
-                // convention as the FCM tap path.
+                // 🚀 NAVIGATION — N1: routed through the SAME
+                // NotificationNavigationService the FCM tap path
+                // (main.dart::handleNotificationTap) uses, instead of a
+                // separate context.push('/event', ...) call — one shared
+                // routing contract for both entry points, per N1's own
+                // architecture requirement. Bell is only ever opened from
+                // /dashboard (GreetingHeaderWidget's only mount point), so
+                // openDestination()'s dashboard-reset is a no-op here; the
+                // resulting stack is unchanged from before this fix.
                 if (!context.mounted) return;
-                context.push('/event', extra: destination);
+                notificationNavigationService.openDestination(destination);
               },
 
               title: Text(

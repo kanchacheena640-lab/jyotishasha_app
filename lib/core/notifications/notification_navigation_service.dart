@@ -40,23 +40,79 @@ final class PendingNavigation {
 /// Generic by construction: this class never hardcodes EventDispatcherPage
 /// or `/event` into its navigation mechanism — [openDestination] always
 /// pushes whatever route the supplied destination resolves to via
-/// [_resolveRoute]. `/event` appears in exactly one place, as today's only
-/// registered fallback destination handler; a future destination type
-/// (report, transit, panchang, blog, subscription, or a deep/dynamic link)
-/// only needs to carry its own route to be handled with zero changes to
-/// this class.
+/// [_resolveRoute]. A future destination type only needs to carry its own
+/// `route` (bypassing [_resolveRoute]'s fallback entirely) to be handled
+/// with zero changes to this class.
+///
+/// N1 (navigation reliability): no backend payload ever sends an explicit
+/// `route`, so [_resolveRoute] previously defaulted EVERY destination to
+/// `/event` — including Personalized Alerts (semantic catalog ids like
+/// `"mood_positive"`) and Dasha/Dasha-pre (composite ids like
+/// `"dasha_pre_{uid}_{maha}_{antar}"`), neither of which `EventDispatcherPage`
+/// can resolve (it does, and must keep doing, `int.tryParse(eventId)` — see
+/// its own docstring) — landing both on a "No data available" dead end.
+///
+/// N1.1 (contract hardening): [_resolveRoute]'s decision is now based
+/// SOLELY on [NotificationDispatchDestination.type] — the backend's own
+/// authoritative discriminator for what kind of notification this is —
+/// never on whether `eventId` happens to look numeric. `eventId` is
+/// payload data ([_astroEventBackedTypes]'s destinations still use it to
+/// fetch by id; [_notificationDetailRoute]'s destinations still show it as
+/// context) but it plays no role in ROUTING itself any more: a future
+/// type that happens to carry a numeric-looking id must not "accidentally"
+/// resolve to `/event` just because `int.tryParse` would succeed on it —
+/// only a recognized AstroEvent-backed `type` does. `event`/`transit`/
+/// `panchang`/`panchak` resolve to `/event` exactly as before; a malformed
+/// or missing `eventId` on one of THOSE types still fails safely, because
+/// `EventDispatcherPage` itself already guards `int.tryParse(eventId) ==
+/// null` before ever calling its repository (unchanged, untouched by N1.1)
+/// — the safety net for a bad id lives there, not in this routing decision.
 final class NotificationNavigationService {
   NotificationNavigationService({required GoRouter router}) : _router = router;
 
   static const String _dashboardRoute = '/dashboard';
 
-  /// Fallback target for destinations that don't specify their own
-  /// [NotificationDispatchDestination.route] — true of every destination
-  /// [NotificationDispatcher] parses today, since `/event` is currently the
-  /// only registered handler for a notification/event tap. This is not an
-  /// assumption baked into the navigation mechanism itself: any
-  /// destination that carries its own `route` bypasses this entirely.
-  static const String _defaultDestinationRoute = '/event';
+  /// Destination for a [NotificationDispatchDestination] whose `type` is
+  /// backed by a real AstroEvent row fetchable by integer id — `event`,
+  /// `panchang`, `panchak` today. `transit` moved to [_transitArticleRoute]
+  /// in N3 — see that field's own docstring.
+  static const String _eventRoute = '/event';
+
+  /// N3 — destination for `type: "transit"` (Personalized Planetary Transit,
+  /// T-1). Unlike `event`/`panchang`/`panchak`, a transit notification's
+  /// real destination is not a re-fetched AstroEvent resource but the
+  /// specific Planet-in-House article the backend already resolved for this
+  /// user's own house + language and sent directly in the payload
+  /// (`data.url` — see `services/notification_builder.py::
+  /// build_transit_content()`). Routed to its own page
+  /// ([TransitArticlePage]) rather than `/event` so `EventDispatcherPage`
+  /// never has to special-case a payload-carried URL it was never built to
+  /// use.
+  static const String _transitArticleRoute = '/transit-article';
+
+  /// Destination for every OTHER `type` with no explicit `route`:
+  /// Personalized Alerts (`alert`), Dasha/Dasha-pre (`dasha`/`dasha_pre`),
+  /// a missing `type`, or any future/unrecognized `type` — as long as SOME
+  /// renderable content (`title`/`body`) came through, this is a real
+  /// destination, not a dead end. Added by N1, driven by `type` since N1.1
+  /// (see [_astroEventBackedTypes]).
+  static const String _notificationDetailRoute = '/notification-detail';
+
+  /// N1.1 — the complete, authoritative set of `type` values backed by a
+  /// real AstroEvent row (see `services/notification_builder.py` and
+  /// `services/event_scheduler.py` in the backend: EVENT/DASHA T-5/
+  /// DASHA-start/PANCHAK/PANCHANG sections). Deliberately NOT derived
+  /// from `eventId`'s shape any more — this is the one, explicit place
+  /// that set is declared, so it can never silently grow to match
+  /// whatever a numeric-looking id happens to be. `transit` was removed in
+  /// N3 (see [_transitArticleRoute]) — it is still AstroEvent-backed
+  /// server-side, but its Flutter destination is no longer
+  /// `EventDispatcherPage`.
+  static const Set<String> _astroEventBackedTypes = {
+    'event',
+    'panchang',
+    'panchak',
+  };
 
   final GoRouter _router;
   final Queue<PendingNavigation> _queue = Queue<PendingNavigation>();
@@ -99,7 +155,14 @@ final class NotificationNavigationService {
   }
 
   String _resolveRoute(NotificationDispatchDestination destination) {
-    return destination.route ?? _defaultDestinationRoute;
+    final explicitRoute = destination.route;
+    if (explicitRoute != null) return explicitRoute;
+
+    if (destination.type == 'transit') return _transitArticleRoute;
+
+    return _astroEventBackedTypes.contains(destination.type)
+        ? _eventRoute
+        : _notificationDetailRoute;
   }
 
   void _onRouterChanged() {
@@ -140,7 +203,9 @@ final class NotificationNavigationService {
       }
       _dashboardReached = true;
     } catch (e, stackTrace) {
-      debugPrint('[NotificationNavigationService] drain failed, queue preserved for retry: $e');
+      debugPrint(
+        '[NotificationNavigationService] drain failed, queue preserved for retry: $e',
+      );
       debugPrint('[NotificationNavigationService] stack trace:\n$stackTrace');
     } finally {
       _draining = false;

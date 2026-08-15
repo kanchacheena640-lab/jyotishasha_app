@@ -39,6 +39,14 @@ void main() {
         '/darshan',
         '/astrology/detail',
         '/event',
+        // N1 — content-only notification destination (Alerts/Dasha/
+        // Dasha-pre and any other non-numeric-eventId type), added
+        // alongside /event rather than replacing it.
+        '/notification-detail',
+        // N3 — Personalized Planetary Transit destination (backend-resolved
+        // Planet-in-House article URL), added alongside /event and
+        // /notification-detail rather than replacing either.
+        '/transit-article',
       ]);
       expect(source, contains('Page Not Found'));
     });
