@@ -1302,6 +1302,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventShareCta => 'Share';
 
   @override
+  String get notificationDetailAppBarTitle => 'Notification';
+
+  @override
+  String get notificationDetailNoDetails => 'No additional details are available for this notification.';
+
+  @override
+  String get notificationDetailCategoryLabel => 'Category';
+
+  @override
+  String get notificationDetailSeverityLabel => 'Severity';
+
+  @override
+  String get notificationDetailMahadashaLabel => 'Mahadasha';
+
+  @override
+  String get notificationDetailAntardashaLabel => 'Antardasha';
+
+  @override
   String get authorityAppBarTitle => 'Authority';
 
   @override

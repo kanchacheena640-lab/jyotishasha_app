@@ -2621,6 +2621,42 @@ abstract class AppLocalizations {
   /// **'Share'**
   String get eventShareCta;
 
+  /// No description provided for @notificationDetailAppBarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notification'**
+  String get notificationDetailAppBarTitle;
+
+  /// No description provided for @notificationDetailNoDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'No additional details are available for this notification.'**
+  String get notificationDetailNoDetails;
+
+  /// No description provided for @notificationDetailCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get notificationDetailCategoryLabel;
+
+  /// No description provided for @notificationDetailSeverityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Severity'**
+  String get notificationDetailSeverityLabel;
+
+  /// No description provided for @notificationDetailMahadashaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahadasha'**
+  String get notificationDetailMahadashaLabel;
+
+  /// No description provided for @notificationDetailAntardashaLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Antardasha'**
+  String get notificationDetailAntardashaLabel;
+
   /// No description provided for @authorityAppBarTitle.
   ///
   /// In en, this message translates to:

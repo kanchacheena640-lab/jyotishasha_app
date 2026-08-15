@@ -618,6 +618,13 @@
   "eventKnowMoreCta": "और जानें",
   "eventShareCta": "शेयर करें",
 
+  "notificationDetailAppBarTitle": "सूचना",
+  "notificationDetailNoDetails": "इस सूचना के लिए कोई अतिरिक्त विवरण उपलब्ध नहीं है।",
+  "notificationDetailCategoryLabel": "श्रेणी",
+  "notificationDetailSeverityLabel": "गंभीरता",
+  "notificationDetailMahadashaLabel": "महादशा",
+  "notificationDetailAntardashaLabel": "अंतर्दशा",
+
   "authorityAppBarTitle": "प्राधिकरण",
   "authorityContentNotAvailableTitle": "सामग्री उपलब्ध नहीं है",
   "authorityContentNotAvailableBody": "यह सामग्री अभी उपलब्ध नहीं है।",

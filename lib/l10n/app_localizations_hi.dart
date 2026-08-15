@@ -1302,6 +1302,24 @@ class AppLocalizationsHi extends AppLocalizations {
   String get eventShareCta => 'शेयर करें';
 
   @override
+  String get notificationDetailAppBarTitle => 'सूचना';
+
+  @override
+  String get notificationDetailNoDetails => 'इस सूचना के लिए कोई अतिरिक्त विवरण उपलब्ध नहीं है।';
+
+  @override
+  String get notificationDetailCategoryLabel => 'श्रेणी';
+
+  @override
+  String get notificationDetailSeverityLabel => 'गंभीरता';
+
+  @override
+  String get notificationDetailMahadashaLabel => 'महादशा';
+
+  @override
+  String get notificationDetailAntardashaLabel => 'अंतर्दशा';
+
+  @override
   String get authorityAppBarTitle => 'प्राधिकरण';
 
   @override
