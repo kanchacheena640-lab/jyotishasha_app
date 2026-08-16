@@ -348,6 +348,27 @@ class SubscriptionProvider extends ChangeNotifier {
     }
   }
 
+  /// Clears membership/purchase state — called on logout so the next
+  /// login (a different account, in the same long-lived app process)
+  /// never briefly shows the previous user's plan/membership_state
+  /// before its own fresh [loadSubscriptionInfo] call resolves.
+  /// Deliberately does NOT cancel [_purchaseSub]/re-run
+  /// [initPurchaseListener] — that stream subscription is process-wide
+  /// billing infrastructure registered once at app startup, not
+  /// per-user state, and must keep listening across a logout/login
+  /// within the same session (a purchase completing mid-restore, etc.).
+  void reset() {
+    isLoading = false;
+    errorMessage = null;
+    subscriptionData = null;
+    isPurchasing = false;
+    purchaseErrorMessage = null;
+    availableProducts = [];
+    isRestoring = false;
+    restoreErrorMessage = null;
+    notifyListeners();
+  }
+
   Future<String?> _requireBackendToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;

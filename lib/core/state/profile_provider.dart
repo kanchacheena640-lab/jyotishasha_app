@@ -12,6 +12,14 @@ class ProfileProvider extends ChangeNotifier {
   bool isLoading = false;
   bool isSwitching = false;
 
+  /// Set on a failed [loadProfiles] attempt only; cleared at the start of
+  /// every new attempt. `account_page.dart`'s retry action reads this —
+  /// previously a thrown exception here left [isLoading] stuck `true`
+  /// forever (the method returned before ever reaching its `isLoading =
+  /// false` tail), so the page spun indefinitely with no way to recover
+  /// short of restarting the app.
+  String? errorMessage;
+
   /// ⭐ ACTIVE PROFILE ID
   String? activeProfileId;
 
@@ -22,41 +30,64 @@ class ProfileProvider extends ChangeNotifier {
   // ---------------------------------------------------
   Future<void> loadProfiles() async {
     isLoading = true;
+    errorMessage = null;
     notifyListeners();
 
-    final list = await _service.getProfiles();
+    try {
+      final list = await _service.getProfiles();
 
-    // Auto-activate if only one profile exists
-    if (list.length == 1) {
-      final only = list.first;
-      if (only["isActive"] != true) {
-        await _service.setActiveProfile(only["id"]);
-        return loadProfiles();
+      // Auto-activate if only one profile exists
+      if (list.length == 1) {
+        final only = list.first;
+        if (only["isActive"] != true) {
+          await _service.setActiveProfile(only["id"]);
+          return loadProfiles();
+        }
       }
+
+      if (list.isEmpty) {
+        activeProfile = null;
+        otherProfiles = [];
+        activeProfileId = null;
+      } else {
+        // FIND ACTIVE PROFILE
+        activeProfile = list.firstWhere(
+          (p) => p["isActive"] == true,
+          orElse: () => {},
+        );
+
+        // ⭐ FIX → Normalize Backend IDs
+        _normalizeBackendIds();
+
+        // SAVE ACTIVE ID
+        activeProfileId = activeProfile?["id"];
+
+        // OTHER PROFILES
+        otherProfiles = list.where((p) => p["isActive"] != true).toList();
+      }
+
+      isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      isLoading = false;
+      errorMessage = e.toString();
+      notifyListeners();
     }
+  }
 
-    if (list.isEmpty) {
-      activeProfile = null;
-      otherProfiles = [];
-      activeProfileId = null;
-    } else {
-      // FIND ACTIVE PROFILE
-      activeProfile = list.firstWhere(
-        (p) => p["isActive"] == true,
-        orElse: () => {},
-      );
-
-      // ⭐ FIX → Normalize Backend IDs
-      _normalizeBackendIds();
-
-      // SAVE ACTIVE ID
-      activeProfileId = activeProfile?["id"];
-
-      // OTHER PROFILES
-      otherProfiles = list.where((p) => p["isActive"] != true).toList();
-    }
-
+  /// Clears all profile state — called on logout so the next login (a
+  /// different account, in the same long-lived app process) never
+  /// briefly shows the previous user's name/birth details/other
+  /// profiles before its own fresh [loadProfiles] call resolves. Does
+  /// not touch any other provider and never touches a persisted,
+  /// app-wide preference (language/theme are not profile state).
+  void reset() {
+    activeProfile = null;
+    otherProfiles = [];
+    activeProfileId = null;
     isLoading = false;
+    isSwitching = false;
+    errorMessage = null;
     notifyListeners();
   }
 
