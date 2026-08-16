@@ -32,6 +32,15 @@ class PremiumAiReportTypes {
   static const String dna = 'DNA';
   static const String currentPhase = 'CURRENT_PHASE';
   static const String dailyInsight = 'DAILY_INSIGHT';
+
+  /// Its own distinct `report_type` — a separate `GET /api/premium-report`
+  /// call, exactly like [dna]/[currentPhase]/[dailyInsight] each already
+  /// are. Previously `BirthChartReportReader` had no call for this at
+  /// all: it tried to recover "Current Timing" content by pattern-matching
+  /// a `## Current Timing` heading inside the unrelated [currentPhase]
+  /// response instead of requesting it. See that file's audit trail for
+  /// the fix.
+  static const String currentTiming = 'CURRENT_TIMING';
 }
 
 /// Result of a `GET /api/premium-report` call — success carries the

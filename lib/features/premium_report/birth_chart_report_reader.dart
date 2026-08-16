@@ -22,13 +22,15 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 /// for each (`modules/ai_report_engine/generator_registry.py` — see
 /// [PremiumAiReportSegments]'s own doc comment; Love was the reference
 /// implementation, unmodified by this change):
-/// - The free "Your {X} DNA" section and the "Current Phase" premium
-///   sub-section both call the existing, unmodified
-///   [PremiumAiReportRepository] (`GET /api/premium-report`,
-///   `report_type=DNA`/`CURRENT_PHASE`, `segment` from
-///   [PremiumReportContent.segment]) — the exact same repository/call
-///   shape `PremiumAiReportPage`/Account → "AI Love Insights" already
-///   uses for Love.
+/// - The free "Your {X} DNA" section and the two premium sections each
+///   call the existing, unmodified [PremiumAiReportRepository]
+///   (`GET /api/premium-report`, `report_type=DNA`/`CURRENT_PHASE`/
+///   `CURRENT_TIMING`, `segment` from [PremiumReportContent.segment]) —
+///   the exact same repository/call shape `PremiumAiReportPage`/
+///   Account → "AI Love Insights" already uses for Love. Three
+///   independent calls, three independent results — `_dnaResult` /
+///   `_phaseResult` / `_timingResult` — never one result reused to stand
+///   in for another.
 ///   `DNA` is served by the backend without any entitlement check — "Your
 ///   {X} DNA" is the FREE section, and [_loadDna] always renders the real
 ///   backend response directly (loading → content → expand/collapse),
@@ -39,13 +41,32 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 ///   completed, same as Love's pre-existing behavior; not a placeholder
 ///   standing in for real content.
 /// - The `CURRENT_PHASE` call's `content` is backend-authored markdown
-///   with five fixed `## `-prefixed headings, in order: "Current Phase",
-///   "Next Phase Change", "Watch Out For", "Remedy For This Phase",
-///   "Current Timing" (backend verified — this file does not generate,
-///   translate, reorder, or otherwise touch that copy).
-///   [_splitPhaseMarkdown] (presentation-only, below) detects those
-///   headings by `## ` prefix (not a hardcoded count — any subset the
-///   backend sends is picked up).
+///   with four fixed `## `-prefixed headings, in order: "Current Phase",
+///   "Next Phase Change", "Watch Out For", "Remedy For This Phase"
+///   (backend verified — this file does not generate, translate,
+///   reorder, or otherwise touch that copy). It does NOT carry "Current
+///   Timing" — that content has its own generator/`report_type` (see
+///   next point). [_splitPhaseMarkdown] (presentation-only, below)
+///   detects headings by `## ` prefix (not a hardcoded count — any
+///   subset the backend sends is picked up).
+/// - The `CURRENT_TIMING` call is entirely separate from `CURRENT_PHASE`
+///   — its own `report_type`, its own request, its own result
+///   (`_timingResult`/`_loadCurrentTiming`). Its `content` is
+///   backend-authored PLAIN TEXT with NO Markdown at all (verified
+///   against real production responses for every segment): a 2-3
+///   sentence situation, a blank line, then the literal label "Quick
+///   Tip:", then one sentence. [_splitCurrentTimingContent]
+///   (presentation-only, below) parses exactly this contract — it is NOT
+///   [_splitPhaseMarkdown] (that one is `CURRENT_PHASE`-only, and looking
+///   for `## ` headings in a response that never contains any is
+///   precisely the bug this parser replaces). A response with no
+///   recognizable "Quick Tip:" delimiter shows its whole content as the
+///   situation and falls back to a placeholder "Quick Tip" — this
+///   section previously had NO dedicated backend call at all, then later
+///   had one but still mis-parsed its real plain-text shape as if it
+///   were `CURRENT_PHASE`'s Markdown shape, which is why Quick Tip
+///   always fell through to its placeholder and the literal words
+///   "Quick Tip:" stayed visible inside the situation paragraph.
 ///
 /// PRESENTATION ARCHITECTURE — exactly three major sections, one screen,
 /// no navigation between them:
@@ -64,24 +85,21 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 /// 3. **Current Timing** (premium) — [_CurrentTimingSection]. Always
 ///    fully expanded, immediately below Current Phase — this screen's
 ///    primary daily-engagement section, never collapsed and never
-///    behind a "Read Full" toggle. Shows the same call's "Current
-///    Timing" text plus a "Quick Tip" callout. There is no `Quick Tip`
-///    backend field — per product decision, Quick Tip reuses the same
-///    already-parsed "Remedy For This Phase" text (the exact same
-///    string [_CurrentPhaseSection] shows inside its expanded report),
-///    not a new call and not invented copy.
+///    behind a "Read Full" toggle. Shows its own dedicated
+///    `CURRENT_TIMING` call's "Current Timing" text plus its own "Quick
+///    Tip" text — both parsed from that same, single `CURRENT_TIMING`
+///    response, never from `CURRENT_PHASE`.
 ///
-/// Both premium sections read the same single `_phaseResult`
-/// (`_loadCurrentPhase`, one `CURRENT_PHASE` call) — no duplicate
-/// fetching, no duplicate parsing. If none of the five headings are
-/// found (a genuinely different backend shape, an error string, or an
+/// If `CURRENT_PHASE`'s response contains none of its four expected
+/// headings (a genuinely different backend shape, an error string, or an
 /// older cached response predating this markdown format), Current Phase
 /// falls back to rendering its raw `content` as a single block (exactly
 /// as this screen showed `CURRENT_PHASE` before any markdown sections
-/// existed) and every sub-section/Current Timing/Quick Tip falls back to
-/// its own placeholder copy — see [_PhaseCopy] for the exact strings,
-/// preserved verbatim from this screen's pre-existing behavior so older
-/// cached reports render identically to before.
+/// existed) and every sub-section falls back to its own placeholder copy
+/// — see [_PhaseCopy] for the exact strings, preserved verbatim from
+/// this screen's pre-existing behavior so older cached reports render
+/// identically to before. Current Timing/Quick Tip fall back the same
+/// way, independently, off their own `CURRENT_TIMING` response.
 /// - Alerts is deliberately excluded from this screen entirely (see
 ///   [PremiumReportType] — it has no entry in that enum) and is not
 ///   reachable here: per `modules/models_ai_reports.py`/
@@ -128,6 +146,9 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
   bool _phaseLoading = false;
   PremiumAiReportResult? _phaseResult;
 
+  bool _timingLoading = false;
+  PremiumAiReportResult? _timingResult;
+
   /// Deliberately NOT persisted anywhere (no provider field, no saved
   /// preference) — every fresh mount of this page starts collapsed, per
   /// spec: "DNA is mostly static... daily usage should naturally focus
@@ -156,8 +177,9 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
       }
     });
 
-    // Deferred to after the first frame — `_loadDna`/`_loadCurrentPhase`
-    // read `Localizations.localeOf(context)`, which Flutter forbids
+    // Deferred to after the first frame — `_loadDna`/`_loadCurrentPhase`/
+    // `_loadCurrentTiming` read `Localizations.localeOf(context)`, which
+    // Flutter forbids
     // depending on synchronously during initState (the dependency
     // wouldn't be tracked correctly). Same pattern already used
     // elsewhere in this app (e.g. `GreetingHeaderWidget`, `WelcomeGiftPage`'s
@@ -167,6 +189,7 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
       if (!mounted) return;
       _loadDna();
       _loadCurrentPhase();
+      _loadCurrentTiming();
     });
   }
 
@@ -204,6 +227,25 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
     setState(() {
       _phaseResult = result;
       _phaseLoading = false;
+    });
+  }
+
+  /// Its own `CURRENT_TIMING` call — separate from [_loadCurrentPhase],
+  /// exactly like [_loadDna] is separate from both. Previously this
+  /// section had no call of its own at all; see this file's class doc
+  /// comment for the audit trail.
+  Future<void> _loadCurrentTiming() async {
+    setState(() => _timingLoading = true);
+    final isHindi = _isHindi;
+    final result = await _repository.getReport(
+      segment: widget.type.content.segment,
+      reportType: PremiumAiReportTypes.currentTiming,
+      language: isHindi ? 'hi' : 'en',
+    );
+    if (!mounted) return;
+    setState(() {
+      _timingResult = result;
+      _timingLoading = false;
     });
   }
 
@@ -308,9 +350,10 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
 
               // 4. PREMIUM SECTION 2/2 — "Current Timing": always fully
               // expanded, immediately below Current Phase — this
-              // screen's daily-engagement section. Same single
-              // `_phaseResult` call, no second fetch. Independently
-              // gated by `unlocked`.
+              // screen's daily-engagement section. Its own dedicated
+              // `CURRENT_TIMING` call/result (`_timingResult`),
+              // independent of Current Phase's `_phaseResult`.
+              // Independently gated by `unlocked`.
               _SectionLabel(
                 text: isHindi
                     ? 'वर्तमान $shortName समय'
@@ -319,10 +362,10 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
               const SizedBox(height: 12),
               unlocked
                   ? _CurrentTimingSection(
-                      loading: _phaseLoading,
-                      result: _phaseResult,
+                      loading: _timingLoading,
+                      result: _timingResult,
                       isHindi: isHindi,
-                      onRetry: _loadCurrentPhase,
+                      onRetry: _loadCurrentTiming,
                       gold: _gold,
                     )
                   : _PremiumLockedSection(
@@ -544,14 +587,73 @@ String? _phaseSection(Map<String, String> sections, String heading) {
   return null;
 }
 
+/// The result of splitting a `CURRENT_TIMING` response into its two real
+/// parts. [quickTip] is null exactly when no "Quick Tip:" delimiter was
+/// found at all — a genuinely different situation from an empty string,
+/// so [_CurrentTimingSection] can tell "absent" apart from "empty" and
+/// fall back to its own placeholder only for the former.
+class _TimingParts {
+  const _TimingParts({required this.situation, required this.quickTip});
+
+  final String situation;
+  final String? quickTip;
+}
+
+/// Splits a `CURRENT_TIMING` backend response into its situation text and
+/// its Quick Tip — this call's OWN real, verified contract (see
+/// `current_love_timing_v1.txt` and its 4 segment siblings in the backend
+/// repo): plain text, NO Markdown headings at all, structured as
+/// `<2-3 sentence situation>\n\n Quick Tip:\n<one sentence>`. Deliberately
+/// NOT [_splitPhaseMarkdown]/[_phaseSection] (that pair is for
+/// `CURRENT_PHASE`'s five `## `-headed response only, and CURRENT_TIMING's
+/// real content is confirmed, from real cached production responses
+/// across every segment, to contain zero `##` markers — using the
+/// markdown splitter here always returned an empty sections map, which is
+/// exactly why `Quick Tip:` used to bleed into the main paragraph instead
+/// of being extracted).
+///
+/// The literal English label "Quick Tip:" (case/spacing-tolerant — also
+/// matches "Quick tip:", "QUICK TIP :", etc.) is the only delimiter this
+/// parser recognizes. This is deliberate, not an oversight: no real
+/// Hindi `CURRENT_TIMING` response exists yet to prove what delimiter a
+/// Hindi generation actually uses (the prompt's own "Structure, exactly"
+/// block hardcodes the English label even under the Hindi language
+/// instruction), so inventing a localized delimiter here would be
+/// guessing, not supporting a proven contract. A Hindi response that
+/// doesn't contain this literal label falls back to the same "Quick Tip
+/// absent" placeholder path a malformed/empty response does — never a
+/// crash, never invented text — until a real Hindi delimiter can be
+/// confirmed from production data.
+_TimingParts _splitCurrentTimingContent(String raw) {
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) {
+    return const _TimingParts(situation: '', quickTip: null);
+  }
+
+  final labelPattern = RegExp(r'Quick[ \t]*Tip[ \t]*:', caseSensitive: false);
+  final match = labelPattern.firstMatch(trimmed);
+  if (match == null) {
+    return _TimingParts(situation: trimmed, quickTip: null);
+  }
+
+  final situation = trimmed.substring(0, match.start).trim();
+  final quickTip = trimmed.substring(match.end).trim();
+  return _TimingParts(
+    situation: situation.isEmpty ? trimmed : situation,
+    quickTip: quickTip.isEmpty ? null : quickTip,
+  );
+}
+
 /// Centralized copy for the two premium sections — kept in one place so
-/// [_CurrentPhaseSection] and [_CurrentTimingSection] (which both read
-/// the same underlying `CURRENT_PHASE` markdown, from the same single
-/// `_phaseResult`) can never drift out of sync on heading text or
-/// fallback copy. Every fallback string here is preserved verbatim from
-/// this screen's pre-existing behavior, so an older cached report (or a
-/// response missing a heading) renders identically to before this
-/// refactor — see [BirthChartReportReader]'s class doc comment.
+/// [_CurrentPhaseSection] (reading `CURRENT_PHASE`'s `_phaseResult`) and
+/// [_CurrentTimingSection] (reading its own, separate `CURRENT_TIMING`
+/// `_timingResult`) can never drift out of sync on heading text or
+/// fallback copy, even though each now reads its own independent backend
+/// response. Every `CURRENT_PHASE`-side fallback string here is preserved
+/// verbatim from this screen's pre-existing behavior, so an older cached
+/// report (or a response missing a heading) renders identically to
+/// before this refactor — see [BirthChartReportReader]'s class doc
+/// comment.
 class _PhaseCopy {
   const _PhaseCopy._();
 
@@ -559,7 +661,6 @@ class _PhaseCopy {
   static const String watchOutForHeading = 'Watch Out For';
   static const String remedyHeading = 'Remedy For This Phase';
   static const String nextPhaseChangeHeading = 'Next Phase Change';
-  static const String currentTimingHeading = 'Current Timing';
 
   static const String currentPhaseFallbackEn =
       'This is a static preview. Premium Membership continuously updates '
@@ -582,8 +683,13 @@ class _PhaseCopy {
       'यह सेक्शन अभी उपलब्ध नहीं है।';
 
   static const String currentTimingFallbackEn =
-      'Birth Chart Foundation — Current';
-  static const String currentTimingFallbackHi = 'जन्म कुंडली आधार — वर्तमान';
+      "Current timing details aren't available yet.";
+  static const String currentTimingFallbackHi =
+      'वर्तमान समय का विवरण अभी उपलब्ध नहीं है।';
+
+  static const String quickTipFallbackEn = 'No quick tip available yet.';
+  static const String quickTipFallbackHi =
+      'अभी कोई त्वरित सुझाव उपलब्ध नहीं है।';
 }
 
 /// A labeled paragraph inside the ONE continuous Current Phase report —
@@ -791,24 +897,25 @@ class _CurrentPhaseSection extends StatelessWidget {
 
 /// PREMIUM SECTION 2/2 — "Current Timing". Always fully expanded — never
 /// collapsed, never behind a "Read Full" toggle — this screen's primary
-/// daily-engagement section. Reads the same single `_phaseResult` as
-/// [_CurrentPhaseSection] (no second call). Shows the backend's own
-/// "Current Timing" text plus a "Quick Tip" callout.
+/// daily-engagement section. Reads its OWN, independent `CURRENT_TIMING`
+/// result (`result`, backed by `_timingResult`/`_loadCurrentTiming` in
+/// [BirthChartReportReader]) — a separate `GET /api/premium-report` call
+/// from [_CurrentPhaseSection]'s `CURRENT_PHASE`, not a second read of
+/// the same response, and never reads `_phaseResult`. Shows that call's
+/// own situation text plus its own Quick Tip text, both parsed from the
+/// same `CURRENT_TIMING` `content` via [_splitCurrentTimingContent] --
+/// that call's real, plain-text, no-Markdown contract, never
+/// [_splitPhaseMarkdown]/[_phaseSection] (that pair is `CURRENT_PHASE`
+/// only). Never shows `CURRENT_PHASE`'s "Remedy For This Phase".
 ///
-/// There is no `Quick Tip` backend field: per product decision, Quick
-/// Tip reuses the exact same already-parsed "Remedy For This Phase"
-/// text [_CurrentPhaseSection] shows inside its expanded report — the
-/// same parsed value surfaced a second time in the UI, not a second
-/// backend call, not new copy, and not a change to the backend response
-/// itself.
-///
-/// Fallback behavior mirrors [_CurrentPhaseSection]: loading / error /
-/// entitlement-denied / null result render the same single AI-body card
-/// [_PremiumSubsection] has always shown for "Current Timing" (its
-/// fallback text is the exact static copy this screen showed for it back
-/// when it had no backend field at all); a response with no recognizable
-/// headings falls back to that same copy for both "Current Timing" and
-/// "Quick Tip".
+/// Fallback behavior: loading / error / entitlement-denied / null result
+/// render the same single AI-body card [_PremiumSubsection] has always
+/// shown for "Current Timing". A successful but empty/malformed
+/// `content` falls back to the placeholder "Current Timing" copy; a
+/// response with no recognizable "Quick Tip:" delimiter shows its whole
+/// content as the situation and falls back to the placeholder "Quick
+/// Tip" copy — it never invents a tip, and the literal words "Quick
+/// Tip:" never remain visible inside the situation paragraph.
 class _CurrentTimingSection extends StatelessWidget {
   const _CurrentTimingSection({
     required this.loading,
@@ -843,26 +950,20 @@ class _CurrentTimingSection extends StatelessWidget {
       );
     }
 
-    final sections = _splitPhaseMarkdown(r.content ?? '');
-    final hasHeadings = sections.isNotEmpty;
+    // This call's OWN content — never `CURRENT_PHASE`'s. Splits on the
+    // real, plain-text "Quick Tip:" delimiter (see
+    // [_splitCurrentTimingContent]'s own doc comment) — never the
+    // Markdown-heading splitter `CURRENT_PHASE` uses.
+    final parts = _splitCurrentTimingContent(r.content ?? '');
 
-    final timingBody = hasHeadings
-        ? (_phaseSection(sections, _PhaseCopy.currentTimingHeading) ??
-              (isHindi
-                  ? _PhaseCopy.currentTimingFallbackHi
-                  : _PhaseCopy.currentTimingFallbackEn))
+    final timingBody = parts.situation.isNotEmpty
+        ? parts.situation
         : (isHindi
               ? _PhaseCopy.currentTimingFallbackHi
               : _PhaseCopy.currentTimingFallbackEn);
 
-    // Same already-parsed Remedy value [_CurrentPhaseSection] shows in
-    // full inside its expanded report — reused here, not re-fetched.
-    final quickTipBody = hasHeadings
-        ? (_phaseSection(sections, _PhaseCopy.remedyHeading) ??
-              (isHindi
-                  ? _PhaseCopy.remedyFallbackHi
-                  : _PhaseCopy.remedyFallbackEn))
-        : (isHindi ? _PhaseCopy.remedyFallbackHi : _PhaseCopy.remedyFallbackEn);
+    final quickTipBody = parts.quickTip ??
+        (isHindi ? _PhaseCopy.quickTipFallbackHi : _PhaseCopy.quickTipFallbackEn);
 
     return Container(
       width: double.infinity,
