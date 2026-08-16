@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 
+import 'package:jyotishasha_app/core/models/premium_reports/premium_ai_report_contracts.dart';
+
 /// Local, UI-only model for the 5 Premium Report categories (matching the
 /// Welcome Gift / Explore Premium Reports Hub set). Every "Premium
 /// Report" card opens `BirthChartReportReader` passing only this — no
 /// backend id, no entitlement data.
 enum PremiumReportType { love, career, finance, health, family }
 
-/// Static, per-type display content for the landing page. All content
-/// here is temporary/placeholder text per this task's scope — no
-/// backend, no report generation.
+/// Per-type display content for the landing page, plus [segment] — the
+/// backend segment string (`PremiumAiReportSegments`) `BirthChartReportReader`
+/// passes to `GET /api/premium-report` for this type's real DNA/Current
+/// Phase content. [aboutEn]/[aboutHi] remain in use only as the
+/// `fallbackText` shown while a call is in flight or has never been made
+/// (mirrors Love's own pre-existing behavior — never a placeholder
+/// standing in for real content once the backend has responded).
 class PremiumReportContent {
   const PremiumReportContent({
     required this.icon,
@@ -18,6 +24,7 @@ class PremiumReportContent {
     required this.aboutHi,
     required this.discoverEn,
     required this.discoverHi,
+    required this.segment,
   });
 
   final IconData icon;
@@ -27,6 +34,7 @@ class PremiumReportContent {
   final String aboutHi;
   final List<String> discoverEn;
   final List<String> discoverHi;
+  final String segment;
 
   String title(bool isHindi) => isHindi ? titleHi : titleEn;
   String about(bool isHindi) => isHindi ? aboutHi : aboutEn;
@@ -62,6 +70,7 @@ extension PremiumReportTypeContent on PremiumReportType {
         'चुनौतियां',
         'अनुकूलता शैली',
       ],
+      segment: PremiumAiReportSegments.love,
     ),
     PremiumReportType.career: PremiumReportContent(
       icon: Icons.work_rounded,
@@ -87,6 +96,7 @@ extension PremiumReportTypeContent on PremiumReportType {
         'चुनौतियां',
         'सफलता का समय',
       ],
+      segment: PremiumAiReportSegments.career,
     ),
     PremiumReportType.finance: PremiumReportContent(
       icon: Icons.account_balance_wallet_rounded,
@@ -112,6 +122,7 @@ extension PremiumReportTypeContent on PremiumReportType {
         'चुनौतियां',
         'विकास के अवसर',
       ],
+      segment: PremiumAiReportSegments.finance,
     ),
     PremiumReportType.health: PremiumReportContent(
       icon: Icons.spa_rounded,
@@ -138,6 +149,7 @@ extension PremiumReportTypeContent on PremiumReportType {
         'चुनौतियां',
         'कल्याण केंद्र',
       ],
+      segment: PremiumAiReportSegments.health,
     ),
     PremiumReportType.family: PremiumReportContent(
       icon: Icons.groups_rounded,
@@ -164,6 +176,7 @@ extension PremiumReportTypeContent on PremiumReportType {
         'चुनौतियां',
         'संबंध शैली',
       ],
+      segment: PremiumAiReportSegments.family,
     ),
   };
 }

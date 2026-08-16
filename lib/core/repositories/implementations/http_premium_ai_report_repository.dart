@@ -68,7 +68,19 @@ final class HttpPremiumAiReportRepository implements PremiumAiReportRepository {
   }
 
   Future<String?> _requireBackendToken() async {
-    final user = FirebaseAuth.instance.currentUser;
+    final User? user;
+    try {
+      // FirebaseAuth.instance itself throws (rather than returning a
+      // null currentUser) when no Firebase app has been initialized —
+      // never the case in the real app (Firebase.initializeApp() always
+      // runs before any UI renders), but reachable from a headless
+      // widget-test navigation path with no injectable fake repository
+      // (e.g. tapping a report card on ExplorePage). Treated the same
+      // as "no signed-in user": no token available.
+      user = FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return null;
+    }
     if (user == null) return null;
     return BackendAuthService.getBackendToken(user.uid);
   }

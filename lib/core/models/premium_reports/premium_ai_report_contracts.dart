@@ -2,19 +2,28 @@
 
 /// S5.X — typed contract for `GET /api/premium-report`.
 ///
-/// Segment/report-type constants mirror the backend's actual, currently
-/// *registered* generators exactly (`modules/ai_report_engine/
-/// generator_registry.py::_register_default_generators` in the backend
-/// repo only registers `"LOVE"`; `modules/love/love_generator.py`
-/// supports report types `DNA`/`CURRENT_PHASE`/`DAILY_INSIGHT`). Other
-/// segments (`CAREER`/`FINANCE`/`HEALTH`/`FAMILY`/`ALERTS`) are valid
-/// entitlement segments but have no generator yet — calling them 400s
-/// regardless of subscription, so this client deliberately does not
-/// expose them until the backend registers a generator for each.
+/// Segment constants mirror the backend's actual, currently *registered*
+/// generators exactly (`modules/ai_report_engine/generator_registry.py::
+/// _register_default_generators` in the backend repo registers all five —
+/// `LoveGenerator`/`CareerGenerator`/`FinanceGenerator`/`HealthGenerator`/
+/// `FamilyGenerator`, each supporting report types `DNA`/`CURRENT_PHASE`/
+/// `DAILY_INSIGHT`). `ALERTS` is deliberately NOT one of these constants:
+/// per that same backend file's own docstring, "Alerts" is not a
+/// ReportGenerator segment at all — `modules/alerts/` is a separate,
+/// independent, rule-based system with its own registry
+/// (`modules/alerts/event_registry.py`), consumed by the existing
+/// notification pipeline, not by this entitlement-gated report engine.
+/// Adding it here would 400 against a segment the backend's
+/// `AI_REPORT_SEGMENTS` tuple (`modules/models_ai_reports.py`) does not
+/// recognize.
 class PremiumAiReportSegments {
   const PremiumAiReportSegments._();
 
   static const String love = 'LOVE';
+  static const String career = 'CAREER';
+  static const String finance = 'FINANCE';
+  static const String health = 'HEALTH';
+  static const String family = 'FAMILY';
 }
 
 class PremiumAiReportTypes {
@@ -31,7 +40,11 @@ class PremiumAiReportTypes {
 /// rewords backend error copy, matching `SubscriptionProvider`'s same
 /// "backend is the source of truth" convention).
 class PremiumAiReportResult {
-  const PremiumAiReportResult._({this.content, this.errorCode, this.errorMessage});
+  const PremiumAiReportResult._({
+    this.content,
+    this.errorCode,
+    this.errorMessage,
+  });
 
   factory PremiumAiReportResult.success(String content) =>
       PremiumAiReportResult._(content: content);
@@ -39,7 +52,8 @@ class PremiumAiReportResult {
   factory PremiumAiReportResult.failure({
     required String errorCode,
     String? errorMessage,
-  }) => PremiumAiReportResult._(errorCode: errorCode, errorMessage: errorMessage);
+  }) =>
+      PremiumAiReportResult._(errorCode: errorCode, errorMessage: errorMessage);
 
   /// Non-null exactly when the call succeeded.
   final String? content;
