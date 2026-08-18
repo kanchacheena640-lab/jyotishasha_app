@@ -11,6 +11,7 @@ import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
+import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
 
 import '../asknow/asknow_chat_page.dart';
 import '../reports/pages/report_catalog_page.dart';
@@ -20,7 +21,13 @@ import 'dashboard_home_section.dart';
 import 'dashboard_tab_switcher.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  const DashboardPage({super.key, CurrentUserIdentityPort? identityPort})
+    : _identityPort = identityPort;
+
+  /// Task 4A — forwarded to [DashboardHomeSection]'s own injectable seam
+  /// purely for test injection; production never passes this (see
+  /// DashboardHomeSection's own doc comment for why it exists).
+  final CurrentUserIdentityPort? _identityPort;
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -133,12 +140,16 @@ class _DashboardPageState extends State<DashboardPage> {
   // all — see GreetingHeaderWidget's "Your Astrology Profile" CTA and
   // the "Create Another Kundali" entry points, both of which push
   // KundaliOverviewPage directly and are unaffected by this change.
-  final List<Widget> _pages = const [
-    DashboardHomeSection(),
-    SizedBox.shrink(),
-    ReportCatalogPage(),
-    ExplorePage(),
-    AccountPage(),
+  // Task 4A — no longer a `const` list: DashboardHomeSection now takes
+  // widget._identityPort (test-injection only; always null in
+  // production, so DashboardHomeSection falls back to its own real,
+  // unchanged default exactly as before).
+  late final List<Widget> _pages = [
+    DashboardHomeSection(identityPort: widget._identityPort),
+    const SizedBox.shrink(),
+    const ReportCatalogPage(),
+    const ExplorePage(),
+    const AccountPage(),
   ];
 
   // ------------------------------------------------------------

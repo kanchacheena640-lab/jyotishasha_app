@@ -1,8 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+
+// Task 4A — the existing, already-proven boundary ProfileService/
+// FirestoreProfileRepository already use to read the current Firebase
+// user without depending on FirebaseAuth directly (see
+// lib/core/identity/). Reused here rather than adding a new one.
+import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
+import 'package:jyotishasha_app/core/identity/firebase_current_user_identity_port.dart';
 
 // Widgets
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
@@ -26,7 +34,17 @@ import 'package:jyotishasha_app/core/state/transit_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 
 class DashboardHomeSection extends StatefulWidget {
-  const DashboardHomeSection({super.key});
+  const DashboardHomeSection({super.key, CurrentUserIdentityPort? identityPort})
+    : _identityPort = identityPort;
+
+  /// Task 4A — injectable seam (defaults to the real, production
+  /// `FirebaseCurrentUserIdentityPort` below) so tests can supply a fake
+  /// that resolves immediately instead of needing a real signed-in
+  /// Firebase user, which this widget-test environment has no way to
+  /// provide. Production callers never pass this — the one real
+  /// `DashboardHomeSection()` construction site (dashboard_page.dart)
+  /// is unchanged.
+  final CurrentUserIdentityPort? _identityPort;
 
   @override
   State<DashboardHomeSection> createState() => _DashboardHomeSectionState();
@@ -34,17 +52,45 @@ class DashboardHomeSection extends StatefulWidget {
 
 class _DashboardHomeSectionState extends State<DashboardHomeSection>
     with WidgetsBindingObserver {
+  late final CurrentUserIdentityPort _identityPort =
+      widget._identityPort ?? FirebaseCurrentUserIdentityPort();
+
+  /// Task 4A — a real, cancellable `Timer` (was a bare `Future.delayed`
+  /// inside the polling loop below, with no handle to cancel).
+  /// Previously, disposing this widget while still waiting for a signed-
+  /// in user left the poll running in the background indefinitely
+  /// instead of actually stopping — dispose() now cancels it outright.
+  Timer? _unreadPollTimer;
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
 
-    _loadUnreadCount();
+    // Task 4A — deferred to the next frame (matching the same
+    // addPostFrameCallback convention GreetingHeaderWidget's own
+    // unread-count kickoff already uses), not called synchronously from
+    // initState. This was already effectively true before (the original
+    // polling loop always awaited a 300ms Future.delayed before its
+    // first real check, so NotificationProvider.loadUnreadCount() could
+    // never fire during the initial build), but relied on that delay's
+    // side effect rather than stating the requirement directly — a
+    // resolved-immediately current-user check (as an injected test
+    // double can produce) would otherwise call
+    // NotificationProvider.loadUnreadCount() synchronously inside this
+    // widget's own first build, which Flutter disallows
+    // (notifyListeners() cannot mark a provider dirty while the tree is
+    // still being built).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadUnreadCount();
+    });
   }
 
   @override
   void dispose() {
+    _unreadPollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -56,17 +102,44 @@ class _DashboardHomeSectionState extends State<DashboardHomeSection>
     }
   }
 
+  /// Same "keep trying every 300ms until someone is signed in" contract
+  /// as before — same cadence, same eventual
+  /// `NotificationProvider.loadUnreadCount()` call. Two lifecycle fixes
+  /// on top of the original: (1) the current-user read now goes through
+  /// [CurrentUserIdentityPort] (the same boundary `ProfileService`
+  /// already uses) instead of `FirebaseAuth.instance` directly, wrapped
+  /// defensively — an unexpected error there (e.g. an initialization
+  /// race) now means "keep polling" instead of an unhandled exception
+  /// escaping this fire-and-forget call, the same failure mode this
+  /// method already treated "no user yet" as; (2) the wait between
+  /// attempts is a real, cancellable `Timer`, and the loop itself now
+  /// checks `mounted` on every iteration, so leaving this screen while
+  /// still waiting for a user actually stops the poll instead of leaving
+  /// it running forever in the background.
   Future<void> _loadUnreadCount() async {
-    User? user;
+    String? uid = _currentUidOrNull();
 
-    while (user == null) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      user = FirebaseAuth.instance.currentUser;
+    while (mounted && uid == null) {
+      final waited = Completer<void>();
+      _unreadPollTimer = Timer(const Duration(milliseconds: 300), () {
+        if (!waited.isCompleted) waited.complete();
+      });
+      await waited.future;
+      if (!mounted) return;
+      uid = _currentUidOrNull();
     }
 
-    if (!mounted) return;
+    if (!mounted || uid == null) return;
 
     await context.read<NotificationProvider>().loadUnreadCount();
+  }
+
+  String? _currentUidOrNull() {
+    try {
+      return _identityPort.currentFirebaseUid;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _onRefresh() async {

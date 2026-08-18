@@ -1,5 +1,7 @@
 // lib/core/widgets/greeting_header_widget.dart
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -23,18 +25,36 @@ class GreetingHeaderWidget extends StatefulWidget {
 }
 
 class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
+  /// Task 4A — a real, cancellable `Timer` (was a bare `Future.delayed`,
+  /// which has no handle to cancel). Previously, disposing this widget
+  /// before the 2s delay elapsed left the delayed callback scheduled
+  /// forever in the background (harmless in practice only because of the
+  /// `mounted` guard below, but never actually cancelled) — `dispose()`
+  /// now stops it outright, matching how every other timer/subscription
+  /// in this app is expected to be torn down. Same 2s delay, same
+  /// eventual `NotificationProvider.loadUnreadCount()` call — production
+  /// behavior is unchanged for the normal case where this widget simply
+  /// stays mounted.
+  Timer? _bellFetchTimer;
+
   @override
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Future.delayed(const Duration(seconds: 2));
-
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-
-      final provider = context.read<NotificationProvider>();
-      await provider.loadUnreadCount();
+      _bellFetchTimer = Timer(const Duration(seconds: 2), () async {
+        if (!mounted) return;
+        final provider = context.read<NotificationProvider>();
+        await provider.loadUnreadCount();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _bellFetchTimer?.cancel();
+    super.dispose();
   }
 
   String _getGreeting(String lang) {
