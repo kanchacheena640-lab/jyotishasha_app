@@ -11,6 +11,7 @@ import 'package:jyotishasha_app/features/kundali/kundali_overview_page.dart';
 import 'package:jyotishasha_app/features/kundali/widgets/identity_card.dart';
 import 'package:jyotishasha_app/features/kundali/widgets/life_report_card.dart';
 import 'package:jyotishasha_app/features/kundali/widgets/yog_dosh_mini_card.dart';
+import 'package:jyotishasha_app/features/manual_kundali/manual_kundali_form_page.dart';
 
 import '../../helpers/test_harness.dart';
 
@@ -594,6 +595,258 @@ void main() {
         );
 
         expect(find.text('Kundali'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Self | Other toggle (Task 2 — unified Self/Other Kundali UX)', () {
+    Map<String, dynamic> selfFixture() => {
+      'profile': {'name': 'the signed-in user'},
+      'lagna_sign': 'Aries',
+      'chart_data': {'planets': []},
+    };
+
+    Map<String, dynamic> otherFixture() => {
+      'profile': {'name': 'Priya Sharma'},
+      'lagna_sign': 'Scorpio',
+      'chart_data': {'planets': []},
+    };
+
+    testWidgets(
+      'default entry (Your Astrology Profile / bottom-nav Astrology tab) '
+      'opens in Self mode and shows both toggle segments',
+      (tester) async {
+        final provider = FirebaseKundaliProvider()..kundaliData = selfFixture();
+
+        await pump(tester, provider);
+
+        expect(find.text('Self'), findsOneWidget);
+        expect(find.text('Other'), findsOneWidget);
+        // Self content is on screen without ever tapping the toggle.
+        expect(find.text('the signed-in user'), findsOneWidget);
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'Create Another Kundali / Other-person entry (useManualProvider: '
+      'true) opens directly in Other mode and shows the birth-details '
+      'form when no Other Kundali exists yet',
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider();
+        final manualProvider = ManualKundaliProvider();
+
+        await pump(
+          tester,
+          firebaseProvider,
+          useManualProvider: true,
+          manualProvider: manualProvider,
+        );
+
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsOneWidget);
+        expect(find.text('Full Name'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping Other while viewing Self switches to the birth-details '
+      "form and never touches FirebaseKundaliProvider's data",
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider()
+          ..kundaliData = selfFixture();
+        final manualProvider = ManualKundaliProvider();
+
+        await pump(tester, firebaseProvider, manualProvider: manualProvider);
+
+        await tester.tap(find.text('Other'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsOneWidget);
+        expect(find.text('the signed-in user'), findsNothing);
+        // Self's own data was never touched.
+        expect(
+          firebaseProvider.kundaliData?['profile']['name'],
+          'the signed-in user',
+        );
+      },
+    );
+
+    testWidgets(
+      'tapping Self while viewing an existing Other Kundali switches back '
+      "and never touches ManualKundaliProvider's data",
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider()
+          ..kundaliData = selfFixture();
+        final manualProvider = ManualKundaliProvider()
+          ..kundali = otherFixture();
+
+        await pump(
+          tester,
+          firebaseProvider,
+          useManualProvider: true,
+          manualProvider: manualProvider,
+        );
+        expect(find.text('Priya Sharma'), findsWidgets);
+
+        await tester.tap(find.text('Self'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('the signed-in user'), findsOneWidget);
+        expect(find.text('Priya Sharma'), findsNothing);
+        // Other's own data was never touched/reset by switching away.
+        expect(manualProvider.kundali?['profile']['name'], 'Priya Sharma');
+      },
+    );
+
+    testWidgets(
+      'switching Self → Other → Self → Other preserves the previously '
+      'generated Other Kundali — switching away never resets it',
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider()
+          ..kundaliData = selfFixture();
+        final manualProvider = ManualKundaliProvider()
+          ..kundali = otherFixture();
+
+        await pump(tester, firebaseProvider, manualProvider: manualProvider);
+
+        await tester.tap(find.text('Other'));
+        await tester.pumpAndSettle();
+        expect(find.text('Priya Sharma'), findsWidgets);
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsNothing);
+
+        await tester.tap(find.text('Self'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Other'));
+        await tester.pumpAndSettle();
+
+        // Still the same previously generated Other Kundali — the form
+        // did not reappear.
+        expect(find.text('Priya Sharma'), findsWidgets);
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'a successful Other generation (ManualKundaliProvider populated) '
+      'reactively swaps the embedded form out for the shared Kundali '
+      'rendering, with no navigation required',
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider();
+        final manualProvider = ManualKundaliProvider();
+
+        await pump(
+          tester,
+          firebaseProvider,
+          useManualProvider: true,
+          manualProvider: manualProvider,
+        );
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsOneWidget);
+
+        // Simulate what a successful generateKundali() call leaves
+        // behind — same fixture-injection approach the rest of this
+        // suite already uses for FirebaseKundaliProvider.
+        manualProvider.kundali = otherFixture();
+        manualProvider.notifyListeners();
+        await tester.pump();
+
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsNothing);
+        expect(find.text('Priya Sharma'), findsWidgets);
+      },
+    );
+
+    testWidgets(
+      'shows a "Create New Kundali" action (not "Create Another '
+      'Kundali") when Other mode already has a generated Kundali on '
+      'screen',
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider();
+        final manualProvider = ManualKundaliProvider()
+          ..kundali = otherFixture();
+
+        await pump(
+          tester,
+          firebaseProvider,
+          useManualProvider: true,
+          manualProvider: manualProvider,
+        );
+
+        expect(
+          find.widgetWithText(OutlinedButton, 'Create New Kundali'),
+          findsOneWidget,
+        );
+        expect(
+          find.widgetWithText(ElevatedButton, 'Create Another Kundali'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'tapping "Create New Kundali" resets ManualKundaliProvider and '
+      'shows the birth-details form again — an explicit action, never '
+      'automatic on a mode switch',
+      (tester) async {
+        final firebaseProvider = FirebaseKundaliProvider();
+        final manualProvider = ManualKundaliProvider()
+          ..kundali = otherFixture();
+
+        await pump(
+          tester,
+          firebaseProvider,
+          useManualProvider: true,
+          manualProvider: manualProvider,
+        );
+
+        final createNew = find.widgetWithText(
+          OutlinedButton,
+          'Create New Kundali',
+        );
+        await tester.ensureVisible(createNew);
+        await tester.tap(createNew);
+        await tester.pumpAndSettle();
+
+        expect(manualProvider.kundali, isNull);
+        expect(find.byType(ManualKundaliBirthDetailsForm), findsOneWidget);
+      },
+    );
+
+    testWidgets('the toggle and the embedded form render in Hindi', (
+      tester,
+    ) async {
+      final firebaseProvider = FirebaseKundaliProvider();
+      final manualProvider = ManualKundaliProvider();
+
+      await pump(
+        tester,
+        firebaseProvider,
+        useManualProvider: true,
+        manualProvider: manualProvider,
+        lang: 'hi',
+      );
+
+      expect(find.text('स्वयं'), findsOneWidget);
+      expect(find.text('अन्य'), findsOneWidget);
+      expect(find.text('पूरा नाम'), findsOneWidget);
+    });
+
+    testWidgets(
+      'the existing "Create Another Kundali" CTA on the Self page still '
+      'works — it pushes ManualKundaliFormPage, which (Task 2) now opens '
+      'this same unified page already in Other mode',
+      (tester) async {
+        final observer = _RecordingNavigatorObserver();
+        final provider = FirebaseKundaliProvider()..kundaliData = selfFixture();
+
+        await pump(tester, provider, navigatorObservers: [observer]);
+        final baseline = observer.pushed.length;
+
+        final cta = find.widgetWithText(ElevatedButton, 'Create Another Kundali');
+        await tester.ensureVisible(cta);
+        await tester.tap(cta);
+        await tester.pumpAndSettle();
+
+        expect(observer.pushed.length, greaterThan(baseline));
+        expect(find.byType(ManualKundaliFormPage), findsOneWidget);
       },
     );
   });

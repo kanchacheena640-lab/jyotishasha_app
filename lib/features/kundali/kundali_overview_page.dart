@@ -81,12 +81,33 @@ void _openReport(BuildContext context, String? url) {
   Navigator.push(context, MaterialPageRoute(builder: (_) => InAppWebView(url: url)));
 }
 
+/// Which data source this page is currently displaying. F8.7 introduced
+/// the underlying `useManualProvider` split; Task 2 (Self/Other Kundali
+/// UX) adds an in-page toggle on top of it so a single
+/// [KundaliOverviewPage] instance can move between the two without ever
+/// navigating away or touching the other mode's provider.
+enum _KundaliMode { self, other }
+
 /// F8.1 — Kundali Overview Foundation. F8.7 made this page data-source
 /// independent (see [useManualProvider]) so the exact same page can show
 /// either the signed-in user's own chart or a chart manually generated
 /// for someone else — without duplicating the page and without the two
 /// source providers ([FirebaseKundaliProvider], [ManualKundaliProvider])
 /// ever touching, copying into, or overwriting one another.
+///
+/// Task 2 (Self/Other Kundali UX) adds a small "Self | Other" segmented
+/// control near the top of this page (below the AppBar, before the
+/// Kundali content) that switches which of the two providers is shown
+/// in place, without leaving this page. [useManualProvider] now only
+/// seeds the *initial* selection (unchanged meaning for every existing
+/// caller); which provider is actually rendered at any moment is the
+/// page's own `_mode` state. Switching modes never reads, writes, resets
+/// or clears the provider that is not currently shown — e.g. switching
+/// to Self never touches [ManualKundaliProvider], and switching to
+/// Other never touches [FirebaseKundaliProvider] — so a previously
+/// generated Other Kundali is still there when the user switches back to
+/// it later in the same session, and Self's own data is never affected
+/// by anything that happens on the Other side.
 ///
 /// Reuses the existing, already-registered [FirebaseKundaliProvider]/
 /// [ManualKundaliProvider] — no new provider was created — and the
@@ -125,21 +146,32 @@ class KundaliOverviewPage extends StatefulWidget {
 }
 
 class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
+  /// Task 2 — which side of the toggle is currently shown. Seeded once
+  /// from [KundaliOverviewPage.useManualProvider] (unchanged meaning:
+  /// every existing caller that passes `useManualProvider: true` still
+  /// opens straight into Other, exactly as before); switching afterwards
+  /// only ever updates this local state, never the constructor param.
+  late _KundaliMode _mode;
+
   @override
   void initState() {
     super.initState();
-    if (widget.autoLoad && !widget.useManualProvider) {
+    _mode = widget.useManualProvider ? _KundaliMode.other : _KundaliMode.self;
+    if (widget.autoLoad && _mode == _KundaliMode.self) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     }
   }
 
+  /// Self-only fetch. Other mode never calls this on its own behalf —
+  /// its data always comes from [ManualKundaliBirthDetailsForm]'s own
+  /// [ManualKundaliProvider.generateKundali] call — but it is safe (and,
+  /// per Task 2, expected) to call this when the user switches the
+  /// toggle to Self, in addition to the original initState/Retry call
+  /// sites: the guard below is idempotent, so a Self fetch that is
+  /// already loaded or in flight is never duplicated, and calling this
+  /// while Other is currently shown never touches or affects what is on
+  /// screen.
   Future<void> _load() async {
-    // Manual mode never fetches here — ManualKundaliProvider is always
-    // already populated (by ManualKundaliFormPage) before this page is
-    // reached, and F8.7 must never touch FirebaseKundaliProvider on a
-    // manual-mode page.
-    if (widget.useManualProvider) return;
-
     final provider = context.read<FirebaseKundaliProvider>();
     // Same provider may already be populated by AstrologyPage/Dashboard —
     // avoid an unnecessary duplicate fetch if data is already there.
@@ -147,6 +179,22 @@ class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
 
     final lang = context.read<LanguageProvider>().currentLang;
     await provider.loadFromFirebaseProfile(context, lang: lang);
+  }
+
+  /// Task 2 — the sole way `_mode` ever changes. Purely local widget
+  /// state: never resets, clears, or otherwise mutates either provider.
+  /// Switching to Self opportunistically kicks off a Self load if one
+  /// isn't already loaded/in flight (see [_load]'s own guard); switching
+  /// to Other never triggers any fetch — [ManualKundaliProvider] either
+  /// already has a result from earlier in the session (shown as-is) or
+  /// it doesn't (the birth-details form is shown so the user can
+  /// generate one).
+  void _switchMode(_KundaliMode mode) {
+    if (_mode == mode) return;
+    setState(() => _mode = mode);
+    if (mode == _KundaliMode.self) {
+      _load();
+    }
   }
 
   @override
@@ -161,17 +209,18 @@ class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
     final firebaseProvider = context.watch<FirebaseKundaliProvider>();
     final manualProvider = context.watch<ManualKundaliProvider>();
 
-    final isLoading = widget.useManualProvider
+    final isOther = _mode == _KundaliMode.other;
+    final isLoading = isOther
         ? manualProvider.isLoading
         : firebaseProvider.isLoading;
-    final errorMessage = widget.useManualProvider
+    final errorMessage = isOther
         ? manualProvider.error
         : firebaseProvider.errorMessage;
-    final kundaliData = widget.useManualProvider
+    final kundaliData = isOther
         ? manualProvider.kundali
         : firebaseProvider.kundaliData;
 
-    final manualName = widget.useManualProvider
+    final manualName = isOther
         ? ((kundaliData?['profile'] as Map?)?['name']?.toString().trim())
         : null;
     final title = (manualName != null && manualName.isNotEmpty)
@@ -188,12 +237,27 @@ class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: SafeArea(
-        child: _buildBody(
-          context,
-          isLoading: isLoading,
-          errorMessage: errorMessage,
-          kundaliData: kundaliData,
-          isHindi: isHindi,
+        child: Column(
+          children: [
+            // Task 2 — always visible, regardless of loading/error/empty/
+            // data state, so the user can switch sides at any time.
+            _ModeToggle(
+              isOther: isOther,
+              isHindi: isHindi,
+              onChanged: (other) =>
+                  _switchMode(other ? _KundaliMode.other : _KundaliMode.self),
+            ),
+            Expanded(
+              child: _buildBody(
+                context,
+                isOther: isOther,
+                isLoading: isLoading,
+                errorMessage: errorMessage,
+                kundaliData: kundaliData,
+                isHindi: isHindi,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -201,35 +265,55 @@ class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
 
   Widget _buildBody(
     BuildContext context, {
+    required bool isOther,
     required bool isLoading,
     required String? errorMessage,
     required Map<String, dynamic>? kundaliData,
     required bool isHindi,
   }) {
-    if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    if (isOther) {
+      // Other mode has its own two states only: a fetch actually in
+      // flight (from the embedded form's own submit), or not. There is
+      // no separate "error" status view here — a failed generation
+      // simply leaves kundaliData null, so the form (which surfaces the
+      // error itself via a SnackBar) is shown again for another attempt.
+      if (isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
+      if (kundaliData == null) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: ManualKundaliBirthDetailsForm(isHindi: isHindi),
+        );
+      }
+      // Falls through to the shared chart/details render below — reused
+      // as-is, identically to Self.
+    } else {
+      if (isLoading) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-    if (errorMessage != null) {
-      return _StatusView(
-        icon: Icons.error_outline_rounded,
-        message: isHindi
-            ? 'कुंडली लोड करने में समस्या हुई।'
-            : 'Something went wrong loading your Kundali.',
-        onRetry: _load,
-        isHindi: isHindi,
-      );
-    }
+      if (errorMessage != null) {
+        return _StatusView(
+          icon: Icons.error_outline_rounded,
+          message: isHindi
+              ? 'कुंडली लोड करने में समस्या हुई।'
+              : 'Something went wrong loading your Kundali.',
+          onRetry: _load,
+          isHindi: isHindi,
+        );
+      }
 
-    if (kundaliData == null) {
-      return _StatusView(
-        icon: Icons.auto_awesome_outlined,
-        message: isHindi
-            ? 'अभी कोई कुंडली डेटा उपलब्ध नहीं है।'
-            : 'No Kundali data available yet.',
-        onRetry: _load,
-        isHindi: isHindi,
-      );
+      if (kundaliData == null) {
+        return _StatusView(
+          icon: Icons.auto_awesome_outlined,
+          message: isHindi
+              ? 'अभी कोई कुंडली डेटा उपलब्ध नहीं है।'
+              : 'No Kundali data available yet.',
+          onRetry: _load,
+          isHindi: isHindi,
+        );
+      }
     }
 
     final data = kundaliData;
@@ -265,13 +349,95 @@ class _KundaliOverviewPageState extends State<KundaliOverviewPage> {
           const SizedBox(height: 24),
           _LifeAreasSection(isHindi: isHindi),
           // F8.7 — the "Create Another Kundali" CTA only makes sense from
-          // "My Kundali" itself; a manually generated chart doesn't get
-          // its own nested "create another" entry point.
-          if (!widget.useManualProvider) ...[
+          // "My Kundali" itself; a manually generated chart gets its own
+          // "Create New Kundali" action instead (Task 2, below), since
+          // there the useful action is replacing the current Other
+          // result, not switching modes (the toggle above already does
+          // that).
+          if (!isOther) ...[
             const SizedBox(height: 24),
             _CreateAnotherKundaliSection(isHindi: isHindi),
+          ] else ...[
+            const SizedBox(height: 24),
+            _CreateNewOtherKundaliSection(
+              isHindi: isHindi,
+              // Task 2 — explicit user action only. Switching away from
+              // Other and back never calls this on its own; only this
+              // button does.
+              onCreateNew: () =>
+                  context.read<ManualKundaliProvider>().reset(),
+            ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Task 2 — the "Self | Other" segmented control. Purely presentational
+/// plus one callback; it holds no state and no provider access of its
+/// own — [_KundaliOverviewPageState._switchMode] owns the actual mode
+/// switch and its isolation guarantees. Visual language reused, not
+/// reinvented: same lavender/purple tokens (`0xFF6B21A8`, `0xFFF6F3FC`,
+/// `0xFFE4D9FA`) already used throughout this page's chart badges and
+/// section cards.
+class _ModeToggle extends StatelessWidget {
+  const _ModeToggle({
+    required this.isOther,
+    required this.isHindi,
+    required this.onChanged,
+  });
+
+  final bool isOther;
+  final bool isHindi;
+
+  /// Called with `true` when Other is selected, `false` for Self.
+  final ValueChanged<bool> onChanged;
+
+  Widget _segment({required bool value, required String label}) {
+    final selected = isOther == value;
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(value),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFF6B21A8) : Colors.transparent,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: selected ? Colors.white : const Color(0xFF6B7280),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F3FC),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFFE4D9FA)),
+        ),
+        child: Row(
+          children: [
+            _segment(value: false, label: isHindi ? 'स्वयं' : 'Self'),
+            _segment(value: true, label: isHindi ? 'अन्य' : 'Other'),
+          ],
+        ),
       ),
     );
   }
@@ -1301,6 +1467,75 @@ class _CreateAnotherKundaliSection extends StatelessWidget {
               ),
               child: Text(
                 isHindi ? 'एक और कुंडली बनाएं' : 'Create Another Kundali',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Task 2 — the Other-side counterpart to [_CreateAnotherKundaliSection].
+/// Shown only when Other mode already has a generated Kundali on screen;
+/// its one action explicitly resets [ManualKundaliProvider] so the
+/// birth-details form reappears for a fresh entry. This is the *only*
+/// place [ManualKundaliProvider.reset] is ever called from this page —
+/// switching the Self|Other toggle itself never resets anything.
+class _CreateNewOtherKundaliSection extends StatelessWidget {
+  const _CreateNewOtherKundaliSection({
+    required this.isHindi,
+    required this.onCreateNew,
+  });
+
+  final bool isHindi;
+  final VoidCallback onCreateNew;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isHindi ? 'किसी और के लिए कुंडली चाहिए?' : 'Generate for someone else?',
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1F1B2E),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isHindi
+                ? 'यह कुंडली बदले बिना एक नई कुंडली शुरू करें।'
+                : 'Start a fresh Kundali without changing this one.',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF4B5563),
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: onCreateNew,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                isHindi ? 'नई कुंडली बनाएं' : 'Create New Kundali',
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,

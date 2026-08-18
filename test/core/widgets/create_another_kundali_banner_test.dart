@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/create_another_kundali_banner.dart';
 import 'package:jyotishasha_app/core/widgets/share_strip_widget.dart';
@@ -27,12 +29,25 @@ void main() {
     await tester.pumpTestHarness(
       const Scaffold(body: CreateAnotherKundaliBanner()),
       locale: locale,
-      // The navigation target, ManualKundaliFormPage, reads
-      // ProfileProvider in its own build() (for the active profile's
-      // language) — must be present above MaterialApp, same as
-      // production's main.dart, for the pushed route to resolve it.
+      // The navigation target, ManualKundaliFormPage, now (Task 2)
+      // delegates straight to KundaliOverviewPage in Other mode, which
+      // watches FirebaseKundaliProvider/ManualKundaliProvider/
+      // LanguageProvider — all three must be present above MaterialApp,
+      // same as production's main.dart, for the pushed route to resolve
+      // them. ProfileProvider is kept too even though the form no longer
+      // reads it directly, since nothing else in this test depends on
+      // its absence.
       providers: [
         ChangeNotifierProvider<ProfileProvider>.value(value: profileProvider),
+        ChangeNotifierProvider<FirebaseKundaliProvider>(
+          create: (_) => FirebaseKundaliProvider(),
+        ),
+        ChangeNotifierProvider<ManualKundaliProvider>(
+          create: (_) => ManualKundaliProvider(),
+        ),
+        ChangeNotifierProvider<LanguageProvider>(
+          create: (_) => LanguageProvider(),
+        ),
       ],
     );
   }
