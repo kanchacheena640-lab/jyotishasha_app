@@ -7,6 +7,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
+import 'package:jyotishasha_app/core/models/account/account_deletion_contracts.dart';
+import 'package:jyotishasha_app/core/repositories/account_deletion_repository.dart';
+import 'package:jyotishasha_app/core/repositories/implementations/http_account_deletion_repository.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
@@ -27,7 +30,7 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 /// the four dead "Coming Soon" rows this screen previously carried are
 /// gone with it.
 ///
-/// Two sections from the original target structure are deliberately NOT
+/// One section from the original target structure is deliberately NOT
 /// present, per that same audit's own stop-conditions rather than an
 /// oversight:
 /// - **Activity/History**: no existing Flutter repository or backend
@@ -38,11 +41,6 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 ///   admin-scoped, not a self-service history endpoint. Labeling a
 ///   fabricated or partial list "history" would be worse than omitting
 ///   it — see this screen's audit trail.
-/// - **Delete Account**: no Flutter repository/service method and no
-///   backend endpoint for account deletion exist anywhere in either
-///   repository (confirmed by search, not merely unwired). Faking a
-///   destructive action that doesn't actually delete anything would be
-///   actively harmful, so it is omitted rather than stubbed.
 /// - **Appearance (Dark Mode)**: also omitted — see [_showLanguageDialog]'s
 ///   sibling absence; `app/theme/app_theme.dart` defines only
 ///   `lightTheme`, `app/app.dart` hardcodes `themeMode: ThemeMode.light`,
@@ -53,14 +51,39 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 ///   taking on here. Language switching has no such dependency (a single
 ///   existing provider, already used this way by [EditProfilePage]) and
 ///   proceeds independently.
+///
+/// **Delete Account** (D4) — added under ACCOUNT, below Logout. Backed by
+/// the now-locked backend contract (D1–D3, Jyotishasha_Backend:
+/// `POST /api/auth/delete-account`) via [HttpAccountDeletionRepository].
+/// The backend remains the sole authoritative owner of Firebase Auth/
+/// Firestore deletion — this screen never calls
+/// `FirebaseAuth.currentUser.delete()` and never touches Firestore.
 class AccountPage extends StatefulWidget {
-  const AccountPage({super.key});
+  const AccountPage({
+    super.key,
+    AccountDeletionRepository? accountDeletionRepository,
+  }) : _accountDeletionRepository = accountDeletionRepository;
+
+  /// Injectable purely for tests (mirrors [AlertsDashboardPage]'s own
+  /// `repository` param) — production always falls through to the real
+  /// [HttpAccountDeletionRepository].
+  final AccountDeletionRepository? _accountDeletionRepository;
 
   @override
   State<AccountPage> createState() => _AccountPageState();
 }
 
 class _AccountPageState extends State<AccountPage> {
+  late final AccountDeletionRepository _accountDeletionRepository =
+      widget._accountDeletionRepository ?? HttpAccountDeletionRepository();
+
+  /// Guards against a double-tap/re-entrant delete request (D4 Gate 6).
+  /// Set synchronously before the first `await` in [_performDeleteAccount],
+  /// so a second invocation arriving before the network call resolves is
+  /// always rejected — Dart's single-threaded event loop makes this
+  /// race-safe without any additional locking.
+  bool _isDeletingAccount = false;
+
   @override
   void initState() {
     super.initState();
@@ -215,7 +238,19 @@ class _AccountPageState extends State<AccountPage> {
     );
 
     await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    await _signOutLocallyAndReturnToLogin();
+  }
 
+  /// Shared local-session teardown — used by [_logout] AND by a fully
+  /// successful Delete Account (D4 Gate 5). Only ever calls the
+  /// ordinary, non-destructive `signOut()` — never
+  /// `FirebaseAuth.currentUser.delete()`. In the delete-account case this
+  /// only runs once the backend (D1–D3) has already confirmed the
+  /// account, its Firestore data, AND its Firebase Auth user are all
+  /// genuinely gone server-side; by that point this local session is
+  /// already stale, and this just clears it from the app.
+  Future<void> _signOutLocallyAndReturnToLogin() async {
     try {
       await fcmTokenManager.clearOnLogout();
     } catch (_) {}
@@ -236,6 +271,148 @@ class _AccountPageState extends State<AccountPage> {
     context.read<SubscriptionProvider>().reset();
 
     Navigator.pushNamedAndRemoveUntil(context, "/login", (_) => false);
+  }
+
+  /// ACCOUNT → Delete Account. Opens a clear, explicit warning dialog
+  /// (D4 Gate 3) — a deliberate second tap on a destructively-styled
+  /// button is required, matching [_confirmLogout]'s own established
+  /// pattern, never a single accidental tap.
+  Future<void> _confirmDeleteAccount(bool isHindi) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(isHindi ? 'अकाउंट डिलीट करें?' : 'Delete Account?'),
+        content: Text(
+          isHindi
+              ? 'आपका अकाउंट और प्रोफ़ाइल डेटा स्थायी रूप से डिलीट कर दिया जाएगा। यह क्रिया पूर्ववत नहीं की जा सकती।\n\nध्यान दें: अकाउंट डिलीट करने से आपकी सक्रिय Google Play / Apple सदस्यता अपने आप रद्द नहीं होती — कृपया उसे Play Store / App Store से अलग से रद्द करें।'
+              : 'Your account and profile data will be permanently deleted. This action cannot be undone.\n\nNote: deleting your Jyotishasha account does not automatically cancel an active Google Play / Apple subscription — please cancel that separately from the Play Store / App Store.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(isHindi ? 'रद्द करें' : 'Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              isHindi ? 'अकाउंट डिलीट करें' : 'Delete Account',
+              style: const TextStyle(color: Color(0xFFDC2626)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!mounted) return;
+    await _performDeleteAccount(isHindi);
+  }
+
+  /// Sends the request via [_accountDeletionRepository] (backend
+  /// D1–D3's locked contract) and branches on the typed
+  /// [AccountDeletionResult.status] — never on a raw HTTP code here (D4
+  /// Gate 2/5/6).
+  Future<void> _performDeleteAccount(bool isHindi) async {
+    if (_isDeletingAccount) return; // Gate 6 -- double-tap suppression
+    setState(() => _isDeletingAccount = true); // row shows a disabled/no-op state until this resolves
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    AccountDeletionResult result;
+    try {
+      result = await _accountDeletionRepository.deleteAccount();
+    } catch (e) {
+      // Defensive only -- HttpAccountDeletionRepository itself never
+      // throws (every failure path returns a typed failure result), but
+      // a future/injected repository implementation is not guaranteed
+      // to uphold that. Never assume deletion occurred on an unexpected
+      // exception.
+      result = AccountDeletionResult.failure(
+        status: AccountDeletionStatus.networkError,
+        message: e.toString(),
+      );
+    }
+
+    if (!mounted) return;
+    setState(() => _isDeletingAccount = false);
+
+    switch (result.status) {
+      case AccountDeletionStatus.success:
+        // Gate 5 — FULL SUCCESS: safe to clear local state and leave.
+        await _signOutLocallyAndReturnToLogin();
+        return;
+
+      case AccountDeletionStatus.pendingCleanup:
+        // Gate 5 — PENDING CLEANUP: the backend's DB-side deletion
+        // already committed, but Firebase-side cleanup is not yet
+        // confirmed complete. Deliberately NOT treated as full success:
+        // no provider reset, no sign-out, no navigation — the user's
+        // current session is left exactly as-is so the backend's own
+        // retry path (re-issuing this same authenticated request,
+        // possible for as long as the Firebase Auth user still exists —
+        // see D3's own retry design) remains available.
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(
+              isHindi ? 'डिलीशन प्रगति पर है' : 'Deletion In Progress',
+            ),
+            content: Text(
+              isHindi
+                  ? 'आपके अकाउंट डेटा को हटाने की प्रक्रिया शुरू हो चुकी है, लेकिन अंतिम सफ़ाई अभी पूरी नहीं हुई है। कृपया थोड़ी देर बाद पुनः प्रयास करें, या ज़रूरत पड़ने पर दोबारा साइन इन करके प्रयास करें।'
+                  : "Your account data deletion has started, but final cleanup on our side hasn't finished yet. Please try again shortly — you may need to sign in again to retry.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(isHindi ? 'ठीक है' : 'OK'),
+              ),
+            ],
+          ),
+        );
+        return;
+
+      case AccountDeletionStatus.unauthorized:
+      case AccountDeletionStatus.forbidden:
+        // Gate 6 — do not clear local state; explain and allow retry.
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              isHindi
+                  ? 'पहचान सत्यापन विफल रहा। कृपया दोबारा साइन इन करें और पुनः प्रयास करें।'
+                  : 'Identity verification failed. Please sign in again and retry.',
+            ),
+          ),
+        );
+        return;
+
+      case AccountDeletionStatus.authFailed:
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              isHindi
+                  ? 'सत्यापन नहीं हो सका। कृपया दोबारा साइन इन करें और पुनः प्रयास करें।'
+                  : 'Could not verify your session. Please sign in again and retry.',
+            ),
+          ),
+        );
+        return;
+
+      case AccountDeletionStatus.serverError:
+      case AccountDeletionStatus.networkError:
+      case AccountDeletionStatus.malformedResponse:
+        // Gate 6 — never assume deletion occurred; retry-safe UX.
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              isHindi
+                  ? 'अकाउंट डिलीट नहीं हो सका। कुछ भी डिलीट नहीं हुआ है — कृपया पुनः प्रयास करें।'
+                  : "We couldn't delete your account. Nothing was deleted — please try again.",
+            ),
+          ),
+        );
+        return;
+    }
   }
 
   static const Map<String, String> _zodiacSlugByKey = {
@@ -454,6 +631,16 @@ class _AccountPageState extends State<AccountPage> {
             iconColor: const Color(0xFFDC2626),
             titleColor: const Color(0xFFDC2626),
             onTap: () => _confirmLogout(isHindi),
+          ),
+          const SizedBox(height: 10),
+          _AccountActionRow(
+            icon: Icons.delete_forever_outlined,
+            title: isHindi ? 'अकाउंट डिलीट करें' : 'Delete Account',
+            iconColor: const Color(0xFFDC2626),
+            titleColor: const Color(0xFFDC2626),
+            onTap: _isDeletingAccount
+                ? () {}
+                : () => _confirmDeleteAccount(isHindi),
           ),
         ],
       ),
