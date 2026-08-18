@@ -32,17 +32,36 @@ void main() {
       ]);
     });
 
+    // Release-gate fix (P0) closed the one real defect this
+    // characterization test used to lock in: `autoConsume: true` let Play
+    // consume a pack purchase before `/api/chatpack/verify` ever ran, so
+    // a network/backend failure meant the customer paid and got nothing,
+    // with no recovery path. AskNow now mirrors the same
+    // verify-then-consume shape ReportPurchaseProvider's own section
+    // below already characterizes for Paid Reports — this test now locks
+    // in THAT architecture, not the unsafe one it replaced.
     test('AskNow lookup, verification payload, and completion stay fixed', () {
       final source = readProjectSource('lib/core/state/asknow_provider.dart');
 
       expect(source, contains('_iap.queryProductDetails({productId})'));
       expect(source, contains('lastErrorMessage = "Product not found"'));
-      expect(source, contains('autoConsume: true'));
+      // Requirement (P0 fix) — consumption only ever happens explicitly,
+      // after backend confirmation succeeds, never automatically.
+      expect(
+        source,
+        contains('await _iap.buyConsumable(purchaseParam: param, autoConsume: false);'),
+      );
+      expect(
+        source,
+        contains('if (_confirmingTokens.contains(token)) return;'),
+      );
       expectMarkersInOrder(source, const [
         '"user_id": _pendingUserId,',
         '"product_id": purchase.productID,',
-        '"purchase_token": purchase.verificationData.serverVerificationData,',
+        '"purchase_token": token,',
+        'if (purchase.pendingCompletePurchase) {',
         'await _iap.completePurchase(purchase);',
+        'await _consume(purchase);',
         'remainingTokens = 8;',
         'hasActivePack = true;',
       ]);

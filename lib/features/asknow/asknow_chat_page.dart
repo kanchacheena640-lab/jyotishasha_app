@@ -244,6 +244,14 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     final userId = await _getBackendUserId();
     if (userId == null) return;
 
+    // Release-gate fix (P1): `_getBackendUserId()` above is an async
+    // Firestore round-trip — if the user backs out of this page while it
+    // is in flight, `this` is disposed by the time it resolves. Every
+    // other async gap in this file already guards with `mounted`; this
+    // one was missing it, and both `context.read` below and `setState`
+    // itself throw once the State is no longer mounted.
+    if (!mounted) return;
+
     final profile = context.read<ProfileProvider>().activeProfile ?? {};
 
     setState(() {

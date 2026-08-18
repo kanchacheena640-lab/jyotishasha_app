@@ -1,13 +1,25 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:in_app_purchase_android/in_app_purchase_android.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/services/asknow_service.dart';
 
 class AskNowProvider extends ChangeNotifier {
+  /// `billing`/`httpClient` are injectable purely for tests (mirrors
+  /// [ReportPurchaseProvider]/[SubscriptionProvider]'s identical `billing`
+  /// seam, and [BackendAskNowRepository]'s identical `client` seam) —
+  /// production always falls through to the real [InAppPurchase.instance]
+  /// and a plain [http.Client]. Doesn't change the verify request's URL,
+  /// headers, or body — only how the outgoing call is dispatched.
+  AskNowProvider({InAppPurchase? billing, http.Client? httpClient})
+    : _iap = billing ?? InAppPurchase.instance,
+      _httpClient = httpClient ?? http.Client();
+
   // ---------------------------------------------------------
   // STATE
   // ---------------------------------------------------------
@@ -28,10 +40,34 @@ class AskNowProvider extends ChangeNotifier {
   // ---------------------------------------------------------
   // GOOGLE PLAY BILLING
   // ---------------------------------------------------------
-  final InAppPurchase _iap = InAppPurchase.instance;
+  final InAppPurchase _iap;
+  final http.Client _httpClient;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
 
   int? _pendingUserId;
+
+  /// Release-gate fix (P0): single-slot persistence key for the user id a
+  /// purchase was started for. `_pendingUserId` alone is in-memory only —
+  /// if the app process dies between launching the purchase and
+  /// [_verifyAndActivate] finishing (backgrounding, OS kill, a crash),
+  /// the purchase is redelivered via [purchaseStream] on next launch (the
+  /// `in_app_purchase` package's own documented behavior for purchases
+  /// that were never completed — see [initBilling]) but arrives at a
+  /// fresh provider instance with `_pendingUserId == null`. Persisting it
+  /// here, BEFORE the purchase is launched, is what makes that recovery
+  /// actually work. Mirrors [ReportPurchaseProvider]'s identical
+  /// `_pendingRequestPrefsKey` pattern.
+  static const String _pendingUserIdPrefsKey = "asknow_pending_user_id_v1";
+
+  /// In-flight guard keyed by purchase token — prevents re-entrant
+  /// double-processing (and therefore double-crediting) if the same
+  /// token arrives twice in a burst within one running session (e.g. the
+  /// live purchase event and an overlapping `restorePurchases()` query
+  /// landing at once). Deliberately in-memory only, same as
+  /// [ReportPurchaseProvider]'s `_confirmingTokens` — it must not survive
+  /// a restart, since a fresh attempt after a crash is exactly the
+  /// recovery path this class exists for.
+  final Set<String> _confirmingTokens = {};
 
   // ---------------------------------------------------------
   // 🔒 SINGLE SOURCE OF TRUTH (BACKEND → PROVIDER)
@@ -79,7 +115,14 @@ class AskNowProvider extends ChangeNotifier {
             break;
         }
       }
-    });
+    }, onError: (_) {});
+
+    // Release-gate fix (P0): proactively surfaces any owned-but-unconsumed
+    // pack purchase through the same listener above — the explicit half
+    // of crash recovery, same belt-and-suspenders pattern
+    // [ReportPurchaseProvider.initPurchaseListener] already uses. Never
+    // awaited: app startup must not block on it.
+    unawaited(_iap.restorePurchases());
   }
 
   @override
@@ -170,6 +213,11 @@ class AskNowProvider extends ChangeNotifier {
     required String productId,
   }) async {
     _pendingUserId = userId;
+    // Persisted BEFORE the purchase is launched (Release-gate fix, P0) —
+    // if the app dies at any point after this line, the one thing
+    // [_verifyAndActivate] needs to recover (which user this purchase
+    // belongs to) already survives the crash.
+    await _savePendingUserId(userId);
 
     final response = await _iap.queryProductDetails({productId});
     if (response.productDetails.isEmpty) {
@@ -181,41 +229,166 @@ class AskNowProvider extends ChangeNotifier {
     final product = response.productDetails.first;
     final param = PurchaseParam(productDetails: product);
 
-    await _iap.buyConsumable(purchaseParam: param, autoConsume: true);
+    // Release-gate fix (P0): autoConsume: false. The Play Billing plugin
+    // consumes an autoConsume:true purchase internally BEFORE delivering
+    // it to `purchaseStream` — i.e. before backend verification even
+    // starts. If `/api/chatpack/verify` then failed (network loss,
+    // backend error, app killed mid-flight) the purchase was already
+    // irreversibly consumed: gone from Play, never restorable, tokens
+    // never credited. Consumption now only ever happens explicitly, in
+    // [_verifyAndActivate], after backend confirmation succeeds — the
+    // exact same shape [ReportPurchaseProvider.purchaseReport] already
+    // uses for Paid Reports.
+    await _iap.buyConsumable(purchaseParam: param, autoConsume: false);
+  }
+
+  /// Manual retry entry point for a pack purchase that was paid for but
+  /// never got credited (e.g. the user dismisses an error and taps
+  /// "Retry"). The purchase is still owned (unconsumed) by Play — this
+  /// re-queries it and lets it flow through the exact same
+  /// [_verifyAndActivate] path a fresh purchase or an app-restart
+  /// recovery already uses. Not a separate retry mechanism.
+  Future<void> retryPendingAskNowPurchase() async {
+    lastErrorMessage = null;
+    notifyListeners();
+    await _iap.restorePurchases();
   }
 
   // ---------------------------------------------------------
   // VERIFY + ACTIVATE
   // ---------------------------------------------------------
+  /// The one place a verified Play pack purchase is turned into credited
+  /// tokens, and the one place completePurchase()/consumePurchase() are
+  /// ever called — always after, never before, the backend has confirmed
+  /// the purchase (Release-gate fix, P0).
   Future<void> _verifyAndActivate(PurchaseDetails purchase) async {
-    if (_pendingUserId == null) {
-      lastErrorMessage = "User not ready";
+    final token = purchase.verificationData.serverVerificationData;
+
+    // Duplicate-callback guard — prevents two redundant in-flight verify
+    // calls for the same token landing at once (e.g. the live purchase
+    // event and an overlapping restorePurchases() query). Never blocks a
+    // later, separate attempt, because it's in-memory only.
+    if (_confirmingTokens.contains(token)) return;
+    _confirmingTokens.add(token);
+
+    try {
+      // Recovery path: a fresh provider instance (app restart after the
+      // purchase but before verification finished) has no in-memory
+      // `_pendingUserId` — load the one persisted before the purchase
+      // was launched.
+      _pendingUserId ??= await _loadPendingUserId();
+
+      if (_pendingUserId == null) {
+        // No local record of which user this purchase belongs to.
+        // Known limitation, same as ReportPurchaseProvider's equivalent
+        // case: cannot safely call the backend without it. The purchase
+        // itself is NOT consumed/acknowledged here, so it remains
+        // recoverable via `restorePurchases()` once a pending id is
+        // available again (e.g. after logging back in and starting a
+        // fresh purchase, or a future manual "Restore Purchases" action).
+        isLoading = false;
+        lastErrorMessage = "User not ready";
+        notifyListeners();
+        return;
+      }
+
+      isLoading = true;
       notifyListeners();
-      return;
-    }
 
-    final res = await http.post(
-      Uri.parse("https://jyotishasha-backend.onrender.com/api/chatpack/verify"),
-      headers: const {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "user_id": _pendingUserId,
-        "product_id": purchase.productID,
-        "purchase_token": purchase.verificationData.serverVerificationData,
-      }),
-    );
+      final res = await _httpClient.post(
+        Uri.parse(
+          "https://jyotishasha-backend.onrender.com/api/chatpack/verify",
+        ),
+        headers: const {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "user_id": _pendingUserId,
+          "product_id": purchase.productID,
+          "purchase_token": token,
+        }),
+      );
 
-    if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        // Do NOT consume, do NOT acknowledge — the pending record is
+        // deliberately left in place so a retry (restorePurchases(), or
+        // the next app session's redelivery) can find this same purchase
+        // again and try the same verify call, exactly as
+        // ReportPurchaseProvider's own failure path already does.
+        isLoading = false;
+        lastErrorMessage = "Verification failed";
+        notifyListeners();
+        return;
+      }
+
+      // Success — acknowledge, then explicitly consume. Only from here
+      // on is the purchase actually spent.
+      if (purchase.pendingCompletePurchase) {
+        await _iap.completePurchase(purchase);
+      }
+      await _consume(purchase);
+      await _clearPendingUserId();
+
+      remainingTokens = 8;
+      hasActivePack = true;
+      statusLoaded = true;
+      lastErrorMessage = null;
+      isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      // Same guarantee on an unexpected exception (e.g. a network
+      // failure thrown by http.post itself): nothing was consumed or
+      // acknowledged above this point, and this is now caught rather
+      // than propagating as an unhandled async error out of the
+      // purchaseStream listener.
+      isLoading = false;
       lastErrorMessage = "Verification failed";
       notifyListeners();
-      return;
+    } finally {
+      _confirmingTokens.remove(token);
     }
+  }
 
-    await _iap.completePurchase(purchase);
+  /// Android-only explicit consume — the cross-platform `InAppPurchase`
+  /// facade doesn't expose this (only `completePurchase`, which on
+  /// Android only acknowledges). Mirrors
+  /// [ReportPurchaseProvider]'s identical `_consume` helper exactly.
+  Future<void> _consume(PurchaseDetails purchase) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final addition = _iap
+          .getPlatformAddition<InAppPurchaseAndroidPlatformAddition>();
+      await addition.consumePurchase(purchase);
+    } catch (_) {
+      // Play's own consumeAsync is safe to call more than once — a
+      // second attempt on an already-consumed item just fails
+      // harmlessly. By this point the backend has already durably
+      // credited the tokens, so a failed/duplicate consume attempt has
+      // no business impact — logged only, never surfaced as a
+      // user-facing error.
+      if (kDebugMode) {
+        debugPrint('AskNowProvider: consume attempt failed (non-fatal)');
+      }
+    }
+  }
 
-    remainingTokens = 8;
-    hasActivePack = true;
-    statusLoaded = true;
-    notifyListeners();
+  // ---------------------------------------------------------
+  // LOCAL PERSISTENCE — the only new state this fix adds. Durable
+  // across process death; not a substitute for backend idempotency,
+  // only what lets THIS device know which user a recovered purchase
+  // belongs to.
+  // ---------------------------------------------------------
+  Future<void> _savePendingUserId(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_pendingUserIdPrefsKey, userId);
+  }
+
+  Future<int?> _loadPendingUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(_pendingUserIdPrefsKey);
+  }
+
+  Future<void> _clearPendingUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingUserIdPrefsKey);
   }
 
   // ---------------------------------------------------------
