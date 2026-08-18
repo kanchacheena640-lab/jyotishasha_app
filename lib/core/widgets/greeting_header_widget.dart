@@ -11,8 +11,7 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/services/notification_service.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
-import 'package:jyotishasha_app/core/state/welcome_gift_provider.dart';
-import 'package:jyotishasha_app/features/welcome_gift/welcome_gift_page.dart';
+import 'package:jyotishasha_app/features/dashboard/dashboard_tab_switcher.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/main.dart' show notificationNavigationService;
 
@@ -35,13 +34,6 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
 
       final provider = context.read<NotificationProvider>();
       await provider.loadUnreadCount();
-    });
-
-    // Welcome Gift — decide the card's visibility (never claimed vs.
-    // already claimed) before the user can interact with anything below.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<WelcomeGiftProvider>().loadStatus();
     });
   }
 
@@ -251,10 +243,11 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
     );
   }
 
-  /// "♋ Cancer" (zodiac symbol + name) → Welcome Gift card (replaces the
-  /// former "Your Astrology Profile" CTA row in this same slot — see
-  /// `_buildWelcomeGiftCard`). "Hi Ravi" now lives in the top row
-  /// alongside the language chip + bell — see `_buildActualContent`.
+  /// "♋ Cancer" (zodiac symbol + name) followed by the
+  /// "Your Astrology Profile   View →" CTA row — the finalized Greeting
+  /// Area layout, with no gift-related UI of any kind in this slot.
+  /// "Hi Ravi" lives in the top row alongside the language chip + bell —
+  /// see `_buildActualContent`.
   Widget _buildGreetingBlock(BuildContext context, String lang, String? sign) {
     final zodiac = _zodiacDisplayName(sign, lang);
     final symbol = _zodiacSymbol[_zodiacSlug(sign)] ?? _zodiacSymbol['leo']!;
@@ -272,91 +265,46 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           ),
         ),
         const SizedBox(height: 10),
-        _buildWelcomeGiftCard(context, lang),
+        _buildAstrologyProfileCta(context, lang),
         const SizedBox(height: 6),
       ],
     );
   }
 
-  /// Welcome Gift card — replaces the former "Your Astrology Profile" CTA
-  /// row in this slot. Shown only while `WelcomeGiftProvider.isClaimed`
-  /// is false (and the flag has finished loading); once claimed, this
-  /// renders nothing and never reappears, per spec. Tapping opens the new,
-  /// standalone `WelcomeGiftPage` — no reused screen.
-  Widget _buildWelcomeGiftCard(BuildContext context, String lang) {
-    final gift = context.watch<WelcomeGiftProvider>();
-
-    if (gift.isLoading || gift.isClaimed) return const SizedBox.shrink();
-
+  /// "Your Astrology Profile   View →" CTA row. "View" reuses the exact
+  /// same in-place tab switch the bottom navigation's own Astrology tab
+  /// performs (see `DashboardTabSwitcher`/`dashboard_page.dart`) — not a
+  /// route push/replace — so Home stays on the navigation stack and Back
+  /// returns to it, matching the bottom nav's existing Back behavior.
+  Widget _buildAstrologyProfileCta(BuildContext context, String lang) {
     final isHindi = lang == 'hi';
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const WelcomeGiftPage()),
-        );
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF9F5FF),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE4D9FA)),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    isHindi ? '🎁 वेलकम गिफ्ट' : '🎁 Welcome Gift',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6B21A8),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isHindi
-                        ? '5 पर्सनलाइज़्ड प्रीमियम रिपोर्ट पाएं\n(जन्म कुंडली पर आधारित)'
-                        : 'Unlock 5 Personalized Premium Reports\n(Birth Chart Based)',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1F1B2E),
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    isHindi
-                        ? '+ 15 दिनों की प्रीमियम मेंबरशिप'
-                        : '+ 15 Days Premium Membership',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    isHindi ? 'फ्री एक्सेस पाएं →' : 'Claim Free Access →',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF6B21A8),
-                    ),
-                  ),
-                ],
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => context.read<DashboardTabSwitcher>().switchTo(
+        DashboardTabSwitcher.astrologyTabIndex,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              isHindi ? 'आपकी ज्योतिष प्रोफाइल' : 'Your Astrology Profile',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F1B2E),
               ),
             ),
-          ],
-        ),
+          ),
+          Text(
+            isHindi ? 'देखें →' : 'View →',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF6B21A8),
+            ),
+          ),
+        ],
       ),
     );
   }

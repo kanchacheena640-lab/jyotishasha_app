@@ -8,8 +8,8 @@ import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
-import 'package:jyotishasha_app/core/state/welcome_gift_provider.dart';
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
+import 'package:jyotishasha_app/features/dashboard/dashboard_tab_switcher.dart';
 
 import '../../helpers/test_harness.dart';
 
@@ -27,17 +27,7 @@ void main() {
     WidgetTester tester, {
     required String lang,
     required Map<String, dynamic>? profile,
-    bool welcomeGiftClaimed = false,
   }) async {
-    // GreetingHeaderWidget's initState calls WelcomeGiftProvider.loadStatus,
-    // which reads the real (SharedPreferences-backed)
-    // LocalWelcomeGiftRepository — mock the plugin channel so that
-    // resolves deterministically instead of throwing in this headless
-    // environment.
-    SharedPreferences.setMockInitialValues(
-      welcomeGiftClaimed ? {'welcome_gift_claimed': true} : {},
-    );
-
     final profileProvider = _FakeProfileProvider();
     when(() => profileProvider.activeProfile).thenReturn(profile);
 
@@ -57,21 +47,24 @@ void main() {
         ChangeNotifierProvider<NotificationProvider>(
           create: (_) => NotificationProvider(),
         ),
-        ChangeNotifierProvider<WelcomeGiftProvider>(
-          create: (_) => WelcomeGiftProvider(),
+        // The Astrology Profile CTA's onTap reads DashboardTabSwitcher —
+        // present app-wide in production (registered once in
+        // dashboard_page.dart); every test needs it in the tree even if
+        // it never taps the CTA, since Provider.of/context.read requires
+        // an ancestor to exist regardless of whether it is ever invoked.
+        Provider<DashboardTabSwitcher>.value(
+          value: DashboardTabSwitcher((_) {}),
         ),
       ],
     );
     // The widget's initState schedules a 2s-delayed unread-count fetch;
-    // advance past it so no timer is left pending at test teardown. This
-    // also flushes WelcomeGiftProvider.loadStatus's async SharedPreferences
-    // read, scheduled in the same initState.
+    // advance past it so no timer is left pending at test teardown.
     await tester.pump(const Duration(seconds: 3));
   }
 
   testWidgets(
-    'shows "Hi {Name}", "♋ {Zodiac}" and the Welcome Gift card in English, '
-    'derived from the active profile',
+    'shows "Hi {Name}", "♋ {Zodiac}" and the Astrology Profile CTA in '
+    'English, derived from the active profile, with no gift-related UI',
     (tester) async {
       await pumpHeader(
         tester,
@@ -81,57 +74,20 @@ void main() {
 
       expect(find.text('Hi Ravi'), findsOneWidget);
       expect(find.text('♋ Cancer'), findsOneWidget);
-      expect(find.text('🎁 Welcome Gift'), findsOneWidget);
+
+      // Finalized "Your Astrology Profile   View →" CTA row.
+      expect(find.text('Your Astrology Profile'), findsOneWidget);
+      expect(find.text('View →'), findsOneWidget);
+
+      // The Greeting Header contains no gift-related UI of any kind.
+      expect(find.textContaining('Gift'), findsNothing);
+      expect(find.textContaining('गिफ्ट'), findsNothing);
       expect(
         find.text('Unlock 5 Personalized Premium Reports\n(Birth Chart Based)'),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(find.text('+ 15 Days Premium Membership'), findsOneWidget);
-      expect(find.text('Claim Free Access →'), findsOneWidget);
-
-      // The old "Your Astrology Profile" CTA this card replaced is gone.
-      expect(find.text('Your Astrology Profile'), findsNothing);
-      expect(find.text('View →'), findsNothing);
-
-      // No card: subtitle removed, and the row has no
-      // border/background/shadow container (F4.1.9).
-      expect(find.text('Know yourself better'), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'never shows the Welcome Gift card once it has already been claimed',
-    (tester) async {
-      await pumpHeader(
-        tester,
-        lang: 'en',
-        profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
-        welcomeGiftClaimed: true,
-      );
-
-      expect(find.text('🎁 Welcome Gift'), findsNothing);
-      expect(find.textContaining('Claim Free Access'), findsNothing);
-    },
-  );
-
-  testWidgets(
-    'tapping the Welcome Gift card opens the new, standalone WelcomeGiftPage',
-    (tester) async {
-      await pumpHeader(
-        tester,
-        lang: 'en',
-        profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
-      );
-
-      await tester.tap(find.text('🎁 Welcome Gift'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 300));
-
-      expect(find.text('Love Report'), findsOneWidget);
-      expect(
-        find.text('Unlock your personalized astrology experience.'),
-        findsOneWidget,
-      );
+      expect(find.text('+ 15 Days Premium Membership'), findsNothing);
+      expect(find.text('Claim Free Access →'), findsNothing);
     },
   );
 
@@ -167,8 +123,8 @@ void main() {
       // convention (e.g. the previous "नमस्कार Ravi" behavior).
       expect(find.text('नमस्ते, Ravi'), findsOneWidget);
       expect(find.text('♋ कर्क'), findsOneWidget);
-      expect(find.text('🎁 वेलकम गिफ्ट'), findsOneWidget);
-      expect(find.text('फ्री एक्सेस पाएं →'), findsOneWidget);
+      expect(find.text('आपकी ज्योतिष प्रोफाइल'), findsOneWidget);
+      expect(find.text('देखें →'), findsOneWidget);
     },
   );
 
@@ -279,8 +235,8 @@ void main() {
           ChangeNotifierProvider<NotificationProvider>(
             create: (_) => NotificationProvider(),
           ),
-          ChangeNotifierProvider<WelcomeGiftProvider>(
-            create: (_) => WelcomeGiftProvider(),
+          Provider<DashboardTabSwitcher>.value(
+            value: DashboardTabSwitcher((_) {}),
           ),
         ],
       );

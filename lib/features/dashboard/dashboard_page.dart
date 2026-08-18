@@ -17,6 +17,7 @@ import '../reports/pages/report_catalog_page.dart';
 import '../explore/explore_page.dart';
 import '../profile/account_page.dart';
 import 'dashboard_home_section.dart';
+import 'dashboard_tab_switcher.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -129,6 +130,18 @@ class _DashboardPageState extends State<DashboardPage> {
   ];
 
   // ------------------------------------------------------------
+  // TAB SWITCH — single shared code path. BottomNavigationBar.onTap and
+  // DashboardTabSwitcher (exposed to descendants via Provider below) both
+  // call this same method, so switching tabs never pushes/replaces the
+  // navigation stack — Back continues to work exactly as it already does
+  // for the bottom nav (see _handleBackPress).
+  // ------------------------------------------------------------
+  void _switchTab(int index) {
+    if (_currentIndex == index) return;
+    setState(() => _currentIndex = index);
+  }
+
+  // ------------------------------------------------------------
   // BACK BUTTON
   // ------------------------------------------------------------
   Future<void> _handleBackPress() async {
@@ -168,51 +181,56 @@ class _DashboardPageState extends State<DashboardPage> {
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) _handleBackPress();
       },
-      child: Scaffold(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
+      // Exposes the same tab-switch method the bottom nav uses to any
+      // descendant (e.g. Home's "View →" CTA) — see dashboard_tab_switcher.dart.
+      child: Provider<DashboardTabSwitcher>.value(
+        value: DashboardTabSwitcher(_switchTab),
+        child: Scaffold(
+          backgroundColor: theme.scaffoldBackgroundColor,
+          body: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
 
-          // ⭐ KEY FIX prevents widget rebuild crash
-          child: KeyedSubtree(
-            key: ValueKey(_currentIndex),
-            child: _pages[_currentIndex],
+            // ⭐ KEY FIX prevents widget rebuild crash
+            child: KeyedSubtree(
+              key: ValueKey(_currentIndex),
+              child: _pages[_currentIndex],
+            ),
           ),
-        ),
-        bottomNavigationBar: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          selectedItemColor: theme.colorScheme.primary,
-          unselectedItemColor: AppColors.textPrimary.withValues(alpha: 0.5),
-          backgroundColor: AppColors.surface,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.home_outlined),
-              activeIcon: const Icon(Icons.home),
-              label: AppLocalizations.of(context)!.dashboard_home,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.star_border),
-              activeIcon: const Icon(Icons.star),
-              label: AppLocalizations.of(context)!.dashboard_astrology,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.description_outlined),
-              activeIcon: const Icon(Icons.description),
-              label: AppLocalizations.of(context)!.dashboard_reports,
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.explore_outlined),
-              activeIcon: const Icon(Icons.explore),
-              label: isHindi ? 'एक्सप्लोर' : 'Explore',
-            ),
-            BottomNavigationBarItem(
-              icon: const Icon(Icons.person_outline),
-              activeIcon: const Icon(Icons.person),
-              label: isHindi ? 'अकाउंट' : 'Account',
-            ),
-          ],
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _switchTab,
+            selectedItemColor: theme.colorScheme.primary,
+            unselectedItemColor: AppColors.textPrimary.withValues(alpha: 0.5),
+            backgroundColor: AppColors.surface,
+            type: BottomNavigationBarType.fixed,
+            items: [
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.home_outlined),
+                activeIcon: const Icon(Icons.home),
+                label: AppLocalizations.of(context)!.dashboard_home,
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.star_border),
+                activeIcon: const Icon(Icons.star),
+                label: AppLocalizations.of(context)!.dashboard_astrology,
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.description_outlined),
+                activeIcon: const Icon(Icons.description),
+                label: AppLocalizations.of(context)!.dashboard_reports,
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.explore_outlined),
+                activeIcon: const Icon(Icons.explore),
+                label: isHindi ? 'एक्सप्लोर' : 'Explore',
+              ),
+              BottomNavigationBarItem(
+                icon: const Icon(Icons.person_outline),
+                activeIcon: const Icon(Icons.person),
+                label: isHindi ? 'अकाउंट' : 'Account',
+              ),
+            ],
+          ),
         ),
       ),
     );
