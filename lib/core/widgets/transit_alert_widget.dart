@@ -31,9 +31,10 @@ DateTime? _parseNextChange(String raw) {
 /// Uses exactly the same [TransitProvider.allPlanets] data, house
 /// computation, nearest-transit-first priority sort (from F2.2, untouched),
 /// and navigation as before; only presentation changed (one [PageView] card
-/// per planet, plus small circular chips to jump between them, instead of
-/// nine stacked tiles). The first page is always `sortedPlanets.first` —
-/// the same highest-priority planet the old sort already put on top.
+/// per planet, plus a row of pagination dots — one per planet, see
+/// [_PlanetPaginationDots] — to jump between them, instead of nine
+/// stacked tiles). The first page is always `sortedPlanets.first` — the
+/// same highest-priority planet the old sort already put on top.
 class TransitAlertWidget extends StatefulWidget {
   const TransitAlertWidget({super.key});
 
@@ -116,8 +117,8 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget> {
           ),
         ),
         const SizedBox(height: 14),
-        _PlanetChipRow(
-          planets: sortedPlanets,
+        _PlanetPaginationDots(
+          count: sortedPlanets.length,
           currentIndex: safeIndex,
           onSelect: _goToPage,
         ),
@@ -172,79 +173,62 @@ class _TransitAlertWidgetState extends State<TransitAlertWidget> {
   }
 }
 
-/// Small circular chips, one per planet — Royal Purple for the current
-/// page, Soft Lavender for the rest. Tapping a chip animates the
-/// [PageView] to that page; swiping the [PageView] (via `onPageChanged`
-/// in the parent) updates which chip is highlighted. Both stay in sync
-/// through the same `currentIndex`/`onSelect` state in the parent.
-class _PlanetChipRow extends StatelessWidget {
-  const _PlanetChipRow({
-    required this.planets,
+/// Pagination dots — one per planet, replacing the old symbol-chip row.
+/// The chip row (small circular planet-symbol icons in a horizontally
+/// scrollable strip) didn't read as "swipeable carousel" at a glance, and
+/// its own independent horizontal scroll meant only ~8 of the 9 chips
+/// fit the initial viewport with no visible affordance that a 9th
+/// existed off-screen. Dots are a standard carousel convention, laid out
+/// in a single non-scrolling centered [Row] that always shows every dot
+/// (never clipped/overflowing), and the active dot's elongated shape
+/// makes current position unambiguous.
+///
+/// `count` is always `sortedPlanets.length` — never hardcoded — so this
+/// reflects however many planets `TransitProvider.allPlanets` actually
+/// returned; it does not assume 9. Swiping the [PageView] (via
+/// `onPageChanged` in the parent) updates the active dot; tapping a dot
+/// still jumps to that page, same interaction the old chips supported.
+class _PlanetPaginationDots extends StatelessWidget {
+  const _PlanetPaginationDots({
+    required this.count,
     required this.currentIndex,
     required this.onSelect,
   });
 
-  final List<Map<String, dynamic>> planets;
+  final int count;
   final int currentIndex;
   final ValueChanged<int> onSelect;
 
-  static final Map<String, String> _symbolByName = {
-    for (final p in PlanetMeta.allPlanets) p['name'] as String: p['symbol'] as String,
-  };
-
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          for (var i = 0; i < planets.length; i++) ...[
-            if (i > 0) const SizedBox(width: 10),
-            _PlanetChip(
-              symbol: _symbolByName[planets[i]['name']] ?? '•',
-              isActive: i == currentIndex,
-              onTap: () => onSelect(i),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < count; i++) ...[
+          if (i > 0) const SizedBox(width: 6),
+          GestureDetector(
+            key: ValueKey('planet_dot_$i'),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => onSelect(i),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                width: i == currentIndex ? 20 : 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: i == currentIndex
+                      ? const Color(0xFF6B21A8)
+                      : const Color(0xFFE4D9FA),
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _PlanetChip extends StatelessWidget {
-  const _PlanetChip({
-    required this.symbol,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final String symbol;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 36,
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isActive ? const Color(0xFF6B21A8) : const Color(0xFFF3EEFF),
-        ),
-        child: Text(
-          symbol,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: isActive ? Colors.white : const Color(0xFF6B21A8),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }
