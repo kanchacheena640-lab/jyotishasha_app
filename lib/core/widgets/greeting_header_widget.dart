@@ -126,7 +126,10 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
   String _zodiacDisplayName(String? sign, String lang) {
     final slug = _zodiacSlug(sign);
     final names = lang == 'hi' ? _zodiacHindiNames : _zodiacEnglishNames;
-    return names[slug] ?? (lang == 'hi' ? _zodiacHindiNames['leo']! : _zodiacEnglishNames['leo']!);
+    return names[slug] ??
+        (lang == 'hi'
+            ? _zodiacHindiNames['leo']!
+            : _zodiacEnglishNames['leo']!);
   }
 
   /// "Hi Ravi" / "नमस्ते, Ravi" — the name stays in Latin script in Hindi
@@ -236,9 +239,10 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           ],
         ),
         const SizedBox(height: 12),
+
         /// 🔹 Zodiac line + Astrology Profile CTA — unchanged content,
         /// typography, and spacing (see `_buildGreetingBlock`).
-        _buildGreetingBlock(context, lang, sign),
+        _buildGreetingBlock(context, lang, sign, profile),
       ],
     );
   }
@@ -248,15 +252,31 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
   /// Area layout, with no gift-related UI of any kind in this slot.
   /// "Hi Ravi" lives in the top row alongside the language chip + bell —
   /// see `_buildActualContent`.
-  Widget _buildGreetingBlock(BuildContext context, String lang, String? sign) {
-    final zodiac = _zodiacDisplayName(sign, lang);
-    final symbol = _zodiacSymbol[_zodiacSlug(sign)] ?? _zodiacSymbol['leo']!;
+  ///
+  /// Task 3 — the zodiac line is only ever shown for a real, present
+  /// `moon_sign`. Previously a `null`/missing sign silently fell back to
+  /// "♌ Leo" via `_zodiacSlug`'s own default, which looked exactly like a
+  /// real (wrong) answer instead of an empty state. A missing sign now
+  /// shows a neutral "not available yet" line instead — no zodiac symbol
+  /// or name is ever invented.
+  Widget _buildGreetingBlock(
+    BuildContext context,
+    String lang,
+    String? sign,
+    Map? profile,
+  ) {
+    final isHindi = lang == 'hi';
+    final hasSign = sign != null && sign.trim().isNotEmpty;
+    final zodiacLine = hasSign
+        ? '${_zodiacSymbol[_zodiacSlug(sign)] ?? _zodiacSymbol['leo']!} '
+              '${_zodiacDisplayName(sign, lang)}'
+        : (isHindi ? '✨ राशि अभी उपलब्ध नहीं है' : '✨ Moon sign not available yet');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '$symbol $zodiac',
+          zodiacLine,
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -265,46 +285,144 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           ),
         ),
         const SizedBox(height: 10),
-        _buildAstrologyProfileCta(context, lang),
+        _buildAstrologyProfileCta(context, lang, profile),
         const SizedBox(height: 6),
       ],
     );
   }
 
-  /// "Your Astrology Profile   View →" CTA row. "View" reuses the exact
-  /// same in-place tab switch the bottom navigation's own Astrology tab
-  /// performs (see `DashboardTabSwitcher`/`dashboard_page.dart`) — not a
-  /// route push/replace — so Home stays on the navigation stack and Back
+  /// Compact astrology-badge chip — icon + "{label}: {value or '-'}",
+  /// used for Lagna/Nakshatra inside the Astrology Profile CTA. Never
+  /// fabricates a value: a missing field always renders "-", exactly the
+  /// same graceful-fallback convention `KundaliOverviewPage`'s own chart
+  /// badges already use for the same fields.
+  Widget _astrologyBadge(String icon, String label, String? value) {
+    final display = (value != null && value.trim().isNotEmpty) ? value : '-';
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: const Color(0xFFE4D9FA)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 11)),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                '$label: $display',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF4B5563),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "Your Astrology Profile   View →" CTA — Task 3 turned this from a
+  /// bare text row into a compact, clearly-tappable pill (light lavender
+  /// fill `0xFFF6F3FC`, lavender border `0xFFE4D9FA`, rounded corners,
+  /// small purple leading icon) — the same premium visual tokens already
+  /// used throughout `KundaliOverviewPage` (chart badges, section cards),
+  /// reused here rather than inventing a new design language. "View"
+  /// still reuses the exact same in-place tab switch the bottom
+  /// navigation's own Astrology tab performs (see
+  /// `DashboardTabSwitcher`/`dashboard_page.dart`) — not a route
+  /// push/replace — so Home stays on the navigation stack and Back
   /// returns to it, matching the bottom nav's existing Back behavior.
-  Widget _buildAstrologyProfileCta(BuildContext context, String lang) {
+  /// This `onTap` line is intentionally untouched by the Task 3 redesign.
+  ///
+  /// Lagna/Nakshatra badges (Task 3) read directly from
+  /// `ProfileProvider.activeProfile` — no new fetch, no new provider —
+  /// and only appear when at least one of the two is actually present;
+  /// when neither is available the badge row is omitted entirely rather
+  /// than showing two empty "-" chips, per the "omit if cleaner" option.
+  Widget _buildAstrologyProfileCta(
+    BuildContext context,
+    String lang,
+    Map? profile,
+  ) {
     final isHindi = lang == 'hi';
+    final lagna = profile?['lagna'] as String?;
+    final nakshatra = profile?['nakshatra'] as String?;
+    final hasLagna = lagna != null && lagna.trim().isNotEmpty;
+    final hasNakshatra = nakshatra != null && nakshatra.trim().isNotEmpty;
+    final showBadges = hasLagna || hasNakshatra;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       onTap: () => context.read<DashboardTabSwitcher>().switchTo(
         DashboardTabSwitcher.astrologyTabIndex,
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              isHindi ? 'आपकी ज्योतिष प्रोफाइल' : 'Your Astrology Profile',
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1F1B2E),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6F3FC),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE4D9FA)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 16,
+                  color: Color(0xFF6B21A8),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isHindi ? 'आपकी ज्योतिष प्रोफाइल' : 'Your Astrology Profile',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1F1B2E),
+                    ),
+                  ),
+                ),
+                Text(
+                  isHindi ? 'देखें →' : 'View →',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B21A8),
+                  ),
+                ),
+              ],
+            ),
+            if (showBadges) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _astrologyBadge(
+                    '🔺',
+                    isHindi ? 'लग्न' : 'Lagna',
+                    hasLagna ? lagna : null,
+                  ),
+                  const SizedBox(width: 8),
+                  _astrologyBadge(
+                    '⭐',
+                    isHindi ? 'नक्षत्र' : 'Nakshatra',
+                    hasNakshatra ? nakshatra : null,
+                  ),
+                ],
               ),
-            ),
-          ),
-          Text(
-            isHindi ? 'देखें →' : 'View →',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF6B21A8),
-            ),
-          ),
-        ],
+            ],
+          ],
+        ),
       ),
     );
   }
