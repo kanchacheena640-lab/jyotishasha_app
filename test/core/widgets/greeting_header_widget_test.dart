@@ -164,7 +164,7 @@ void main() {
     },
   );
 
-  group('Astrology fields (Task 3 — Lagna/Nakshatra + Leo-fallback fix)', () {
+  group('Astrology fields (Leo-fallback fix, unchanged by this simplification)', () {
     testWidgets(
       'a valid Moon Sign still renders exactly as before',
       (tester) async {
@@ -209,8 +209,20 @@ void main() {
     );
 
     testWidgets(
-      'shows Lagna and Nakshatra badges (from ProfileProvider.'
-      'activeProfile, no new fetch) when both are available',
+      'a null activeProfile also shows the neutral state, never a '
+      'fabricated Leo',
+      (tester) async {
+        await pumpHeader(tester, lang: 'en', profile: null);
+
+        expect(find.text('✨ Moon sign not available yet'), findsOneWidget);
+      },
+    );
+  });
+
+  group('Astrology Profile CTA — simplified visual correction', () {
+    testWidgets(
+      'never renders Lagna or Nakshatra, even when both are present in '
+      'the profile',
       (tester) async {
         await pumpHeader(
           tester,
@@ -218,57 +230,22 @@ void main() {
           profile: const {
             'name': 'Ravi',
             'moon_sign': 'cancer',
-            'lagna': 'Aries',
-            'nakshatra': 'Rohini',
+            'lagna': 'Libra',
+            'nakshatra': 'Pushya',
           },
         );
 
-        expect(find.text('Lagna: Aries'), findsOneWidget);
-        expect(find.text('Nakshatra: Rohini'), findsOneWidget);
+        expect(find.text('Lagna: Libra'), findsNothing);
+        expect(find.text('Nakshatra: Pushya'), findsNothing);
+        expect(find.textContaining('Lagna'), findsNothing);
+        expect(find.textContaining('Nakshatra'), findsNothing);
+        expect(find.textContaining('लग्न'), findsNothing);
+        expect(find.textContaining('नक्षत्र'), findsNothing);
       },
     );
 
     testWidgets(
-      'a missing Lagna shows "-" (never fabricated) while Nakshatra still '
-      'renders correctly',
-      (tester) async {
-        await pumpHeader(
-          tester,
-          lang: 'en',
-          profile: const {
-            'name': 'Ravi',
-            'moon_sign': 'cancer',
-            'nakshatra': 'Rohini',
-          },
-        );
-
-        expect(find.text('Lagna: -'), findsOneWidget);
-        expect(find.text('Nakshatra: Rohini'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'a missing Nakshatra shows "-" (never fabricated) while Lagna still '
-      'renders correctly',
-      (tester) async {
-        await pumpHeader(
-          tester,
-          lang: 'en',
-          profile: const {
-            'name': 'Ravi',
-            'moon_sign': 'cancer',
-            'lagna': 'Aries',
-          },
-        );
-
-        expect(find.text('Lagna: Aries'), findsOneWidget);
-        expect(find.text('Nakshatra: -'), findsOneWidget);
-      },
-    );
-
-    testWidgets(
-      'omits the badge row entirely when neither Lagna nor Nakshatra is '
-      'available, rather than showing two empty "-" chips',
+      'no sparkle/star icon is shown before "Your Astrology Profile"',
       (tester) async {
         await pumpHeader(
           tester,
@@ -276,39 +253,52 @@ void main() {
           profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
         );
 
-        expect(find.textContaining('Lagna'), findsNothing);
-        expect(find.textContaining('Nakshatra'), findsNothing);
+        expect(find.byIcon(Icons.auto_awesome_rounded), findsNothing);
       },
     );
 
     testWidgets(
-      'Lagna/Nakshatra badges render with Hindi labels',
+      'the CTA row has no wrapping Container (no colored background/'
+      'border/pill) — stays visually flush with the surrounding white '
+      'greeting card',
       (tester) async {
         await pumpHeader(
           tester,
-          lang: 'hi',
-          profile: const {
-            'name': 'Ravi',
-            'moon_sign': 'cancer',
-            'lagna': 'Aries',
-            'nakshatra': 'Rohini',
-          },
+          lang: 'en',
+          profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
         );
 
-        expect(find.text('लग्न: Aries'), findsOneWidget);
-        expect(find.text('नक्षत्र: Rohini'), findsOneWidget);
+        final ctaInkWell = find.ancestor(
+          of: find.text('Your Astrology Profile'),
+          matching: find.byType(InkWell),
+        );
+        expect(ctaInkWell, findsOneWidget);
+        expect(
+          find.descendant(of: ctaInkWell, matching: find.byType(Container)),
+          findsNothing,
+        );
       },
     );
 
     testWidgets(
-      'a null activeProfile also shows the neutral state, never a '
-      'fabricated Leo, and no badges',
+      'the "View →" pulse animation controller is disposed cleanly — no '
+      'leaked ticker once this widget is removed from the tree',
       (tester) async {
-        await pumpHeader(tester, lang: 'en', profile: null);
+        await pumpHeader(
+          tester,
+          lang: 'en',
+          profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
+        );
 
-        expect(find.text('✨ Moon sign not available yet'), findsOneWidget);
-        expect(find.textContaining('Lagna'), findsNothing);
-        expect(find.textContaining('Nakshatra'), findsNothing);
+        // Let the pulse animation run through at least one full cycle.
+        await tester.pump(const Duration(milliseconds: 900));
+
+        // Replace the entire tree — this disposes GreetingHeaderWidget's
+        // State, including its AnimationController. flutter_test's own
+        // teardown would fail this test with a leaked-Ticker assertion
+        // if dispose() hadn't cancelled it.
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
       },
     );
   });

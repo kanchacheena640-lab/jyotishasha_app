@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
+import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/features/horoscope/horoscope_page.dart';
@@ -24,7 +25,8 @@ class GreetingHeaderWidget extends StatefulWidget {
   State<GreetingHeaderWidget> createState() => _GreetingHeaderWidgetState();
 }
 
-class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
+class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget>
+    with SingleTickerProviderStateMixin {
   /// Task 4A — a real, cancellable `Timer` (was a bare `Future.delayed`,
   /// which has no handle to cancel). Previously, disposing this widget
   /// before the 2s delay elapsed left the delayed callback scheduled
@@ -36,6 +38,13 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
   /// behavior is unchanged for the normal case where this widget simply
   /// stays mounted.
   Timer? _bellFetchTimer;
+
+  /// "View →" color pulse — a subtle, continuous, purple↔blue alternation
+  /// on the "Your Astrology Profile" CTA's "View →" text/arrow only.
+  /// Flutter-native `AnimationController` (no package added), disposed
+  /// alongside the bell-fetch timer below.
+  late final AnimationController _viewLinkController;
+  late final Animation<Color?> _viewLinkColor;
 
   @override
   void initState() {
@@ -49,11 +58,23 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
         await provider.loadUnreadCount();
       });
     });
+
+    _viewLinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    )..repeat(reverse: true);
+    _viewLinkColor = ColorTween(
+      begin: AppColors.primary, // existing app purple
+      end: AppColors.accent, // existing app blue
+    ).animate(
+      CurvedAnimation(parent: _viewLinkController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _bellFetchTimer?.cancel();
+    _viewLinkController.dispose();
     super.dispose();
   }
 
@@ -262,7 +283,7 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
 
         /// 🔹 Zodiac line + Astrology Profile CTA — unchanged content,
         /// typography, and spacing (see `_buildGreetingBlock`).
-        _buildGreetingBlock(context, lang, sign, profile),
+        _buildGreetingBlock(context, lang, sign),
       ],
     );
   }
@@ -283,7 +304,6 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
     BuildContext context,
     String lang,
     String? sign,
-    Map? profile,
   ) {
     final isHindi = lang == 'hi';
     final hasSign = sign != null && sign.trim().isNotEmpty;
@@ -305,147 +325,61 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
           ),
         ),
         const SizedBox(height: 10),
-        _buildAstrologyProfileCta(context, lang, profile),
+        _buildAstrologyProfileCta(context, lang),
         const SizedBox(height: 6),
       ],
     );
   }
 
-  /// Compact astrology-badge chip — icon + "{label}: {value or '-'}",
-  /// used for Lagna/Nakshatra inside the Astrology Profile CTA. Never
-  /// fabricates a value: a missing field always renders "-", exactly the
-  /// same graceful-fallback convention `KundaliOverviewPage`'s own chart
-  /// badges already use for the same fields.
-  Widget _astrologyBadge(String icon, String label, String? value) {
-    final display = (value != null && value.trim().isNotEmpty) ? value : '-';
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: const Color(0xFFE4D9FA)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 11)),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(
-                '$label: $display',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF4B5563),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// "Your Astrology Profile   View →" CTA — Task 3 turned this from a
-  /// bare text row into a compact, clearly-tappable pill (light lavender
-  /// fill `0xFFF6F3FC`, lavender border `0xFFE4D9FA`, rounded corners,
-  /// small purple leading icon) — the same premium visual tokens already
-  /// used throughout `KundaliOverviewPage` (chart badges, section cards),
-  /// reused here rather than inventing a new design language.
+  /// "Your Astrology Profile   View →" CTA — simplified per direct
+  /// visual-correction request: no leading icon, no separate colored
+  /// background/border/pill (stays visually flush with the surrounding
+  /// white greeting card), and no Lagna/Nakshatra row. Just two lines of
+  /// plain text in a tappable row. "View →" alone pulses gently between
+  /// the app's existing purple ([AppColors.primary]) and blue
+  /// ([AppColors.accent]) via [_viewLinkColor] (see initState/dispose).
   ///
-  /// Task 4 — Astrology no longer occupies a bottom-nav slot (replaced by
-  /// Ask Now), so "View" no longer performs the old `DashboardTabSwitcher`
-  /// in-place tab switch; it now pushes the exact same, unmodified
+  /// Task 4 — "View" pushes the exact same, unmodified
   /// [KundaliOverviewPage] directly (default constructor — Self mode,
   /// unchanged), the same mechanism "Create Another Kundali" already
   /// uses elsewhere for its own Kundali navigation. Home stays on the
-  /// navigation stack underneath and Back returns to it, same as before.
-  ///
-  /// Lagna/Nakshatra badges (Task 3) read directly from
-  /// `ProfileProvider.activeProfile` — no new fetch, no new provider —
-  /// and only appear when at least one of the two is actually present;
-  /// when neither is available the badge row is omitted entirely rather
-  /// than showing two empty "-" chips, per the "omit if cleaner" option.
-  Widget _buildAstrologyProfileCta(
-    BuildContext context,
-    String lang,
-    Map? profile,
-  ) {
+  /// navigation stack underneath and Back returns to it, same as before
+  /// — this `onTap` line is untouched by the visual simplification.
+  Widget _buildAstrologyProfileCta(BuildContext context, String lang) {
     final isHindi = lang == 'hi';
-    final lagna = profile?['lagna'] as String?;
-    final nakshatra = profile?['nakshatra'] as String?;
-    final hasLagna = lagna != null && lagna.trim().isNotEmpty;
-    final hasNakshatra = nakshatra != null && nakshatra.trim().isNotEmpty;
-    final showBadges = hasLagna || hasNakshatra;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const KundaliOverviewPage()),
       ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6F3FC),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE4D9FA)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome_rounded,
-                  size: 16,
-                  color: Color(0xFF6B21A8),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    isHindi ? 'आपकी ज्योतिष प्रोफाइल' : 'Your Astrology Profile',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1F1B2E),
-                    ),
-                  ),
-                ),
-                Text(
-                  isHindi ? 'देखें →' : 'View →',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF6B21A8),
-                  ),
-                ),
-              ],
-            ),
-            if (showBadges) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  _astrologyBadge(
-                    '🔺',
-                    isHindi ? 'लग्न' : 'Lagna',
-                    hasLagna ? lagna : null,
-                  ),
-                  const SizedBox(width: 8),
-                  _astrologyBadge(
-                    '⭐',
-                    isHindi ? 'नक्षत्र' : 'Nakshatra',
-                    hasNakshatra ? nakshatra : null,
-                  ),
-                ],
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              isHindi ? 'आपकी ज्योतिष प्रोफाइल' : 'Your Astrology Profile',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF1F1B2E),
               ),
-            ],
-          ],
-        ),
+            ),
+          ),
+          AnimatedBuilder(
+            animation: _viewLinkColor,
+            builder: (context, child) {
+              return Text(
+                isHindi ? 'देखें →' : 'View →',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: _viewLinkColor.value,
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
