@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
+import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
+import 'package:jyotishasha_app/core/state/manual_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/widgets/greeting_header_widget.dart';
-import 'package:jyotishasha_app/features/dashboard/dashboard_tab_switcher.dart';
+import 'package:jyotishasha_app/features/kundali/kundali_overview_page.dart';
 
 import '../../helpers/test_harness.dart';
 
@@ -22,12 +24,27 @@ class _FakeProfileProvider extends Mock
     with ChangeNotifier
     implements ProfileProvider {}
 
+/// Captures every route pushed via `Navigator.push` — same pattern
+/// `kundali_overview_page_test.dart` already uses for its own report-
+/// navigation tests. Calling the captured route's `builder` directly just
+/// constructs the widget (a plain `const KundaliOverviewPage()` — no
+/// context/provider access happens merely by constructing it), so this
+/// never needs KundaliOverviewPage's own providers in this test's tree.
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  final List<Route<dynamic>> pushed = [];
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushed.add(route);
+  }
+}
+
 void main() {
   Future<void> pumpHeader(
     WidgetTester tester, {
     required String lang,
     required Map<String, dynamic>? profile,
-    void Function(int index)? onSwitchTab,
+    List<NavigatorObserver> navigatorObservers = const [],
   }) async {
     final profileProvider = _FakeProfileProvider();
     when(() => profileProvider.activeProfile).thenReturn(profile);
@@ -41,6 +58,7 @@ void main() {
 
     await tester.pumpTestHarness(
       const Scaffold(body: GreetingHeaderWidget()),
+      navigatorObservers: navigatorObservers,
       providers: [
         ChangeNotifierProvider<ProfileProvider>.value(value: profileProvider),
         ChangeNotifierProvider<DailyProvider>.value(value: dailyProvider),
@@ -48,13 +66,15 @@ void main() {
         ChangeNotifierProvider<NotificationProvider>(
           create: (_) => NotificationProvider(),
         ),
-        // The Astrology Profile CTA's onTap reads DashboardTabSwitcher —
-        // present app-wide in production (registered once in
-        // dashboard_page.dart); every test needs it in the tree even if
-        // it never taps the CTA, since Provider.of/context.read requires
-        // an ancestor to exist regardless of whether it is ever invoked.
-        Provider<DashboardTabSwitcher>.value(
-          value: DashboardTabSwitcher(onSwitchTab ?? (_) {}),
+        // The Astrology Profile CTA (Task 4) now pushes KundaliOverviewPage
+        // directly — present above MaterialApp, same as production's
+        // main.dart, so the pushed route's own build() (which watches both
+        // providers regardless of mode) can actually mount.
+        ChangeNotifierProvider<FirebaseKundaliProvider>(
+          create: (_) => FirebaseKundaliProvider(),
+        ),
+        ChangeNotifierProvider<ManualKundaliProvider>(
+          create: (_) => ManualKundaliProvider(),
         ),
       ],
     );
@@ -293,25 +313,31 @@ void main() {
     );
   });
 
-  group('Astrology Profile CTA navigation (Task 3 — unchanged onTap)', () {
+  group('Astrology Profile CTA navigation (Task 4 — pushes KundaliOverviewPage)', () {
     testWidgets(
-      'tapping the CTA calls DashboardTabSwitcher.switchTo('
-      'astrologyTabIndex) — the exact same call the redesign must not '
-      'change',
+      'tapping the CTA pushes KundaliOverviewPage directly (Self default) — '
+      'no more DashboardTabSwitcher, since Astrology no longer has a '
+      'bottom-nav slot',
       (tester) async {
-        final calls = <int>[];
+        final observer = _RecordingNavigatorObserver();
 
         await pumpHeader(
           tester,
           lang: 'en',
           profile: const {'name': 'Ravi', 'moon_sign': 'cancer'},
-          onSwitchTab: calls.add,
+          navigatorObservers: [observer],
         );
+        final baseline = observer.pushed.length;
 
         await tester.tap(find.text('Your Astrology Profile'));
         await tester.pump();
 
-        expect(calls, [DashboardTabSwitcher.astrologyTabIndex]);
+        expect(observer.pushed.length, greaterThan(baseline));
+        final route = observer.pushed.last as MaterialPageRoute;
+        final widget = route.builder(
+          tester.element(find.byType(Scaffold).first),
+        );
+        expect(widget, isA<KundaliOverviewPage>());
       },
     );
   });

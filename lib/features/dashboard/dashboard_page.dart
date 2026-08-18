@@ -12,7 +12,7 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 
-import '../kundali/kundali_overview_page.dart';
+import '../asknow/asknow_chat_page.dart';
 import '../reports/pages/report_catalog_page.dart';
 import '../explore/explore_page.dart';
 import '../profile/account_page.dart';
@@ -121,24 +121,56 @@ class _DashboardPageState extends State<DashboardPage> {
   // ------------------------------------------------------------
   // PAGES
   // ------------------------------------------------------------
+  // Task 4 — index 1 ("Ask Now" in the bottom nav) is intentionally a
+  // placeholder, never actually shown: AskNowChatPage is a full pushed
+  // screen (own AppBar, own local chat state) — see _onBottomNavTap
+  // below. Embedding it here would make AnimatedSwitcher/KeyedSubtree
+  // dispose and rebuild it (and wipe its in-progress conversation) every
+  // time the user switches to another tab and back, which a plain
+  // Navigator.push avoids entirely, matching the same
+  // Navigator.push(AskNowChatPage()) pattern TrendingQuestionsWidget on
+  // Home already uses. Astrology/Kundali access no longer lives here at
+  // all — see GreetingHeaderWidget's "Your Astrology Profile" CTA and
+  // the "Create Another Kundali" entry points, both of which push
+  // KundaliOverviewPage directly and are unaffected by this change.
   final List<Widget> _pages = const [
     DashboardHomeSection(),
-    KundaliOverviewPage(),
+    SizedBox.shrink(),
     ReportCatalogPage(),
     ExplorePage(),
     AccountPage(),
   ];
 
   // ------------------------------------------------------------
-  // TAB SWITCH — single shared code path. BottomNavigationBar.onTap and
-  // DashboardTabSwitcher (exposed to descendants via Provider below) both
-  // call this same method, so switching tabs never pushes/replaces the
-  // navigation stack — Back continues to work exactly as it already does
-  // for the bottom nav (see _handleBackPress).
+  // TAB SWITCH — single shared code path. DashboardTabSwitcher (exposed
+  // to descendants via Provider below) calls this same method, so
+  // switching tabs never pushes/replaces the navigation stack — Back
+  // continues to work exactly as it already does for the bottom nav
+  // (see _handleBackPress). Index 1 (Ask Now) never reaches this method
+  // — see _onBottomNavTap, the bottom nav's own onTap.
   // ------------------------------------------------------------
   void _switchTab(int index) {
     if (_currentIndex == index) return;
     setState(() => _currentIndex = index);
+  }
+
+  // ------------------------------------------------------------
+  // BOTTOM NAV TAP — Task 4. The only caller of BottomNavigationBar.onTap.
+  // Every index except Ask Now behaves exactly as before (_switchTab).
+  // Ask Now (index 1) is a plain pushed route, never an in-place tab
+  // body swap — _currentIndex is left untouched, so the tab the user was
+  // already on stays selected underneath, and popping Ask Now returns
+  // them to exactly where they were, with that tab's state intact.
+  // ------------------------------------------------------------
+  void _onBottomNavTap(int index) {
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const AskNowChatPage()),
+      );
+      return;
+    }
+    _switchTab(index);
   }
 
   // ------------------------------------------------------------
@@ -198,7 +230,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           bottomNavigationBar: BottomNavigationBar(
             currentIndex: _currentIndex,
-            onTap: _switchTab,
+            onTap: _onBottomNavTap,
             selectedItemColor: theme.colorScheme.primary,
             unselectedItemColor: AppColors.textPrimary.withValues(alpha: 0.5),
             backgroundColor: AppColors.surface,
@@ -210,9 +242,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: AppLocalizations.of(context)!.dashboard_home,
               ),
               BottomNavigationBarItem(
-                icon: const Icon(Icons.star_border),
-                activeIcon: const Icon(Icons.star),
-                label: AppLocalizations.of(context)!.dashboard_astrology,
+                icon: const Icon(Icons.chat_bubble_outline),
+                activeIcon: const Icon(Icons.chat),
+                label: AppLocalizations.of(context)!.dashboard_ask_now,
               ),
               BottomNavigationBarItem(
                 icon: const Icon(Icons.description_outlined),

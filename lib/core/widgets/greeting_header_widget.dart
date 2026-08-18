@@ -11,7 +11,7 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/services/notification_service.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
-import 'package:jyotishasha_app/features/dashboard/dashboard_tab_switcher.dart';
+import 'package:jyotishasha_app/features/kundali/kundali_overview_page.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/main.dart' show notificationNavigationService;
 
@@ -334,13 +334,15 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
   /// fill `0xFFF6F3FC`, lavender border `0xFFE4D9FA`, rounded corners,
   /// small purple leading icon) — the same premium visual tokens already
   /// used throughout `KundaliOverviewPage` (chart badges, section cards),
-  /// reused here rather than inventing a new design language. "View"
-  /// still reuses the exact same in-place tab switch the bottom
-  /// navigation's own Astrology tab performs (see
-  /// `DashboardTabSwitcher`/`dashboard_page.dart`) — not a route
-  /// push/replace — so Home stays on the navigation stack and Back
-  /// returns to it, matching the bottom nav's existing Back behavior.
-  /// This `onTap` line is intentionally untouched by the Task 3 redesign.
+  /// reused here rather than inventing a new design language.
+  ///
+  /// Task 4 — Astrology no longer occupies a bottom-nav slot (replaced by
+  /// Ask Now), so "View" no longer performs the old `DashboardTabSwitcher`
+  /// in-place tab switch; it now pushes the exact same, unmodified
+  /// [KundaliOverviewPage] directly (default constructor — Self mode,
+  /// unchanged), the same mechanism "Create Another Kundali" already
+  /// uses elsewhere for its own Kundali navigation. Home stays on the
+  /// navigation stack underneath and Back returns to it, same as before.
   ///
   /// Lagna/Nakshatra badges (Task 3) read directly from
   /// `ProfileProvider.activeProfile` — no new fetch, no new provider —
@@ -361,8 +363,9 @@ class _GreetingHeaderWidgetState extends State<GreetingHeaderWidget> {
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
-      onTap: () => context.read<DashboardTabSwitcher>().switchTo(
-        DashboardTabSwitcher.astrologyTabIndex,
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const KundaliOverviewPage()),
       ),
       child: Container(
         width: double.infinity,
