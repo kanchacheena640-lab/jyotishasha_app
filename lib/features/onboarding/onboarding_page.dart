@@ -16,7 +16,7 @@ class OnboardingPage extends StatelessWidget {
         "No two charts are the same — get a truly personalized daily horoscope.",
       ),
       (
-        "Enjoy 15 Days of Premium Astrology — Free!",
+        "Enjoy 7 Days of Premium Astrology — Free!",
         "Unlock personalized chat, advanced horoscope insights & muhurth features.",
       ),
     ];

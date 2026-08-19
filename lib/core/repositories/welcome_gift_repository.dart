@@ -1,5 +1,5 @@
 /// Purpose: owns the Welcome Gift "claimed" flag lifecycle for the
-/// onboarding flow (5 personalized premium reports + 15 days premium
+/// onboarding flow (5 personalized premium reports + 7 days premium
 /// membership, offered once per user).
 ///
 /// Responsibilities: report whether the current user has already claimed

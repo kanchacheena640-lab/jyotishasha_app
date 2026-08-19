@@ -85,7 +85,7 @@ void main() {
         findsNWidgets(5),
       );
 
-      expect(find.text('15 Days Premium Membership'), findsOneWidget);
+      expect(find.text('7 Days Premium Membership'), findsOneWidget);
       expect(
         find.text('Access current planetary updates for all sections.'),
         findsOneWidget,
@@ -115,7 +115,7 @@ void main() {
       find.text('प्रीमियम रिपोर्ट · जन्म कुंडली आधारित'),
       findsNWidgets(5),
     );
-    expect(find.text('15 दिनों की प्रीमियम मेंबरशिप'), findsOneWidget);
+    expect(find.text('7 दिनों की प्रीमियम मेंबरशिप'), findsOneWidget);
     expect(
       find.text('सभी सेक्शन के लिए वर्तमान ग्रह अपडेट प्राप्त करें।'),
       findsOneWidget,

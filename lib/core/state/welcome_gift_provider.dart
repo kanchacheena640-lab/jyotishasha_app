@@ -40,7 +40,7 @@ class WelcomeGiftProvider extends ChangeNotifier {
   /// activate a subscription, or call the backend.
   ///
   /// TODO(backend): once a real Welcome Gift activation endpoint exists,
-  /// call it here first (server-side: grant the 5 reports + 15-day
+  /// call it here first (server-side: grant the 5 reports + 7-day
   /// premium membership) and only mark [isClaimed] once that call
   /// succeeds — mirroring how `SubscriptionProvider` confirms a purchase
   /// with the backend before updating local state, so the backend stays

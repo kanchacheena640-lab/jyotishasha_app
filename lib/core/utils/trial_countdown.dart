@@ -17,19 +17,24 @@ class TrialCountdown {
   static const Color _amberWarning = Color(0xFF9A5B00);
   static const Color _redUrgent = Color(0xFFDC2626);
 
-  /// `>= 11` days: Primary/Purple. `6–10`: Amber/Warning. `1–5`:
-  /// Red/Urgent. `0` should never appear while a trial is active per
-  /// spec, but is treated as urgent (red) defensively rather than
+  /// 15-Day-to-7-Day Trial fix: these bands are proportional thirds of
+  /// the trial window, not a fixed day count — kept in step with
+  /// whatever the backend's trial length actually is (still never
+  /// read from here; only the banding logic is local). At the
+  /// original 15-day length this was `>=11`/`6-10`/`1-5` (thirds of
+  /// 15); at the current 7-day length it's `>=5`/`3-4`/`1-2` (thirds
+  /// of 7, rounded). `0` should never appear while a trial is active
+  /// per spec, but is treated as urgent (red) defensively rather than
   /// guessing. An unparseable/missing value falls back to Primary/Purple
   /// — never alarms the user over a display-only formatting gap.
   static Color colorFor(dynamic remainingDays) {
     final days = _asInt(remainingDays);
-    if (days == null || days >= 11) return AppColors.primary;
-    if (days >= 6) return _amberWarning;
+    if (days == null || days >= 5) return AppColors.primary;
+    if (days >= 3) return _amberWarning;
     return _redUrgent;
   }
 
-  /// "1 Day Remaining" / "15 Days Remaining" — proper English
+  /// "1 Day Remaining" / "7 Days Remaining" — proper English
   /// singular/plural; Hindi "दिन" doesn't inflect for count, so it's
   /// unchanged either way. Always the backend's own count, verbatim.
   static String label(dynamic remainingDays, bool isHindi) {

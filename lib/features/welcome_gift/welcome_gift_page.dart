@@ -289,7 +289,7 @@ class _ReportCard extends StatelessWidget {
   }
 }
 
-/// "15 Days Premium Membership" + description — no countdown, no pricing.
+/// "7 Days Premium Membership" + description — no countdown, no pricing.
 class _MembershipCard extends StatelessWidget {
   const _MembershipCard({required this.isHindi, required this.gold});
 
@@ -331,8 +331,8 @@ class _MembershipCard extends StatelessWidget {
               children: [
                 Text(
                   isHindi
-                      ? '15 दिनों की प्रीमियम मेंबरशिप'
-                      : '15 Days Premium Membership',
+                      ? '7 दिनों की प्रीमियम मेंबरशिप'
+                      : '7 Days Premium Membership',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,

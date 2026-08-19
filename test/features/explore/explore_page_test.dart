@@ -187,12 +187,12 @@ void main() {
 
     testWidgets(
       'the old static strip copy is gone — no "Premium Membership", no '
-      '"15 Days Remaining" anywhere',
+      '"7 Days Remaining" anywhere',
       (tester) async {
         await pump(tester, data: {'active': true, 'plan': 'GOLD_YEARLY'});
 
         expect(find.text('Premium Membership'), findsNothing);
-        expect(find.text('15 Days Remaining'), findsNothing);
+        expect(find.text('7 Days Remaining'), findsNothing);
       },
     );
 

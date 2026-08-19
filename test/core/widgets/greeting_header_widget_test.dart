@@ -109,7 +109,7 @@ void main() {
         find.text('Unlock 5 Personalized Premium Reports\n(Birth Chart Based)'),
         findsNothing,
       );
-      expect(find.text('+ 15 Days Premium Membership'), findsNothing);
+      expect(find.text('+ 7 Days Premium Membership'), findsNothing);
       expect(find.text('Claim Free Access →'), findsNothing);
     },
   );
