@@ -299,4 +299,56 @@ void main() {
       expect(nav.currentIndex, 4);
     });
   });
+
+  group('Explore [FREE] badge (Manual Trial Activation)', () {
+    testWidgets(
+      'shows the FREE badge on the Explore icon when trial_available is true',
+      (tester) async {
+        subscriptionProvider.subscriptionData = {'trial_available': true};
+
+        await pump(tester);
+
+        expect(find.text('FREE'), findsOneWidget);
+        // The underlying Explore icon is still present and findable --
+        // the badge decorates it, never replaces it.
+        expect(find.byIcon(Icons.explore_outlined), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'shows no FREE badge when trial_available is false (expired/used, '
+      'or paid subscriber)',
+      (tester) async {
+        subscriptionProvider.subscriptionData = {'trial_available': false};
+
+        await pump(tester);
+
+        expect(find.text('FREE'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'shows no FREE badge before subscriptionData has ever loaded '
+      '(trialAvailable defaults to false, not a guess)',
+      (tester) async {
+        await pump(tester); // subscriptionProvider.subscriptionData is null
+
+        expect(find.text('FREE'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'shows no FREE badge once membership_state is TRIAL (activated)',
+      (tester) async {
+        subscriptionProvider.subscriptionData = {
+          'trial_available': false,
+          'membership_state': 'TRIAL',
+        };
+
+        await pump(tester);
+
+        expect(find.text('FREE'), findsNothing);
+      },
+    );
+  });
 }

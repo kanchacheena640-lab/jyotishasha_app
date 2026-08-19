@@ -74,16 +74,22 @@ void main() {
   }
 
   group('Membership strip (real SubscriptionProvider state)', () {
-    testWidgets('shows "Trial Active" when active and is_trial is true', (
-      tester,
-    ) async {
-      await pump(
-        tester,
-        data: {'active': true, 'is_trial': true, 'plan': 'GOLD_MONTHLY'},
-      );
+    testWidgets(
+      'shows "Premium Trial Active" and the remaining-days countdown '
+      '(Manual Trial Activation) when active and is_trial is true',
+      (tester) async {
+        await pump(
+          tester,
+          data: {
+            'active': true, 'is_trial': true, 'plan': 'GOLD_MONTHLY',
+            'remaining_days': 5,
+          },
+        );
 
-      expect(find.text('Trial Active'), findsOneWidget);
-    });
+        expect(find.text('Premium Trial Active'), findsOneWidget);
+        expect(find.text('5 Days Remaining'), findsOneWidget);
+      },
+    );
 
     testWidgets('shows the formatted plan name for an active Gold Monthly '
         'subscription', (tester) async {
@@ -135,7 +141,7 @@ void main() {
         );
 
         expect(find.text('Grace Period'), findsOneWidget);
-        expect(find.text('Trial Active'), findsNothing);
+        expect(find.text('Premium Trial Active'), findsNothing);
       },
     );
 
@@ -174,15 +180,21 @@ void main() {
       },
     );
 
-    testWidgets('renders the Hindi label for Trial Active', (tester) async {
+    testWidgets('renders the Hindi label for Premium Trial Active', (
+      tester,
+    ) async {
       await pump(
         tester,
-        data: {'active': true, 'is_trial': true, 'plan': 'GOLD_MONTHLY'},
+        data: {
+          'active': true, 'is_trial': true, 'plan': 'GOLD_MONTHLY',
+          'remaining_days': 5,
+        },
         locale: const Locale('hi'),
       );
 
       expect(find.text('सदस्यता'), findsOneWidget);
-      expect(find.text('ट्रायल सक्रिय'), findsOneWidget);
+      expect(find.text('प्रीमियम ट्रायल सक्रिय'), findsOneWidget);
+      expect(find.text('5 दिन शेष'), findsOneWidget);
     });
 
     testWidgets(
@@ -212,6 +224,142 @@ void main() {
         await tester.pump(const Duration(milliseconds: 500));
 
         expect(find.byType(SubscriptionPage), findsOneWidget);
+      },
+    );
+  });
+
+  group('Trial activation card (Manual Trial Activation)', () {
+    testWidgets(
+      'shows the activation card when trial_available is true and '
+      'membership_state is NONE',
+      (tester) async {
+        await pump(
+          tester,
+          data: {
+            'active': false, 'is_trial': false, 'status': 'none',
+            'membership_state': 'NONE', 'trial_available': true,
+          },
+        );
+
+        expect(find.text('Your 7-Day Premium Gift is Ready'), findsOneWidget);
+        expect(
+          find.text('Unlock all premium sections free for 7 days.'),
+          findsOneWidget,
+        );
+        expect(find.text('Activate Free Access'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'hides the activation card when trial_available is false '
+      '(previously used/expired, or paid subscriber never eligible)',
+      (tester) async {
+        await pump(
+          tester,
+          data: {
+            'active': false, 'status': 'none',
+            'membership_state': 'EXPIRED', 'trial_available': false,
+          },
+        );
+
+        expect(find.text('Your 7-Day Premium Gift is Ready'), findsNothing);
+        expect(find.text('Activate Free Access'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'hides the activation card while membership_state is already TRIAL, '
+      'even if trial_available were somehow still true (defensive — '
+      'matches the spec\'s explicit double condition)',
+      (tester) async {
+        await pump(
+          tester,
+          data: {
+            'active': true, 'is_trial': true,
+            'membership_state': 'TRIAL', 'trial_available': true,
+            'remaining_days': 5,
+          },
+        );
+
+        expect(find.text('Your 7-Day Premium Gift is Ready'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'hides the activation card for an ACTIVE paid subscriber',
+      (tester) async {
+        await pump(
+          tester,
+          data: {
+            'active': true, 'plan': 'GOLD_YEARLY',
+            'membership_state': 'ACTIVE', 'trial_available': false,
+          },
+        );
+
+        expect(find.text('Your 7-Day Premium Gift is Ready'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'hides the activation card before subscriptionData has ever loaded '
+      '(no flash of the card while trialAvailable defaults to false)',
+      (tester) async {
+        await pump(tester, data: null);
+
+        expect(find.text('Your 7-Day Premium Gift is Ready'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'tapping "Activate Free Access" calls activateTrial() exactly once, '
+      'and the button is disabled/shows a spinner while it is in flight',
+      (tester) async {
+        final provider = await pump(
+          tester,
+          data: {
+            'active': false, 'status': 'none',
+            'membership_state': 'NONE', 'trial_available': true,
+          },
+        );
+
+        // Manually drives isActivatingTrial to simulate an in-flight
+        // call without a real network dependency (SubscriptionProvider
+        // has no injectable HTTP client — same limitation
+        // subscription_provider_test.dart's own tests already work
+        // around for loadSubscriptionInfo()/_confirmWithBackend()).
+        provider.isActivatingTrial = true;
+        provider.notifyListeners();
+        await tester.pump();
+
+        expect(find.text('Activate Free Access'), findsNothing);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        final button = tester.widget<ElevatedButton>(
+          find.byType(ElevatedButton),
+        );
+        expect(button.onPressed, isNull); // disabled -> no double tap
+      },
+    );
+
+    testWidgets(
+      'shows a user-friendly error message when activation fails',
+      (tester) async {
+        final provider = await pump(
+          tester,
+          data: {
+            'active': false, 'status': 'none',
+            'membership_state': 'NONE', 'trial_available': true,
+          },
+        );
+
+        provider.activateTrialErrorMessage = 'trial_already_used';
+        provider.notifyListeners();
+        await tester.pump();
+
+        expect(
+          find.text("You've already used your free trial."),
+          findsOneWidget,
+        );
       },
     );
   });

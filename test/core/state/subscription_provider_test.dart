@@ -229,6 +229,82 @@ void main() {
     );
   });
 
+  group('SubscriptionProvider (Manual Trial Activation)', () {
+    late _FakeBillingRepository billing;
+    late SubscriptionProvider provider;
+
+    setUp(() {
+      billing = _FakeBillingRepository();
+      provider = SubscriptionProvider(billing: billing);
+    });
+
+    test(
+      'trialAvailable is a pure passthrough of subscriptionData '
+      '["trial_available"] — never computed/inferred locally',
+      () {
+        expect(provider.trialAvailable, isFalse); // subscriptionData is null
+
+        provider.subscriptionData = {'trial_available': true};
+        expect(provider.trialAvailable, isTrue);
+
+        provider.subscriptionData = {'trial_available': false};
+        expect(provider.trialAvailable, isFalse);
+
+        provider.subscriptionData = {'membership_state': 'NONE'}; // field absent
+        expect(provider.trialAvailable, isFalse);
+      },
+    );
+
+    test(
+      'a fresh provider has no activation state set — starting point is '
+      'clean, not a stale value from a previous attempt',
+      () {
+        expect(provider.isActivatingTrial, isFalse);
+        expect(provider.activateTrialErrorMessage, isNull);
+      },
+    );
+
+    test(
+      'activateTrial() is a no-op while already in flight — double-tap '
+      'protection, without ever reaching the network',
+      () async {
+        provider.isActivatingTrial = true;
+
+        await provider.activateTrial();
+
+        // Guard returned immediately -- state is exactly what it was
+        // before the call, never touched/reset by this no-op invocation.
+        expect(provider.isActivatingTrial, isTrue);
+        expect(provider.activateTrialErrorMessage, isNull);
+      },
+    );
+
+    test(
+      'activateTrial() never leaves isActivatingTrial stuck true, even '
+      'when the environment cannot resolve an authenticated user (same '
+      'headless-environment reasoning already established for '
+      'restorePurchases() above)',
+      () async {
+        await provider.activateTrial();
+
+        expect(provider.isActivatingTrial, isFalse);
+        expect(provider.activateTrialErrorMessage, isNotNull);
+      },
+    );
+
+    test('reset() clears activation state and trialAvailable', () {
+      provider.subscriptionData = {'trial_available': true};
+      provider.isActivatingTrial = true;
+      provider.activateTrialErrorMessage = 'some_error';
+
+      provider.reset();
+
+      expect(provider.trialAvailable, isFalse);
+      expect(provider.isActivatingTrial, isFalse);
+      expect(provider.activateTrialErrorMessage, isNull);
+    });
+  });
+
   group('interpretConfirmResponse (S5.X — google/confirm outcome handling)', () {
     test('activated == true is success regardless of outcome value', () {
       final result = interpretConfirmResponse({

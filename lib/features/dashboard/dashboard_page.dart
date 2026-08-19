@@ -11,6 +11,7 @@ import 'package:jyotishasha_app/core/state/profile_provider.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
+import 'package:jyotishasha_app/core/state/subscription_provider.dart';
 import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
 
 import '../asknow/asknow_chat_page.dart';
@@ -47,6 +48,15 @@ class _DashboardPageState extends State<DashboardPage> {
       if (!_initialized) {
         _initialized = true;
         context.read<ProfileProvider>().loadProfiles();
+        // Manual Trial Activation: fire-and-forget, non-blocking --
+        // loaded eagerly here (rather than only lazily on Explore/
+        // Account/SubscriptionPage init, as before) so the bottom nav's
+        // Explore [FREE] badge can appear without the user first
+        // visiting one of those screens. Safe to call even if one of
+        // those screens loads it again shortly after — same idempotent
+        // "just fetch the latest" contract every other
+        // loadSubscriptionInfo() call site already relies on.
+        context.read<SubscriptionProvider>().loadSubscriptionInfo();
         _initFlow();
       }
     });
@@ -218,6 +228,10 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isHindi = context.watch<LanguageProvider>().currentLang == 'hi';
+    // Manual Trial Activation: reused verbatim from SubscriptionProvider
+    // -- a pure passthrough of the backend's own `trial_available`
+    // field (GET /api/profile/subscription-info), never computed here.
+    final trialAvailable = context.watch<SubscriptionProvider>().trialAvailable;
 
     return PopScope(
       canPop: false,
@@ -263,8 +277,14 @@ class _DashboardPageState extends State<DashboardPage> {
                 label: AppLocalizations.of(context)!.dashboard_reports,
               ),
               BottomNavigationBarItem(
-                icon: const Icon(Icons.explore_outlined),
-                activeIcon: const Icon(Icons.explore),
+                icon: _ExploreNavIcon(
+                  icon: Icons.explore_outlined,
+                  showFreeBadge: trialAvailable,
+                ),
+                activeIcon: _ExploreNavIcon(
+                  icon: Icons.explore,
+                  showFreeBadge: trialAvailable,
+                ),
                 label: isHindi ? 'एक्सप्लोर' : 'Explore',
               ),
               BottomNavigationBarItem(
@@ -276,6 +296,38 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Manual Trial Activation — "Explore [FREE]" as a small, compact
+/// badge/pill on the nav icon, never a text label change (a
+/// [BottomNavigationBarItem]'s `label` is a plain String; a widget
+/// can't be embedded in it). Deliberately reuses [icon]'s own fixed
+/// nav-bar slot rather than widening it — a corner badge is the
+/// standard, layout-neutral way to flag one nav item without disturbing
+/// the other four.
+class _ExploreNavIcon extends StatelessWidget {
+  const _ExploreNavIcon({required this.icon, required this.showFreeBadge});
+
+  final IconData icon;
+  final bool showFreeBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconWidget = Icon(icon);
+    if (!showFreeBadge) return iconWidget;
+
+    return Badge(
+      label: const Text(
+        'FREE',
+        style: TextStyle(fontSize: 8, fontWeight: FontWeight.w800),
+      ),
+      backgroundColor: AppColors.primary,
+      textColor: Colors.white,
+      alignment: Alignment.topRight,
+      offset: const Offset(10, -8),
+      child: iconWidget,
     );
   }
 }

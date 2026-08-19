@@ -95,6 +95,85 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------
+  // Manual Trial Activation — reads `trial_available` from the same
+  // `subscriptionData` blob `loadSubscriptionInfo()` already fetches
+  // (additive field on GET /api/profile/subscription-info). Never
+  // computed/inferred client-side — a straight passthrough of the
+  // backend's own eligibility decision, exactly like every other field
+  // this provider already exposes from that response.
+  // ---------------------------------------------------------------
+  bool get trialAvailable => subscriptionData?['trial_available'] == true;
+
+  /// Separate from [isLoading]/[errorMessage] on purpose — same
+  /// reasoning as [isPurchasing]/[purchaseErrorMessage]: an activation
+  /// attempt must never clobber or hide the last successfully loaded
+  /// subscription-info still on screen.
+  bool isActivatingTrial = false;
+  String? activateTrialErrorMessage;
+
+  /// "Activate Free Access" — the ONLY place a trial is ever started
+  /// from Flutter, calling the ONLY backend endpoint that can start one
+  /// (POST /api/profile/activate-trial). Never computes/assumes success
+  /// locally: on a 2xx, this always re-fetches subscription-info via
+  /// [loadSubscriptionInfo] so `membership_state`/`trial_available`/
+  /// `accessible_segments` everywhere in the app come from that one
+  /// fresh, authoritative read — exactly the same "backend confirms,
+  /// then refresh" shape [subscribeToPlan]/[_confirmWithBackend] already
+  /// use for purchases.
+  Future<void> activateTrial() async {
+    if (isActivatingTrial) return; // double-tap guard
+    isActivatingTrial = true;
+    activateTrialErrorMessage = null;
+    notifyListeners();
+
+    try {
+      final token = await _requireBackendToken();
+      if (token == null) {
+        activateTrialErrorMessage = "auth_failed";
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse("$_baseUrl/api/profile/activate-trial"),
+        headers: {
+          "Authorization": "Bearer $token",
+          "Content-Type": "application/json",
+        },
+      );
+
+      Map<String, dynamic>? body;
+      try {
+        body = jsonDecode(response.body) as Map<String, dynamic>;
+      } catch (_) {
+        body = null;
+      }
+
+      final success = body?['success'] == true;
+      if (response.statusCode >= 200 && response.statusCode < 300 && success) {
+        // Covers both a genuinely new activation and the idempotent
+        // "already_active" replay — both are success from the caller's
+        // point of view; either way the fresh read below is what
+        // actually drives the UI.
+        activateTrialErrorMessage = null;
+      } else {
+        activateTrialErrorMessage =
+            body?['reason']?.toString() ?? "activation_failed";
+        return;
+      }
+    } catch (e) {
+      activateTrialErrorMessage = "network_error";
+      return;
+    } finally {
+      isActivatingTrial = false;
+      notifyListeners();
+    }
+
+    // Backend is the source of truth for the new state — never assumed
+    // client-side, matching this class's own established pattern.
+    await loadSubscriptionInfo();
+  }
+
+  // ---------------------------------------------------------------
   // S5.2 — Google Play subscription PURCHASE
   // ---------------------------------------------------------------
 
@@ -366,6 +445,10 @@ class SubscriptionProvider extends ChangeNotifier {
     availableProducts = [];
     isRestoring = false;
     restoreErrorMessage = null;
+    // trialAvailable itself needs no explicit reset — it's a pure getter
+    // over subscriptionData, already cleared above (null -> false).
+    isActivatingTrial = false;
+    activateTrialErrorMessage = null;
     notifyListeners();
   }
 
