@@ -44,6 +44,16 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
   int _adsWatched = 0;
 
+  /// HOLD (product decision): the old "2 rewarded ads = 1 Ask Now
+  /// question" economics are no longer accepted. Keeping this a single
+  /// named flag — rather than removing the reward entry point, its
+  /// button, `_startRewardFlow`, `RewardedAdManager`, or
+  /// `AskNowProvider.earnedReward` — means re-enabling it later (once a
+  /// new ratio is decided) is a one-line change, not a re-implementation.
+  /// Does not affect banner/interstitial ads or content-page ad
+  /// placements, which never read this flag.
+  static const bool _rewardedAskNowOnHold = true;
+
   // Provider listeners (for safe auto-send + error snack)
   VoidCallback? _providerListener;
   Timer? _lastErrorDebounce;
@@ -343,6 +353,26 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
       _userIdForPayment = uid;
     }
+
+    if (!mounted) return;
+
+    // Product switch: now sells AskNowProvider.packProductId's 10-question
+    // pack, replacing the previous 8-question one. Prefer Google Play's
+    // own localized price string over the hardcoded fallback where it's
+    // actually available — same ProductDetails query
+    // startGooglePlayPackPurchase itself performs, just read-only here
+    // (see AskNowProvider.queryPackProduct). Falls back to the static
+    // copy below on any lookup failure (offline, product momentarily
+    // unresolvable, etc.) so the sheet never blocks on this.
+    final product = await context.read<AskNowProvider>().queryPackProduct(
+      AskNowProvider.packProductId,
+    );
+    final priceLine = product != null
+        ? "${product.price} • 10 Questions • Lifetime Valid"
+        : "₹100 • 10 Questions • Lifetime Valid";
+
+    if (!mounted) return;
+
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -383,9 +413,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    "₹51 • 8 Questions • Lifetime Valid",
-                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                  Text(
+                    priceLine,
+                    style: const TextStyle(fontSize: 14, color: Colors.black54),
                   ),
                   const SizedBox(height: 22),
                   SizedBox(
@@ -412,7 +442,7 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                             .read<AskNowProvider>()
                             .startGooglePlayPackPurchase(
                               userId: _userIdForPayment!,
-                              productId: "asknow8q",
+                              productId: AskNowProvider.packProductId,
                             );
                       },
                       child: const Text(
@@ -443,7 +473,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
     final loc = AppLocalizations.of(context)!;
 
     final bool showRewardCta =
-        provider.freeAvailable != true && provider.remainingTokens == 0;
+        !_rewardedAskNowOnHold &&
+        provider.freeAvailable != true &&
+        provider.remainingTokens == 0;
 
     return KeyboardDismissOnTap(
       child: Scaffold(

@@ -30,7 +30,7 @@ class ChatPackSuccessPage extends StatelessWidget {
               const SizedBox(height: 16),
 
               Text(
-                "Your AskNow ChatPack (8 Questions) has been activated.\n"
+                "Your AskNow ChatPack (10 Questions) has been activated.\n"
                 "You can now ask questions anytime.",
                 textAlign: TextAlign.center,
                 style: TextStyle(

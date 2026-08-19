@@ -10,6 +10,20 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:jyotishasha_app/services/asknow_service.dart';
 
 class AskNowProvider extends ChangeNotifier {
+  /// Google Play product ID for the paid Ask Now pack — the ONE named
+  /// constant for it, read by [AskNowChatPage] instead of an inline
+  /// literal (mirrors [ReportPurchaseProvider]'s `_productId`).
+  ///
+  /// Product switch: 10-question pack, ₹100, replacing the previous
+  /// `asknow8q` (8 questions, ₹51). The old product ID is intentionally
+  /// left un-referenced anywhere in this app (never queried, never
+  /// purchased) rather than deleted from Play Console/backend — any
+  /// `asknow8q` purchase still owned-but-unconsumed from before this
+  /// switch (e.g. mid-recovery via [_pendingUserIdPrefsKey]) keeps
+  /// verifying and crediting correctly against the backend's still-intact
+  /// `asknow8q` mapping; this app just never offers it for sale again.
+  static const String packProductId = "asknow10q";
+
   /// `billing`/`httpClient` are injectable purely for tests (mirrors
   /// [ReportPurchaseProvider]/[SubscriptionProvider]'s identical `billing`
   /// seam, and [BackendAskNowRepository]'s identical `client` seam) —
@@ -205,6 +219,22 @@ class AskNowProvider extends ChangeNotifier {
     }
   }
 
+  /// Read-only lookup — lets the purchase-decision UI show Play's own
+  /// localized price (e.g. "₹100.00") instead of a hardcoded string, per
+  /// the same [ProductDetails] query [startGooglePlayPackPurchase] itself
+  /// already performs. Never starts a purchase, never touches billing
+  /// state — purely informational. Returns `null` on any failure/empty
+  /// result so callers can fall back to static copy.
+  Future<ProductDetails?> queryPackProduct(String productId) async {
+    try {
+      final response = await _iap.queryProductDetails({productId});
+      if (response.productDetails.isEmpty) return null;
+      return response.productDetails.first;
+    } catch (_) {
+      return null;
+    }
+  }
+
   // ---------------------------------------------------------
   // GOOGLE PLAY PACK PURCHASE
   // ---------------------------------------------------------
@@ -327,7 +357,8 @@ class AskNowProvider extends ChangeNotifier {
       await _consume(purchase);
       await _clearPendingUserId();
 
-      remainingTokens = 8;
+      // Product switch: asknow10q credits 10 questions (was 8, asknow8q).
+      remainingTokens = 10;
       hasActivePack = true;
       statusLoaded = true;
       lastErrorMessage = null;

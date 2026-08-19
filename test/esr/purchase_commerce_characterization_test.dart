@@ -62,10 +62,94 @@ void main() {
         'if (purchase.pendingCompletePurchase) {',
         'await _iap.completePurchase(purchase);',
         'await _consume(purchase);',
-        'remainingTokens = 8;',
+        'remainingTokens = 10;',
         'hasActivePack = true;',
       ]);
     });
+
+    // Product switch: asknow10q (₹100, 10 questions) replacing asknow8q
+    // (₹51, 8 questions). `AskNowChatPage` has no test seam for its direct
+    // FirebaseAuth/Firestore singleton access, so — same as every other
+    // check in this file — these lock in the exact source text rather
+    // than pumping the widget.
+    test(
+      'AskNow purchase UI queries/purchases asknow10q, never asknow8q',
+      () {
+        final source = readProjectSource(
+          'lib/features/asknow/asknow_chat_page.dart',
+        );
+
+        expect(source, contains('AskNowProvider.packProductId'));
+        expect(source, isNot(contains('asknow8q')));
+      },
+    );
+
+    test(
+      'AskNow purchase UI no longer advertises 8 Questions / ₹51, and the '
+      'static fallback correctly says 10 Questions / ₹100',
+      () {
+        final chatPageSource = readProjectSource(
+          'lib/features/asknow/asknow_chat_page.dart',
+        );
+        final headerSource = readProjectSource(
+          'lib/features/asknow/widgets/asknow_header_status_widget.dart',
+        );
+
+        expect(chatPageSource, isNot(contains('₹51')));
+        expect(chatPageSource, isNot(contains('8 Questions')));
+        expect(chatPageSource, contains('10 Questions'));
+        expect(chatPageSource, contains('₹100'));
+
+        expect(headerSource, isNot(contains('₹51')));
+        expect(headerSource, isNot(contains('8Q')));
+        expect(headerSource, contains('10Q @ ₹100'));
+      },
+    );
+
+    test(
+      'AskNow purchase UI prefers Google Play\'s own localized '
+      'ProductDetails price over the hardcoded fallback where available',
+      () {
+        final source = readProjectSource(
+          'lib/features/asknow/asknow_chat_page.dart',
+        );
+
+        expect(source, contains('queryPackProduct'));
+        expect(source, contains('product.price'));
+      },
+    );
+
+    // HOLD (product decision): rewarded ads no longer grant Ask Now
+    // questions. The underlying reward implementation (_startRewardFlow,
+    // RewardedAdManager, AskNowProvider.earnedReward, /api/chat/reward)
+    // is deliberately left intact — only the UI entry point is disabled —
+    // so this locks in that it is held, not deleted.
+    test(
+      'Ask Now rewarded-ad question entry point is held (disabled), '
+      'without deleting the underlying reward implementation',
+      () {
+        final chatPageSource = readProjectSource(
+          'lib/features/asknow/asknow_chat_page.dart',
+        );
+
+        expect(
+          chatPageSource,
+          contains('static const bool _rewardedAskNowOnHold = true;'),
+        );
+        expect(
+          chatPageSource,
+          contains('!_rewardedAskNowOnHold'),
+        );
+        // Underlying implementation still present, not deleted.
+        expect(chatPageSource, contains('_startRewardFlow'));
+        expect(chatPageSource, contains('RewardedAdManager'));
+
+        final providerSource = readProjectSource(
+          'lib/core/state/asknow_provider.dart',
+        );
+        expect(providerSource, contains('Future<void> earnedReward('));
+      },
+    );
 
     // Report Purchase Lifecycle Architecture (Bucket A) moved report
     // purchases off ReportPaymentPage's own page-scoped listener and

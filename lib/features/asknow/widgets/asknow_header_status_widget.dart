@@ -117,7 +117,7 @@ class AskNowHeaderStatusWidget extends StatelessWidget {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
-                      "8Q @ ₹51",
+                      "10Q @ ₹100",
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white,

@@ -50,12 +50,59 @@ void main() {
     final verification = _MockPurchaseVerificationData();
     when(() => verification.serverVerificationData).thenReturn(token);
     when(() => purchase.verificationData).thenReturn(verification);
-    when(() => purchase.productID).thenReturn('asknow8q');
+    when(() => purchase.productID).thenReturn('asknow10q');
     when(() => purchase.pendingCompletePurchase).thenReturn(pendingComplete);
     when(() => purchase.status).thenReturn(status);
     when(() => purchase.error).thenReturn(null);
     return purchase;
   }
+
+  group('AskNowProvider product switch (asknow10q, ₹100, 10 questions)', () {
+    test(
+      'packProductId is asknow10q — the ONE source of truth every caller '
+      'reads, never asknow8q',
+      () {
+        expect(AskNowProvider.packProductId, 'asknow10q');
+      },
+    );
+
+    test(
+      'queryPackProduct returns the resolved ProductDetails for the pack '
+      'product id',
+      () async {
+        final iap = _MockInAppPurchase();
+        final details = _MockProductDetails();
+        final response = _MockProductDetailsResponse();
+        when(() => response.productDetails).thenReturn([details]);
+        when(
+          () => iap.queryProductDetails({AskNowProvider.packProductId}),
+        ).thenAnswer((_) async => response);
+        final provider = AskNowProvider(billing: iap);
+
+        final result = await provider.queryPackProduct(
+          AskNowProvider.packProductId,
+        );
+
+        expect(result, same(details));
+      },
+    );
+
+    test(
+      'queryPackProduct returns null (never throws) when the product is '
+      'unresolvable — callers fall back to static copy',
+      () async {
+        final iap = _MockInAppPurchase();
+        final response = _MockProductDetailsResponse();
+        when(() => response.productDetails).thenReturn([]);
+        when(() => iap.queryProductDetails(any())).thenAnswer((_) async => response);
+        final provider = AskNowProvider(billing: iap);
+
+        final result = await provider.queryPackProduct('asknow10q');
+
+        expect(result, isNull);
+      },
+    );
+  });
 
   group('AskNowProvider.startGooglePlayPackPurchase (P0 guard logic)', () {
     late _MockInAppPurchase iap;
@@ -82,7 +129,7 @@ void main() {
       when(() => response.productDetails).thenReturn([]);
       when(() => iap.queryProductDetails(any())).thenAnswer((_) async => response);
 
-      await provider.startGooglePlayPackPurchase(userId: 1, productId: 'asknow8q');
+      await provider.startGooglePlayPackPurchase(userId: 1, productId: 'asknow10q');
 
       expect(provider.lastErrorMessage, 'Product not found');
       verifyNever(
@@ -108,7 +155,7 @@ void main() {
           ),
         ).thenAnswer((_) async => true);
 
-        await provider.startGooglePlayPackPurchase(userId: 1, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 1, productId: 'asknow10q');
 
         final captured = verify(
           () => iap.buyConsumable(
@@ -157,18 +204,18 @@ void main() {
     });
 
     test(
-      '✓ successful verification: credits 8 tokens, acknowledges, consumes, '
-      'clears pending state, no error',
+      '✓ successful verification: credits 10 tokens (asknow10q pack), '
+      'acknowledges, consumes, clears pending state, no error',
       () async {
         when(
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).thenAnswer((_) async => http.Response('{"ok":true}', 200));
 
-        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
         purchaseController.add([purchaseFor('tok-success')]);
         await pumpEventQueue();
 
-        expect(provider.remainingTokens, 8);
+        expect(provider.remainingTokens, 10);
         expect(provider.hasActivePack, isTrue);
         expect(provider.statusLoaded, isTrue);
         expect(provider.lastErrorMessage, isNull);
@@ -187,7 +234,7 @@ void main() {
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).thenAnswer((_) async => http.Response('server error', 500));
 
-        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
         purchaseController.add([purchaseFor('tok-fail')]);
         await pumpEventQueue();
 
@@ -212,7 +259,7 @@ void main() {
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).thenThrow(Exception('Connection reset by peer'));
 
-        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
         // Adding to the stream must not throw synchronously and must not
         // leave an unhandled Future error.
         expect(
@@ -235,7 +282,7 @@ void main() {
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).thenAnswer((_) async => http.Response('{"ok":true}', 200));
 
-        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
         final purchase = purchaseFor('tok-dup');
         // Same event pushed twice, back to back, before the first
         // confirmation has resolved — simulates an overlapping
@@ -248,7 +295,7 @@ void main() {
         verify(
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).called(1);
-        expect(provider.remainingTokens, 8); // credited exactly once
+        expect(provider.remainingTokens, 10); // credited exactly once
       },
     );
 
@@ -295,7 +342,7 @@ void main() {
         when(
           () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
         ).thenAnswer((_) async => http.Response('server error', 500));
-        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
         purchaseController.add([purchaseFor('tok-retry')]);
         await pumpEventQueue();
         expect(provider.lastErrorMessage, 'Verification failed');
@@ -313,7 +360,7 @@ void main() {
         );
         await pumpEventQueue();
 
-        expect(provider.remainingTokens, 8);
+        expect(provider.remainingTokens, 10);
         expect(provider.lastErrorMessage, isNull);
       },
     );
@@ -326,7 +373,7 @@ void main() {
       () async {
         // "Previous session": starts a purchase; the app then "crashes"
         // before any purchase event is delivered to this instance.
-        await provider.startGooglePlayPackPurchase(userId: 99, productId: 'asknow8q');
+        await provider.startGooglePlayPackPurchase(userId: 99, productId: 'asknow10q');
 
         // "New app session": a brand-new provider instance, backed by the
         // same (mocked) SharedPreferences store — nothing re-opens the
@@ -349,7 +396,7 @@ void main() {
         );
         await pumpEventQueue();
 
-        expect(freshProvider.remainingTokens, 8);
+        expect(freshProvider.remainingTokens, 10);
         expect(freshProvider.hasActivePack, isTrue);
         verify(() => freshIap.completePurchase(any())).called(1);
         final captured = verify(
