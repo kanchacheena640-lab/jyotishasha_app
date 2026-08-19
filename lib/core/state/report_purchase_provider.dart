@@ -391,6 +391,31 @@ class ReportPurchaseProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_pendingRequestPrefsKey);
   }
+
+  /// Clears all per-user report-purchase state — called by the app's
+  /// centralized post-auth session cleanup (see `session_cleanup.dart`)
+  /// on logout and on a fully successful Delete Account. Critically also
+  /// clears the persisted [_pendingRequestPrefsKey] blob, which can hold
+  /// another person's name/email/phone/birth details if they started a
+  /// report purchase and never completed it before signing out — leaving
+  /// it in place would let that PII be picked up by whichever account
+  /// next triggers a purchase confirmation on this device.
+  ///
+  /// Deliberately does NOT cancel [_purchaseSub]/re-run
+  /// [initPurchaseListener] — that stream subscription is process-wide
+  /// billing infrastructure registered once at app startup, not
+  /// per-user state, and must keep listening across a logout/login
+  /// within the same session (mirrors [SubscriptionProvider.reset]'s
+  /// identical precedent).
+  Future<void> reset() async {
+    isProcessing = false;
+    errorMessage = null;
+    successCount = 0;
+    lastSuccessProduct = null;
+    lastSuccessWasRelationship = null;
+    await _clearPendingRequest();
+    notifyListeners();
+  }
 }
 
 class _PendingReportPurchase {

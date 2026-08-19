@@ -2,11 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
+import 'package:jyotishasha_app/core/auth/session_cleanup.dart';
 import 'package:jyotishasha_app/core/models/account/account_deletion_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/account_deletion_repository.dart';
 import 'package:jyotishasha_app/core/repositories/implementations/http_account_deletion_repository.dart';
@@ -243,34 +241,19 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   /// Shared local-session teardown — used by [_logout] AND by a fully
-  /// successful Delete Account (D4 Gate 5). Only ever calls the
-  /// ordinary, non-destructive `signOut()` — never
+  /// successful Delete Account (D4 Gate 5). Delegates entirely to the
+  /// app's one centralized post-auth cleanup (see `session_cleanup.dart`
+  /// for exactly what is cleared, what is deliberately preserved, and
+  /// why this now navigates via `go_router`'s `context.go('/login')`
+  /// instead of the previous `Navigator.pushNamedAndRemoveUntil` call).
+  /// Only ever calls the ordinary, non-destructive `signOut()` — never
   /// `FirebaseAuth.currentUser.delete()`. In the delete-account case this
   /// only runs once the backend (D1–D3) has already confirmed the
   /// account, its Firestore data, AND its Firebase Auth user are all
   /// genuinely gone server-side; by that point this local session is
   /// already stale, and this just clears it from the app.
   Future<void> _signOutLocallyAndReturnToLogin() async {
-    try {
-      await fcmTokenManager.clearOnLogout();
-    } catch (_) {}
-
-    try {
-      await GoogleSignIn().signOut();
-    } catch (_) {}
-
-    try {
-      await FirebaseAuth.instance.signOut();
-    } catch (_) {}
-
-    if (!mounted) return;
-
-    // Must run before navigating away — this is the last point this
-    // widget is guaranteed still mounted/attached to its providers.
-    context.read<ProfileProvider>().reset();
-    context.read<SubscriptionProvider>().reset();
-
-    Navigator.pushNamedAndRemoveUntil(context, "/login", (_) => false);
+    await clearUserScopedSessionAndReturnToLogin(context);
   }
 
   /// ACCOUNT → Delete Account. Opens a clear, explicit warning dialog

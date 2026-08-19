@@ -422,6 +422,33 @@ class AskNowProvider extends ChangeNotifier {
     await prefs.remove(_pendingUserIdPrefsKey);
   }
 
+  /// Clears all per-user Ask Now state — called by the app's centralized
+  /// post-auth session cleanup (see `session_cleanup.dart`) on logout and
+  /// on a fully successful Delete Account, so a second account logging
+  /// into the same long-lived app process never briefly sees the
+  /// previous account's free/token/chat status, and a stale persisted
+  /// pending-user-id can never be mis-attributed to the new session's
+  /// purchase.
+  ///
+  /// Deliberately does NOT cancel [_purchaseSub]/re-run [initBilling] —
+  /// that stream subscription is process-wide billing infrastructure
+  /// registered once at app startup, not per-user state, and must keep
+  /// listening across a logout/login within the same session (mirrors
+  /// [SubscriptionProvider.reset]'s identical precedent).
+  Future<void> reset() async {
+    isLoading = false;
+    pendingAnswer = null;
+    lastErrorMessage = null;
+    freeAvailable = false;
+    freeUsedToday = false;
+    hasActivePack = false;
+    remainingTokens = 0;
+    statusLoaded = false;
+    _pendingUserId = null;
+    await _clearPendingUserId();
+    notifyListeners();
+  }
+
   // ---------------------------------------------------------
   // REWARD ADS
   // ---------------------------------------------------------
