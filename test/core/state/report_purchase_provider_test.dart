@@ -26,6 +26,10 @@ class _FakeReportRepository implements ReportRepository {
   final List<ReportGenerationRequest> requestCalls = [];
   final List<RelationshipReportRequest> relationshipCalls = [];
   bool nextOutcomeSuccess = true;
+  // CANCELED Recovery Dead-End fix: lets tests drive the backend's new
+  // structured error_code ("purchase_canceled" / "purchase_pending" /
+  // null for an unclassified failure) through the same fake.
+  String? nextOutcomeErrorCode;
   Object? nextOutcomeError;
 
   @override
@@ -38,7 +42,10 @@ class _FakeReportRepository implements ReportRepository {
   ) async {
     requestCalls.add(request);
     if (nextOutcomeError != null) throw nextOutcomeError!;
-    return ReportGenerationOutcome(success: nextOutcomeSuccess);
+    return ReportGenerationOutcome(
+      success: nextOutcomeSuccess,
+      errorCode: nextOutcomeSuccess ? null : nextOutcomeErrorCode,
+    );
   }
 
   @override
@@ -47,7 +54,10 @@ class _FakeReportRepository implements ReportRepository {
   ) async {
     relationshipCalls.add(request);
     if (nextOutcomeError != null) throw nextOutcomeError!;
-    return ReportGenerationOutcome(success: nextOutcomeSuccess);
+    return ReportGenerationOutcome(
+      success: nextOutcomeSuccess,
+      errorCode: nextOutcomeSuccess ? null : nextOutcomeErrorCode,
+    );
   }
 }
 
@@ -321,6 +331,106 @@ void main() {
           repository.requestCalls.every((r) => r.purchaseToken == 'tok-retry'),
           isTrue,
         );
+      },
+    );
+
+    test(
+      '✓ CANCELED (purchase_canceled): clears the pending record, does '
+      'NOT acknowledge/consume, and a later redelivery of the same token '
+      'finds nothing pending — proves the dead-end is actually cleared',
+      () async {
+        repository.nextOutcomeSuccess = false;
+        repository.nextOutcomeErrorCode = 'purchase_canceled';
+
+        await provider.purchaseReport(request: sampleRequest());
+        final purchase = purchaseFor('tok-canceled');
+        purchaseController.add([purchase]);
+        await pumpEventQueue();
+
+        expect(repository.requestCalls, hasLength(1));
+        verifyNever(() => iap.completePurchase(any()));
+        expect(provider.errorMessage, 'purchase_canceled');
+        expect(provider.successCount, 0);
+
+        // Same still-owned/unconsumed token gets redelivered (e.g. Play's
+        // own next-session redelivery). Because the pending record was
+        // cleared, the provider has nothing to confirm it with — it must
+        // NOT call the backend again with a stale record, and must NOT
+        // retroactively show report_failed/Retry for a token already
+        // known to be canceled.
+        final redelivered = purchaseFor('tok-canceled');
+        when(() => redelivered.status).thenReturn(PurchaseStatus.restored);
+        purchaseController.add([redelivered]);
+        await pumpEventQueue();
+
+        expect(repository.requestCalls, hasLength(1)); // still just 1
+        expect(provider.errorMessage, 'unknown_pending_purchase');
+        verifyNever(() => iap.completePurchase(any()));
+      },
+    );
+
+    test(
+      '✓ PENDING (purchase_pending): does NOT clear the pending record — '
+      'a later retry with the SAME token can still complete the purchase',
+      () async {
+        repository.nextOutcomeSuccess = false;
+        repository.nextOutcomeErrorCode = 'purchase_pending';
+
+        await provider.purchaseReport(request: sampleRequest());
+        final purchase = purchaseFor('tok-pending');
+        purchaseController.add([purchase]);
+        await pumpEventQueue();
+
+        expect(repository.requestCalls, hasLength(1));
+        verifyNever(() => iap.completePurchase(any()));
+        expect(provider.errorMessage, 'purchase_pending');
+        expect(provider.successCount, 0);
+
+        // Google finishes clearing the purchase; retry now succeeds,
+        // using the SAME token — proves the pending record survived.
+        repository.nextOutcomeSuccess = true;
+        await provider.retryPendingReportPurchase();
+        final redelivered = purchaseFor('tok-pending');
+        when(() => redelivered.status).thenReturn(PurchaseStatus.restored);
+        purchaseController.add([redelivered]);
+        await pumpEventQueue();
+
+        expect(provider.successCount, 1);
+        expect(repository.requestCalls, hasLength(2));
+        expect(
+          repository.requestCalls.every((r) => r.purchaseToken == 'tok-pending'),
+          isTrue,
+        );
+        verify(() => iap.completePurchase(redelivered)).called(1);
+      },
+    );
+
+    test(
+      '✓ unclassified failure (network/5xx/timeout — no error_code): '
+      'behaves exactly like today — report_failed, pending record kept',
+      () async {
+        repository.nextOutcomeSuccess = false;
+        repository.nextOutcomeErrorCode = null;
+
+        await provider.purchaseReport(request: sampleRequest());
+        final purchase = purchaseFor('tok-network');
+        purchaseController.add([purchase]);
+        await pumpEventQueue();
+
+        expect(provider.errorMessage, 'report_failed');
+        verifyNever(() => iap.completePurchase(any()));
+
+        // Pending record must survive — same guarantee the pre-existing
+        // 'retry' test already exercises for this exact scenario.
+        repository.nextOutcomeSuccess = true;
+        await provider.retryPendingReportPurchase();
+        final redelivered = purchaseFor('tok-network');
+        when(() => redelivered.status).thenReturn(PurchaseStatus.restored);
+        purchaseController.add([redelivered]);
+        await pumpEventQueue();
+
+        expect(provider.successCount, 1);
+        expect(repository.requestCalls, hasLength(2));
       },
     );
 

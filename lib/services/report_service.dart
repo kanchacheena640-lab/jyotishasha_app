@@ -3,6 +3,20 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+/// Report Purchase CANCELED Recovery Dead-End fix: `sendReportRequest()`
+/// used to collapse every non-200 response to a bare `false`, so a
+/// caller could not tell "this token can never succeed (Google
+/// canceled it)" apart from "transient failure, safe to retry". This
+/// carries the backend's new structured `error_code` (additive field
+/// on `/api/reports/google/confirm`'s existing failure JSON) through
+/// unchanged when the backend hasn't sent one, so old behavior is
+/// preserved exactly for every failure this class doesn't recognize.
+class ReportConfirmResult {
+  const ReportConfirmResult({required this.success, this.errorCode});
+  final bool success;
+  final String? errorCode;
+}
+
 class ReportService {
   static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
 
@@ -13,7 +27,7 @@ class ReportService {
   // /webhook the Website still uses unchanged. Same PaymentService ->
   // OrderService -> report-generation pipeline either way -- only the
   // entry point and its required fields differ.
-  Future<bool> sendReportRequest({
+  Future<ReportConfirmResult> sendReportRequest({
     required String name,
     required String email,
     required Map<String, dynamic> birthDetails,
@@ -28,7 +42,7 @@ class ReportService {
       if (product == null || product.isEmpty) {
         print("❌ REPORT SERVICE ERROR: product is empty");
         print("BirthDetails => $birthDetails");
-        return false;
+        return const ReportConfirmResult(success: false);
       }
 
       // 🔒 HARD GUARD — /api/reports/google/confirm requires both of
@@ -36,11 +50,11 @@ class ReportService {
       // sending a request the backend can only reject.
       if (purchaseToken.isEmpty) {
         print("❌ REPORT SERVICE ERROR: purchaseToken is empty");
-        return false;
+        return const ReportConfirmResult(success: false);
       }
       if (productId == null || productId.isEmpty) {
         print("❌ REPORT SERVICE ERROR: productId is empty");
-        return false;
+        return const ReportConfirmResult(success: false);
       }
 
       final payload = {
@@ -79,10 +93,28 @@ class ReportService {
         body: jsonEncode(payload),
       );
 
-      return res.statusCode == 200;
+      if (res.statusCode == 200) {
+        return const ReportConfirmResult(success: true);
+      }
+
+      // Best-effort parse of the failure body for the new structured
+      // `error_code` field -- absent/unparseable body just means no
+      // classification, identical to today's plain-`false` behavior.
+      String? errorCode;
+      try {
+        final decoded = jsonDecode(res.body);
+        if (decoded is Map<String, dynamic>) {
+          final code = decoded['error_code'];
+          if (code is String && code.isNotEmpty) errorCode = code;
+        }
+      } catch (_) {
+        // Non-JSON or empty body -- leave errorCode null.
+      }
+
+      return ReportConfirmResult(success: false, errorCode: errorCode);
     } catch (e) {
       print("❌ ReportService exception: $e");
-      return false;
+      return const ReportConfirmResult(success: false);
     }
   }
 }

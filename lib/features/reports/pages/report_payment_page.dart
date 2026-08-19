@@ -124,6 +124,10 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
         return "Product not available. Please try again.";
       case "report_failed":
         return "Payment received but report failed. Tap Retry.";
+      case "purchase_pending":
+        return "Your payment is still being confirmed by Google Play. Tap Retry to check again.";
+      case "purchase_canceled":
+        return "This payment was canceled and no report was charged. Please start a new payment.";
       case "unknown_pending_purchase":
         return "We found a pending purchase we couldn't identify. Please contact support.";
       default:
@@ -215,9 +219,16 @@ class _ReportPaymentPageState extends State<ReportPaymentPage> {
     final provider = context.watch<ReportPurchaseProvider>();
 
     final isProcessing = provider.isProcessing;
+    // CANCELED Recovery Dead-End fix: "purchase_canceled" is Google's own
+    // terminal verdict on this token -- retrying it can never succeed, so
+    // it must NOT show "Retry" here. Every other retryable reason
+    // (default "report_failed", or "purchase_pending" -- still clearing
+    // on Google's side, re-checking is the correct action, not a fresh
+    // buy) keeps offering Retry exactly as before.
     final canRetry =
         !isProcessing &&
-        provider.errorMessage == "report_failed";
+        (provider.errorMessage == "report_failed" ||
+            provider.errorMessage == "purchase_pending");
 
     return Scaffold(
       appBar: AppBar(title: const Text("Confirm & Pay")),

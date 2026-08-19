@@ -258,27 +258,39 @@ class ReportPurchaseProvider extends ChangeNotifier {
         orderId: purchase.purchaseID,
       );
 
-      final bool ok;
+      final ReportGenerationOutcome outcome;
       if (pending.isRelationship) {
-        final outcome = await _repository.requestRelationshipReport(
+        outcome = await _repository.requestRelationshipReport(
           RelationshipReportRequest(
             report: reportRequest,
             boyIsUser: pending.boyIsUser,
             partner: pending.partner,
           ),
         );
-        ok = outcome.success == true;
       } else {
-        final outcome = await _repository.requestReport(reportRequest);
-        ok = outcome.success == true;
+        outcome = await _repository.requestReport(reportRequest);
       }
+      final ok = outcome.success == true;
 
       if (!ok) {
-        // Requirement 4 -- DO NOT consume, DO NOT acknowledge. The
-        // pending record is deliberately NOT cleared, so a retry (or the
-        // next app session) can find it again for the same token.
+        // CANCELED Recovery Dead-End fix: purchase_canceled is Google's
+        // own TERMINAL verdict on this exact token (purchaseState=1) --
+        // retrying it can never succeed, so this is the one failure
+        // reason allowed to clear the pending record and drop the user
+        // back to a fresh "Buy Report" state. Every other failure
+        // (unclassified, purchase_pending, network/5xx/timeout) keeps
+        // Requirement 4's original guarantee unchanged: DO NOT consume,
+        // DO NOT acknowledge, DO NOT clear -- so a retry (or the next
+        // app session) can still find this same token again.
         isProcessing = false;
-        errorMessage = "report_failed";
+        if (outcome.errorCode == "purchase_canceled") {
+          await _clearPendingRequest();
+          errorMessage = "purchase_canceled";
+        } else if (outcome.errorCode == "purchase_pending") {
+          errorMessage = "purchase_pending";
+        } else {
+          errorMessage = "report_failed";
+        }
         notifyListeners();
         return;
       }

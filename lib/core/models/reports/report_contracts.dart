@@ -422,25 +422,41 @@ final class RelationshipReportRequest extends ContractValue {
 }
 
 final class ReportGenerationOutcome extends ContractValue {
-  const ReportGenerationOutcome({this.success, this.reportId, this.message});
+  const ReportGenerationOutcome({
+    this.success,
+    this.reportId,
+    this.message,
+    this.errorCode,
+  });
   final bool? success;
   final String? reportId;
   final String? message;
+
+  /// Structured failure reason from `/api/reports/google/confirm`'s
+  /// `error_code` field (Report Purchase CANCELED Recovery fix) --
+  /// e.g. "purchase_canceled", "purchase_pending". Null on success and
+  /// on any failure the backend hasn't classified (network error,
+  /// 5xx, generic verification failure) -- those must stay
+  /// indistinguishable from today's plain retryable failure.
+  final String? errorCode;
   factory ReportGenerationOutcome.fromJson(JsonMap json) =>
       ReportGenerationOutcome(
         success: asBool(json['success'] ?? json['ok']),
         reportId: stringFrom(json, const ['report_id', 'reportId', 'id']),
         message: asString(json['message']),
+        errorCode: stringFrom(json, const ['error_code', 'errorCode']),
       );
   JsonMap toJson() => {
     'success': success,
     'report_id': reportId,
     'message': message,
+    'error_code': errorCode,
   };
   ReportGenerationOutcome copyWith({
     Object? success = contractUnchanged,
     Object? reportId = contractUnchanged,
     Object? message = contractUnchanged,
+    Object? errorCode = contractUnchanged,
   }) => ReportGenerationOutcome(
     success: identical(success, contractUnchanged)
         ? this.success
@@ -451,7 +467,10 @@ final class ReportGenerationOutcome extends ContractValue {
     message: identical(message, contractUnchanged)
         ? this.message
         : message as String?,
+    errorCode: identical(errorCode, contractUnchanged)
+        ? this.errorCode
+        : errorCode as String?,
   );
   @override
-  List<Object?> get props => [success, reportId, message];
+  List<Object?> get props => [success, reportId, message, errorCode];
 }

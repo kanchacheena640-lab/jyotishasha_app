@@ -52,8 +52,11 @@ final class AssetReportRepository implements ReportRepository {
   Future<ReportGenerationOutcome> requestReport(
     ReportGenerationRequest request,
   ) async {
-    final success = await _send(request, const {});
-    return ReportGenerationOutcome(success: success);
+    final result = await _send(request, const {});
+    return ReportGenerationOutcome(
+      success: result.success,
+      errorCode: result.errorCode,
+    );
   }
 
   @override
@@ -61,14 +64,17 @@ final class AssetReportRepository implements ReportRepository {
     RelationshipReportRequest request,
   ) async {
     final report = request.report ?? const ReportGenerationRequest();
-    final success = await _send(report, {
+    final result = await _send(report, {
       'boy_is_user': request.boyIsUser,
       'partner': request.partner?.toJson(),
     });
-    return ReportGenerationOutcome(success: success);
+    return ReportGenerationOutcome(
+      success: result.success,
+      errorCode: result.errorCode,
+    );
   }
 
-  Future<bool> _send(
+  Future<ReportConfirmResult> _send(
     ReportGenerationRequest request,
     Map<String, dynamic> additionalFields,
   ) => _reportService.sendReportRequest(
