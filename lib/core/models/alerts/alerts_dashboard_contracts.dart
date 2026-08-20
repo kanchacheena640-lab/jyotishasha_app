@@ -23,6 +23,7 @@ class AlertItem {
     required this.priority,
     required this.validFrom,
     required this.validUntil,
+    this.action,
   });
 
   factory AlertItem.fromJson(Map<String, dynamic> json) => AlertItem(
@@ -35,6 +36,12 @@ class AlertItem {
     priority: json['priority']?.toString(),
     validFrom: json['valid_from']?.toString(),
     validUntil: json['valid_until']?.toString(),
+    // AI-Written Personalized Alert Content addition -- present only
+    // when the backend actually generated one for this alert (a
+    // genuine new/reactivated occurrence); a plain generic template
+    // fallback alert has none. Never defaulted to an empty string —
+    // `null` means "no action for this alert", not "not loaded yet".
+    action: json['action']?.toString(),
   );
 
   final int? alertId;
@@ -46,6 +53,7 @@ class AlertItem {
   final String? priority;
   final String? validFrom;
   final String? validUntil;
+  final String? action;
 }
 
 /// The distinct outcomes `GET /api/alerts/current` can produce — a client

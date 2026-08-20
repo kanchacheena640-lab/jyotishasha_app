@@ -132,6 +132,77 @@ void main() {
     });
   });
 
+  group('AI-Written Personalized Alert Content -- action block', () {
+    testWidgets(
+      'renders the action line when the backend supplied one',
+      (tester) async {
+        final alert = AlertItem(
+          alertId: 1,
+          eventId: 'opportunity_window',
+          title: 'Opportunity Window',
+          message: 'A supportive window is opening for career recognition.',
+          category: 'timing',
+          severity: 'MEDIUM',
+          priority: 'high',
+          validFrom: '2026-08-14',
+          validUntil: '2026-08-16',
+          action: 'Send that proposal or application today.',
+        );
+        final repo = _FakeAlertsDashboardRepository(
+          AlertsDashboardResult.success([alert]),
+        );
+        await pump(tester, repository: repo);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.textContaining('Send that proposal or application today.'),
+          findsOneWidget,
+        );
+        expect(find.textContaining("Today's Focus"), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'renders no action block at all when the backend supplied none '
+      '(plain template-fallback alert, unaffected by this addition)',
+      (tester) async {
+        final repo = _FakeAlertsDashboardRepository(
+          AlertsDashboardResult.success([_financialAlert()]),
+        );
+        await pump(tester, repository: repo);
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining("Today's Focus"), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'renders the Hindi action label when locale is Hindi',
+      (tester) async {
+        final alert = AlertItem(
+          alertId: 1,
+          eventId: 'opportunity_window',
+          title: 'अवसर की खिड़की',
+          message: 'करियर पहचान के लिए एक अनुकूल समय खुल रहा है।',
+          category: 'timing',
+          severity: 'MEDIUM',
+          priority: 'high',
+          validFrom: '2026-08-14',
+          validUntil: '2026-08-16',
+          action: 'आज वह प्रस्ताव भेजें।',
+        );
+        final repo = _FakeAlertsDashboardRepository(
+          AlertsDashboardResult.success([alert]),
+        );
+        await pump(tester, repository: repo, locale: const Locale('hi'));
+        await tester.pumpAndSettle();
+
+        expect(find.textContaining('आज करें'), findsOneWidget);
+        expect(find.textContaining('आज वह प्रस्ताव भेजें।'), findsOneWidget);
+      },
+    );
+  });
+
   group('two current alerts', () {
     testWidgets('shows both cards, strongest first', (tester) async {
       final repo = _FakeAlertsDashboardRepository(

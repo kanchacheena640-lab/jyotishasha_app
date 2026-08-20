@@ -503,6 +503,28 @@ class _AlertCard extends StatelessWidget {
                 height: 1.4,
               ),
             ),
+            // AI-Written Personalized Alert Content addition -- only
+            // rendered when the backend actually generated one for
+            // this alert (see AlertItem.action's own doc comment).
+            // Tinted with this card's own severity accent color
+            // (matching its header chip) rather than a hardcoded
+            // color, so it reads as "part of this card", not a
+            // generic reused block.
+            if (alert.action != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: severityColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${isHindi ? "आज करें" : "Today's Focus"}: ${alert.action}',
+                  style: const TextStyle(fontSize: 13, height: 1.4),
+                ),
+              ),
+            ],
           ],
         ),
       ),
