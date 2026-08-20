@@ -45,9 +45,20 @@ class PremiumAiReportTypes {
 
 /// Result of a `GET /api/premium-report` call — success carries the
 /// backend's own `content` text verbatim; failure carries the backend's
-/// own `error`/`message` verbatim (this client never invents or
-/// rewords backend error copy, matching `SubscriptionProvider`'s same
-/// "backend is the source of truth" convention).
+/// own `error`/`message` verbatim in this MODEL (never altered here —
+/// still matches `SubscriptionProvider`'s "backend is the source of
+/// truth" convention for what this class stores). Progressive/On-Demand
+/// Generation fix: [errorMessage] is deliberately NOT always shown to
+/// the user by its callers — `BirthChartReportReader._aiBody()` never
+/// renders it for a generic failure (only [isEntitlementDenied] gets
+/// its own specific, safe copy), precisely because a backend message
+/// can legitimately contain internal/implementation detail (e.g. a
+/// dependency-check exception) that must never reach the UI. This field
+/// still exists for any other/future caller that needs it (logging,
+/// diagnostics), and factory [failure] can be constructed with
+/// `errorMessage: null` for a purely synthetic, UI-local failure state
+/// (see `_onTapCurrentTiming`'s `dependency_unavailable` case) that was
+/// never a backend response at all.
 class PremiumAiReportResult {
   const PremiumAiReportResult._({
     this.content,

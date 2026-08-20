@@ -40,12 +40,44 @@ class _FakePremiumAiReportRepository implements PremiumAiReportRepository {
 /// state, without racing against the real (near-instant) Future
 /// completion timing of [_FakePremiumAiReportRepository].
 class _HangingRepository implements PremiumAiReportRepository {
+  final List<String> calls = [];
+
   @override
   Future<PremiumAiReportResult> getReport({
     required String segment,
     required String reportType,
     required String language,
-  }) => Completer<PremiumAiReportResult>().future;
+  }) {
+    calls.add(reportType);
+    return Completer<PremiumAiReportResult>().future;
+  }
+}
+
+/// Controllable, per-report_type delayed resolution — lets a test
+/// observe "still loading" deterministically, then resolve exactly the
+/// call it wants, when it wants. Used for double-tap-protection tests,
+/// where [_FakePremiumAiReportRepository]'s near-instant resolution
+/// would race the assertion and [_HangingRepository] can never resolve
+/// at all.
+class _DelayedRepository implements PremiumAiReportRepository {
+  final List<String> calls = [];
+  final Map<String, Completer<PremiumAiReportResult>> _pending = {};
+
+  @override
+  Future<PremiumAiReportResult> getReport({
+    required String segment,
+    required String reportType,
+    required String language,
+  }) {
+    calls.add(reportType);
+    final completer = Completer<PremiumAiReportResult>();
+    _pending[reportType] = completer;
+    return completer.future;
+  }
+
+  void resolve(String reportType, PremiumAiReportResult result) {
+    _pending[reportType]!.complete(result);
+  }
 }
 
 void main() {
@@ -78,6 +110,25 @@ void main() {
         ),
       ],
     );
+  }
+
+  // Progressive/On-Demand Generation fix — CURRENT_PHASE/CURRENT_TIMING no
+  // longer auto-load on screen open, so any test that needs their real
+  // content must explicitly tap that section's own on-demand CTA first.
+  // Matched by the CTA's own fixed suffix ("Phase →"/"Timing →") rather
+  // than the full, category-specific string ("See Current Love Phase →"),
+  // so these helpers work unchanged for every PremiumReportType tested
+  // below — never colliding with "Read Full Current Phase Report →"
+  // (ends in "Report →", not "Phase →") or any section label (no arrow
+  // at all).
+  Future<void> tapPhaseCta(WidgetTester tester) async {
+    await tester.tap(find.textContaining('Phase →').first);
+    await tester.pump();
+  }
+
+  Future<void> tapTimingCta(WidgetTester tester) async {
+    await tester.tap(find.textContaining('Timing →').first);
+    await tester.pump();
   }
 
   group('The report always opens — free DNA section is never gated', () {
@@ -305,6 +356,8 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
+          await tapTimingCta(tester);
 
           expect(find.text('Unlock with Premium Membership →'), findsNothing);
           expect(find.byIcon(Icons.lock_rounded), findsNothing);
@@ -362,6 +415,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
 
           await tester.tap(find.text('Read Full Current Phase Report →'));
           await tester.pump();
@@ -459,6 +513,8 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
+          await tapTimingCta(tester);
 
           expect(find.text('Unlock with Premium Membership →'), findsNothing);
           expect(find.byIcon(Icons.lock_rounded), findsNothing);
@@ -483,19 +539,84 @@ void main() {
   group(
     'Love — reference implementation (DNA, Current Phase, error paths)',
     () {
-      testWidgets('shows a loading indicator for the free DNA section, Current '
-          'Phase and Current Timing — three independent cards now read the '
-          'same in-flight call (already entitled)', (tester) async {
-        await pump(
-          tester,
-          PremiumReportType.love,
-          repository: _HangingRepository(),
-          unlocked: true,
-        );
-        await tester.pump();
+      testWidgets(
+        'Progressive/On-Demand Generation — screen open shows a loading '
+        'indicator ONLY for the free DNA section; Current Phase and '
+        'Current Timing show their own CTA cards, not spinners, and never '
+        'call the backend at all until tapped (already entitled)',
+        (tester) async {
+          final repository = _HangingRepository();
 
-        expect(find.byType(CircularProgressIndicator), findsNWidgets(3));
-      });
+          await pump(
+            tester,
+            PremiumReportType.love,
+            repository: repository,
+            unlocked: true,
+          );
+          await tester.pump();
+
+          // Exactly one spinner — DNA's own, since it's still the only
+          // section that auto-loads.
+          expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+          expect(find.text('See Current Love Phase →'), findsOneWidget);
+          expect(find.text('Check Current Love Timing →'), findsOneWidget);
+
+          // Zero calls for CURRENT_PHASE/CURRENT_TIMING — only DNA's own
+          // (hanging, so it never resolves, but the request itself was
+          // still made and recorded).
+          expect(repository.calls, ['DNA']);
+        },
+      );
+
+      testWidgets(
+        'tapping Current Phase\'s own CTA shows ITS OWN loading state '
+        '("Analyzing current phase...") — never Current Timing\'s',
+        (tester) async {
+          await pump(
+            tester,
+            PremiumReportType.love,
+            repository: _HangingRepository(),
+            unlocked: true,
+          );
+          await tester.pump();
+
+          await tester.tap(find.text('See Current Love Phase →'));
+          await tester.pump();
+
+          expect(find.text('Analyzing current phase...'), findsOneWidget);
+          expect(find.text('Analyzing current timing...'), findsNothing);
+          // Current Timing's own CTA is unaffected — still its own
+          // separate on-demand state, not touched by Phase's own tap.
+          expect(find.text('Check Current Love Timing →'), findsOneWidget);
+        },
+      );
+
+      testWidgets(
+        'tapping Current Timing\'s own CTA shows ONLY its own loading '
+        'state ("Analyzing current timing...") — Current Phase never '
+        'flashes a competing loading indicator for Timing\'s own silent '
+        'dependency step',
+        (tester) async {
+          await pump(
+            tester,
+            PremiumReportType.love,
+            repository: _HangingRepository(),
+            unlocked: true,
+          );
+          await tester.pump();
+
+          await tester.tap(find.text('Check Current Love Timing →'));
+          await tester.pump();
+
+          expect(find.text('Analyzing current timing...'), findsOneWidget);
+          expect(find.text('Analyzing current phase...'), findsNothing);
+          // Current Phase's own card is untouched — still its own CTA,
+          // not a loading state, even though a CURRENT_PHASE fetch is
+          // silently in flight underneath as Timing's own dependency.
+          expect(find.text('See Current Love Phase →'), findsOneWidget);
+        },
+      );
 
       testWidgets(
         'shows the real backend DNA content on success — not the static '
@@ -517,6 +638,7 @@ void main() {
             unlocked: true,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
 
           expect(
             find.text(
@@ -641,7 +763,9 @@ void main() {
       );
 
       testWidgets(
-        'shows the backend\'s own error message with a Retry action for a '
+        'shows a fixed, generic error message (never the backend\'s own '
+        'raw errorMessage — Progressive/On-Demand Generation fix, see '
+        '_aiBody\'s own doc comment) with a Retry action for a '
         'non-entitlement error, and Retry re-invokes the repository '
         '(already entitled)',
         (tester) async {
@@ -663,7 +787,13 @@ void main() {
           );
           await tester.pump();
 
-          expect(find.text('Connection failed.'), findsOneWidget);
+          // Never the backend's own raw message...
+          expect(find.text('Connection failed.'), findsNothing);
+          // ...only the one fixed, generic, safe string.
+          expect(
+            find.text('Something went wrong loading this content.'),
+            findsOneWidget,
+          );
           expect(find.text('Retry'), findsOneWidget);
 
           final callsBefore = repository.calls.length;
@@ -697,6 +827,7 @@ void main() {
             unlocked: true,
           );
           await tester.pump();
+          await tapTimingCta(tester);
 
           expect(find.text('Current Timing'), findsOneWidget);
           expect(find.text('Timing.'), findsOneWidget);
@@ -808,6 +939,8 @@ void main() {
               repository: repository,
             );
             await tester.pump();
+            await tapPhaseCta(tester);
+            await tapTimingCta(tester);
 
             // Current Phase — collapsed excerpt only.
             expect(find.text('You are in a growth phase.'), findsOneWidget);
@@ -872,6 +1005,8 @@ void main() {
               repository: repository,
             );
             await tester.pump();
+            await tapPhaseCta(tester);
+            await tapTimingCta(tester);
 
             await tester.tap(find.text('Read Full Current Phase Report →'));
             await tester.pump();
@@ -931,6 +1066,8 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
+          await tapTimingCta(tester);
 
           expect(
             find.text('Plain, non-markdown phase reading with no headings.'),
@@ -986,6 +1123,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapTimingCta(tester); // silently ensures Phase too
 
           expect(
             find.text(
@@ -1027,6 +1165,8 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapPhaseCta(tester);
+          await tapTimingCta(tester);
 
           // Matched heading — real content, visible in the excerpt.
           expect(find.text('You are in a growth phase.'), findsOneWidget);
@@ -1079,6 +1219,14 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          // Hindi CTA copy — category-specific ("वर्तमान स्वास्थ्य चरण देखें
+          // →"/"वर्तमान स्वास्थ्य समय जांचें →" for Health), so tapPhaseCta/
+          // tapTimingCta's English-only "Phase →"/"Timing →" match doesn't
+          // apply here.
+          await tester.tap(find.text('वर्तमान स्वास्थ्य चरण देखें →'));
+          await tester.pump();
+          await tester.tap(find.text('वर्तमान स्वास्थ्य समय जांचें →'));
+          await tester.pump();
 
           expect(find.text('वर्तमान चरण'), findsOneWidget);
           expect(find.text('वर्तमान समय'), findsOneWidget);
@@ -1101,11 +1249,25 @@ void main() {
     '(current_*_timing_v1.txt, all 5 segments): "<situation>\\n\\nQuick '
     'Tip:\\n<tip>", no Markdown at all',
     () {
+      // Every test in this group configures ONLY the CURRENT_TIMING fake
+      // result, since these tests are purely about that call's own
+      // content-parsing contract. Progressive/On-Demand Generation fix:
+      // CURRENT_TIMING now always ensures CURRENT_PHASE is READY first
+      // (see BirthChartReportReader._onTapCurrentTiming), so CURRENT_PHASE
+      // must be configured to succeed too, or the dependency step itself
+      // would fail and none of these fixtures would ever be reached at
+      // all — this is the same real contract Flutter now enforces, not a
+      // workaround. Its own content is irrelevant here and never
+      // asserted on.
+      const unusedPhaseContext = 'Phase context (unused by these Timing-focused assertions).';
+
       testWidgets(
         'the literal "Quick Tip:" label never remains visible inside the '
         'situation paragraph',
         (tester) async {
           final repository = _FakePremiumAiReportRepository()
+            ..results[PremiumAiReportTypes.currentPhase] =
+                PremiumAiReportResult.success(unusedPhaseContext)
             ..results[PremiumAiReportTypes.currentTiming] =
                 PremiumAiReportResult.success(
                   'A message from someone you care about may arrive.\n\n'
@@ -1120,6 +1282,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapTimingCta(tester);
 
           expect(
             find.text(
@@ -1149,10 +1312,23 @@ void main() {
             'Quick   Tip:',
           ]) {
             final repository = _FakePremiumAiReportRepository()
+              ..results[PremiumAiReportTypes.currentPhase] =
+                  PremiumAiReportResult.success(unusedPhaseContext)
               ..results[PremiumAiReportTypes.currentTiming] =
                   PremiumAiReportResult.success(
                     'A situation sentence.\n\n$variant\nA tip sentence.',
                   );
+
+            // Force a full unmount between iterations — Flutter's own
+            // widget-diffing would otherwise reuse the SAME
+            // BirthChartReportReader State (same widget type/no Key)
+            // across every pumpWidget() call in this loop, leaking
+            // _timingResult from one variant into the next and making
+            // this loop over-report success (a pre-existing test-
+            // isolation gap, made visible now that On-Demand generation
+            // means a stale, already-populated result skips the CTA
+            // tapTimingCta needs to find).
+            await tester.pumpWidget(const SizedBox.shrink());
 
             await pump(
               tester,
@@ -1161,6 +1337,7 @@ void main() {
               repository: repository,
             );
             await tester.pump();
+            await tapTimingCta(tester);
 
             expect(
               find.text('A situation sentence.'),
@@ -1181,6 +1358,8 @@ void main() {
         'no crash, placeholder copy for both the situation and the tip',
         (tester) async {
           final repository = _FakePremiumAiReportRepository()
+            ..results[PremiumAiReportTypes.currentPhase] =
+                PremiumAiReportResult.success(unusedPhaseContext)
             ..results[PremiumAiReportTypes.currentTiming] =
                 PremiumAiReportResult.success('');
 
@@ -1191,6 +1370,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapTimingCta(tester);
 
           expect(
             find.text("Current timing details aren't available yet."),
@@ -1205,6 +1385,8 @@ void main() {
         'no crash',
         (tester) async {
           final repository = _FakePremiumAiReportRepository()
+            ..results[PremiumAiReportTypes.currentPhase] =
+                PremiumAiReportResult.success(unusedPhaseContext)
             ..results[PremiumAiReportTypes.currentTiming] =
                 PremiumAiReportResult.success('   \n\n   ');
 
@@ -1215,6 +1397,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapTimingCta(tester);
 
           expect(
             find.text("Current timing details aren't available yet."),
@@ -1230,6 +1413,8 @@ void main() {
         'rendering an empty tip',
         (tester) async {
           final repository = _FakePremiumAiReportRepository()
+            ..results[PremiumAiReportTypes.currentPhase] =
+                PremiumAiReportResult.success(unusedPhaseContext)
             ..results[PremiumAiReportTypes.currentTiming] =
                 PremiumAiReportResult.success(
                   'A situation sentence.\n\nQuick Tip:',
@@ -1242,6 +1427,7 @@ void main() {
             repository: repository,
           );
           await tester.pump();
+          await tapTimingCta(tester);
 
           expect(find.text('A situation sentence.'), findsOneWidget);
           expect(find.text('No quick tip available yet.'), findsOneWidget);
@@ -1249,4 +1435,244 @@ void main() {
       );
     },
   );
+
+  group('Progressive/On-Demand Generation — dependency handling, leak '
+      'prevention, caching, double-tap protection', () {
+    testWidgets(
+      'tapping Current Timing when Current Phase was never tapped '
+      'silently ensures Phase is READY first, then generates Timing — '
+      'both end up populated from ONE user action, and Phase\'s own '
+      'card updates too even though the user never tapped it directly',
+      (tester) async {
+        final repository = _FakePremiumAiReportRepository()
+          ..results[PremiumAiReportTypes.currentPhase] =
+              PremiumAiReportResult.success('Real phase content.')
+          ..results[PremiumAiReportTypes.currentTiming] =
+              PremiumAiReportResult.success('Real timing content.');
+
+        await pump(
+          tester,
+          PremiumReportType.love,
+          unlocked: true,
+          repository: repository,
+        );
+        await tester.pump();
+
+        // Never tapped Phase's own CTA.
+        expect(find.text('See Current Love Phase →'), findsOneWidget);
+
+        await tapTimingCta(tester);
+
+        // Timing's own content is now visible.
+        expect(find.text('Real timing content.'), findsOneWidget);
+        // Phase's dependency was silently ensured too — its card
+        // updated to show real content, without the user ever tapping
+        // it directly.
+        expect(find.text('Real phase content.'), findsOneWidget);
+        expect(find.text('See Current Love Phase →'), findsNothing);
+
+        // Both backend calls actually happened, Phase strictly before
+        // Timing.
+        expect(
+          repository.calls,
+          containsAll([
+            PremiumAiReportTypes.currentPhase,
+            PremiumAiReportTypes.currentTiming,
+          ]),
+        );
+        expect(
+          repository.calls.indexOf(PremiumAiReportTypes.currentPhase) <
+              repository.calls.indexOf(PremiumAiReportTypes.currentTiming),
+          isTrue,
+        );
+      },
+    );
+
+    testWidgets(
+      'a raw backend dependency-check error — the exact production leak '
+      '("...must be generated before it can be used... no READY cached '
+      'report found.") — NEVER reaches the UI: Phase failing blocks '
+      'Timing from even attempting its own call, and only a generic, '
+      'safe message is shown',
+      (tester) async {
+        final repository = _FakePremiumAiReportRepository()
+          ..results[PremiumAiReportTypes.dna] = PremiumAiReportResult.success(
+            'DNA content (unrelated to this test).',
+          )
+          ..results[PremiumAiReportTypes.currentPhase] =
+              PremiumAiReportResult.failure(
+                errorCode: 'report_validation_failed',
+                errorMessage:
+                    'LOVE CURRENT_PHASE must be generated before it can '
+                    'be used as input here... no READY cached report '
+                    'found.',
+              );
+        // currentTiming deliberately NOT configured in this fixture —
+        // proves it is never actually requested.
+
+        await pump(
+          tester,
+          PremiumReportType.love,
+          unlocked: true,
+          repository: repository,
+        );
+        await tester.pump();
+
+        await tapTimingCta(tester);
+
+        // The raw backend message never appears anywhere on screen, in
+        // whole or in part.
+        expect(find.textContaining('must be generated before'), findsNothing);
+        expect(find.textContaining('READY cached report'), findsNothing);
+        expect(find.textContaining('LOVE CURRENT_PHASE'), findsNothing);
+        expect(find.textContaining('no READY'), findsNothing);
+
+        // Only the one fixed, generic failure message — shown twice
+        // (Phase's own failed card, and Timing's synthetic
+        // "dependency_unavailable" failure), never the raw backend text.
+        expect(
+          find.text('Something went wrong loading this content.'),
+          findsNWidgets(2),
+        );
+
+        // CURRENT_TIMING itself was never even requested — Phase's
+        // failure short-circuits before wasting a call already known
+        // to fail the same dependency check.
+        expect(
+          repository.calls.contains(PremiumAiReportTypes.currentTiming),
+          isFalse,
+        );
+        expect(
+          repository.calls.where((c) => c == PremiumAiReportTypes.currentPhase).length,
+          1,
+        );
+      },
+    );
+
+    testWidgets(
+      'Current Phase, once READY, is reused (never re-fetched) when '
+      'Current Timing needs it as a dependency — exactly one '
+      'CURRENT_PHASE call total across both actions',
+      (tester) async {
+        final repository = _FakePremiumAiReportRepository()
+          ..results[PremiumAiReportTypes.currentPhase] =
+              PremiumAiReportResult.success('Real phase content.')
+          ..results[PremiumAiReportTypes.currentTiming] =
+              PremiumAiReportResult.success('Real timing content.');
+
+        await pump(
+          tester,
+          PremiumReportType.love,
+          unlocked: true,
+          repository: repository,
+        );
+        await tester.pump();
+
+        await tapPhaseCta(tester); // Phase becomes READY on its own first.
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1,
+        );
+
+        await tapTimingCta(tester); // must reuse the already-READY Phase.
+
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1, // still exactly one — never re-fetched
+        );
+        expect(find.text('Real timing content.'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'two taps on Current Phase\'s CTA landing before any rebuild start '
+      'exactly one request — proves the internal loading guard itself '
+      'prevents a duplicate generation, not merely the UI replacing the '
+      'CTA after the first tap is processed',
+      (tester) async {
+        final repository = _DelayedRepository();
+
+        await pump(
+          tester,
+          PremiumReportType.love,
+          unlocked: true,
+          repository: repository,
+        );
+        await tester.pump();
+
+        final cta = find.text('See Current Love Phase →');
+        await tester.tap(cta);
+        // Deliberately NO pump() between the two taps — both land while
+        // the widget tree still shows the CTA, exactly the fast-double-
+        // tap race a UI-only defense (disabling/replacing the button)
+        // would not by itself survive.
+        await tester.tap(cta, warnIfMissed: false);
+        await tester.pump();
+
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1,
+        );
+
+        repository.resolve(
+          PremiumAiReportTypes.currentPhase,
+          PremiumAiReportResult.success('Phase content.'),
+        );
+        await tester.pump();
+
+        expect(find.text('Phase content.'), findsOneWidget);
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1, // still exactly one after resolving
+        );
+      },
+    );
+
+    testWidgets(
+      'READY cached Current Phase content is reused, never regenerated, '
+      'across a subscription-state rebuild (e.g. SubscriptionProvider '
+      'notifying listeners for an unrelated reason) — no extra call',
+      (tester) async {
+        final repository = _FakePremiumAiReportRepository()
+          ..results[PremiumAiReportTypes.currentPhase] =
+              PremiumAiReportResult.success('Real phase content.');
+
+        await pump(
+          tester,
+          PremiumReportType.love,
+          unlocked: true,
+          repository: repository,
+        );
+        await tester.pump();
+        await tapPhaseCta(tester);
+
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1,
+        );
+
+        // A few more, unrelated rebuilds of the same widget tree.
+        await tester.pump();
+        await tester.pump();
+
+        expect(find.text('Real phase content.'), findsOneWidget);
+        expect(
+          repository.calls
+              .where((c) => c == PremiumAiReportTypes.currentPhase)
+              .length,
+          1, // unchanged — no unnecessary regeneration
+        );
+      },
+    );
+  });
 }

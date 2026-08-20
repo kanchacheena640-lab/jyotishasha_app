@@ -17,6 +17,21 @@ import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 /// landing page has been removed from navigation entirely, so this is
 /// now the only screen a report card opens.
 ///
+/// Progressive/On-Demand Generation (current architecture): only
+/// [_loadDna] ever fires automatically on screen open. `CURRENT_PHASE`/
+/// `CURRENT_TIMING` are never called until the user taps that section's
+/// own on-demand CTA ([_OnDemandCard]) — see [_onTapCurrentPhase]/
+/// [_onTapCurrentTiming]. This is what prevents both unnecessary AI
+/// generation on every screen open and the previous failure mode where
+/// `CURRENT_TIMING`'s own call could reach the backend before
+/// `CURRENT_PHASE` (its dependency) was READY, surfacing that
+/// dependency's raw internal exception text in the UI. `_onTapCurrentTiming`
+/// now silently ensures `CURRENT_PHASE` is READY first (reusing whatever
+/// is already cached, via [_ensurePhaseReady] — never a second
+/// concurrent request for the same report_type) before requesting
+/// `CURRENT_TIMING`, and [_aiBody] never shows a backend's raw error
+/// message for any generic failure, only a fixed, generic, safe string.
+///
 /// Content sourcing, per report — Love/Career/Finance/Health/Family all
 /// follow the identical path now that the backend registers a generator
 /// for each (`modules/ai_report_engine/generator_registry.py` — see
@@ -149,6 +164,15 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
   bool _timingLoading = false;
   PremiumAiReportResult? _timingResult;
 
+  /// Progressive/On-Demand Generation fix — dedupes the ONE underlying
+  /// `CURRENT_PHASE` fetch across every caller that might need it in
+  /// the same moment: the user tapping Current Phase's own CTA, the
+  /// user tapping Current Timing's CTA while Phase isn't READY yet
+  /// (Timing's own dependency step), or both at once. Never more than
+  /// one in-flight `GET /api/premium-report?report_type=CURRENT_PHASE`
+  /// call for this screen at a time — see [_ensurePhaseReady].
+  Future<PremiumAiReportResult?>? _phaseInFlight;
+
   /// Deliberately NOT persisted anywhere (no provider field, no saved
   /// preference) — every fresh mount of this page starts collapsed, per
   /// spec: "DNA is mostly static... daily usage should naturally focus
@@ -177,19 +201,29 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
       }
     });
 
-    // Deferred to after the first frame — `_loadDna`/`_loadCurrentPhase`/
-    // `_loadCurrentTiming` read `Localizations.localeOf(context)`, which
-    // Flutter forbids
+    // Deferred to after the first frame — `_loadDna` reads
+    // `Localizations.localeOf(context)`, which Flutter forbids
     // depending on synchronously during initState (the dependency
     // wouldn't be tracked correctly). Same pattern already used
     // elsewhere in this app (e.g. `GreetingHeaderWidget`, `WelcomeGiftPage`'s
-    // membership strip). Every segment takes this path now — Love was
-    // the only one until its generator-registry restriction was lifted.
+    // membership strip).
+    //
+    // Progressive/On-Demand Generation fix: DNA remains the only report
+    // section that auto-loads on screen open — see this class's own
+    // doc comment for why. CURRENT_PHASE/CURRENT_TIMING are no longer
+    // called here at all; they only ever fire from their own section's
+    // CTA (see [_onTapCurrentPhase]/[_onTapCurrentTiming] below). This
+    // is what actually fixes both problems the on-demand redesign
+    // exists for: (1) two AI generations (Phase, Timing) firing on
+    // every screen open whether or not the user ever scrolls to them,
+    // and (2) Timing's own backend call racing Phase's — previously
+    // both fired in the same frame, so Timing could reach the backend
+    // before Phase's row was READY, surfacing that dependency's raw
+    // internal exception text as `_timingResult.errorMessage` (see
+    // `_aiBody`'s own fix for the second, defense-in-depth half of this).
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadDna();
-      _loadCurrentPhase();
-      _loadCurrentTiming();
     });
   }
 
@@ -197,6 +231,7 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
       mounted && Localizations.localeOf(context).languageCode == 'hi';
 
   Future<void> _loadDna() async {
+    if (_dnaLoading) return; // double-tap/duplicate-request guard
     setState(() => _dnaLoading = true);
     final isHindi = _isHindi;
     final result = await _repository.getReport(
@@ -215,27 +250,100 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
     });
   }
 
-  Future<void> _loadCurrentPhase() async {
-    setState(() => _phaseLoading = true);
+  /// Progressive/On-Demand Generation fix — the ONE place a
+  /// `CURRENT_PHASE` fetch is ever started, deduped across every
+  /// concurrent caller: already READY -> returns it immediately, no
+  /// network call; a fetch already in flight (started by this same
+  /// method, whether from the user's own Current Phase CTA or as
+  /// Current Timing's own dependency step below) -> awaits and reuses
+  /// that SAME future rather than starting a second, duplicate
+  /// `GET /api/premium-report?report_type=CURRENT_PHASE` request;
+  /// otherwise starts exactly one fetch. Deliberately does NOT touch
+  /// `_phaseLoading` itself — that flag (and therefore whether the
+  /// Current Phase card visibly shows a loading state) is owned
+  /// entirely by whoever is actually asking for it (see
+  /// [_onTapCurrentPhase]), so Current Timing's own silent dependency
+  /// resolution never makes the Current Phase card flash into a
+  /// competing loading state the user didn't ask to see there.
+  Future<PremiumAiReportResult?> _ensurePhaseReady() {
+    final existing = _phaseResult;
+    if (existing != null && existing.isSuccess) {
+      return Future.value(existing);
+    }
+    return _phaseInFlight ??= _fetchPhaseSilently().whenComplete(() {
+      _phaseInFlight = null;
+    });
+  }
+
+  Future<PremiumAiReportResult?> _fetchPhaseSilently() async {
     final isHindi = _isHindi;
     final result = await _repository.getReport(
       segment: widget.type.content.segment,
       reportType: PremiumAiReportTypes.currentPhase,
       language: isHindi ? 'hi' : 'en',
     );
-    if (!mounted) return;
-    setState(() {
-      _phaseResult = result;
-      _phaseLoading = false;
-    });
+    if (mounted) {
+      setState(() => _phaseResult = result);
+    }
+    return result;
   }
 
-  /// Its own `CURRENT_TIMING` call — separate from [_loadCurrentPhase],
-  /// exactly like [_loadDna] is separate from both. Previously this
-  /// section had no call of its own at all; see this file's class doc
-  /// comment for the audit trail.
-  Future<void> _loadCurrentTiming() async {
+  /// Current Phase's own CTA ("See Current {X} Phase →") / Retry
+  /// handler. Reuses [_ensurePhaseReady] for the actual fetch/dedupe;
+  /// this method's only job on top of that is owning `_phaseLoading`
+  /// (so the Current Phase card shows its own loading state exactly
+  /// when the user is the one waiting on it) and the double-tap guard.
+  Future<void> _onTapCurrentPhase() async {
+    if (_phaseLoading) return; // double-tap/duplicate-request guard
+    setState(() => _phaseLoading = true);
+    await _ensurePhaseReady();
+    if (!mounted) return;
+    setState(() => _phaseLoading = false);
+  }
+
+  /// Current Timing's own CTA ("Check Current {X} Timing →") / Retry
+  /// handler. Its own `CURRENT_TIMING` call — separate from
+  /// [_ensurePhaseReady]'s `CURRENT_PHASE` call, exactly like
+  /// [_loadDna] is separate from both.
+  ///
+  /// Dependency handling (IMPORTANT DEPENDENCY HANDLING, per spec):
+  /// CURRENT_TIMING depends on a READY CURRENT_PHASE. Rather than
+  /// calling CURRENT_TIMING directly and letting the backend's own
+  /// dependency check reject it (the exact raw
+  /// "...must be generated before it can be used..." leak this fix
+  /// exists to prevent), this always ensures CURRENT_PHASE is READY
+  /// FIRST -- silently, reusing whatever's already cached/in-flight via
+  /// [_ensurePhaseReady] -- then generates CURRENT_TIMING. The ENTIRE
+  /// combined operation shows only Current Timing's own single loading
+  /// state/copy ("Analyzing current timing..."); Current Phase's card
+  /// never flashes its own competing loading indicator for this
+  /// (`_ensurePhaseReady` never touches `_phaseLoading`) — it simply
+  /// updates to show real content once this finishes, if it wasn't
+  /// already showing it.
+  ///
+  /// If Phase itself cannot be made READY (a genuine generation
+  /// failure), Timing does not even attempt its own call — that would
+  /// only waste a request on a call already known to fail the same
+  /// dependency check — and surfaces a single, generic, user-facing
+  /// failure instead of phase's own (possibly backend-internal) error
+  /// text.
+  Future<void> _onTapCurrentTiming() async {
+    if (_timingLoading) return; // double-tap/duplicate-request guard
     setState(() => _timingLoading = true);
+
+    final phaseReady = await _ensurePhaseReady();
+    if (!mounted) return;
+
+    if (phaseReady == null || !phaseReady.isSuccess) {
+      setState(() {
+        _timingResult = PremiumAiReportResult.failure(
+          errorCode: 'dependency_unavailable',
+        );
+        _timingLoading = false;
+      });
+      return;
+    }
+
     final isHindi = _isHindi;
     final result = await _repository.getReport(
       segment: widget.type.content.segment,
@@ -332,13 +440,14 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
               const SizedBox(height: 12),
               unlocked
                   ? _CurrentPhaseSection(
+                      shortName: shortName,
                       loading: _phaseLoading,
                       result: _phaseResult,
                       isHindi: isHindi,
                       expanded: _phaseExpanded,
                       onToggle: () =>
                           setState(() => _phaseExpanded = !_phaseExpanded),
-                      onRetry: _loadCurrentPhase,
+                      onRetry: _onTapCurrentPhase,
                       gold: _gold,
                     )
                   : _PremiumLockedSection(
@@ -362,10 +471,11 @@ class _BirthChartReportReaderState extends State<BirthChartReportReader> {
               const SizedBox(height: 12),
               unlocked
                   ? _CurrentTimingSection(
+                      shortName: shortName,
                       loading: _timingLoading,
                       result: _timingResult,
                       isHindi: isHindi,
-                      onRetry: _loadCurrentTiming,
+                      onRetry: _onTapCurrentTiming,
                       gold: _gold,
                     )
                   : _PremiumLockedSection(
@@ -465,6 +575,19 @@ class _SectionLabel extends StatelessWidget {
 /// access, a retry notice for any other error, or — when [result] is
 /// `null` (no backend call was ever made for this segment) — the
 /// existing static [fallbackText].
+///
+/// Progressive/On-Demand Generation fix: the generic-failure branch
+/// below used to show `result.errorMessage` — the backend's own raw
+/// message — directly to the user. That is exactly how an internal
+/// dependency-check exception ("LOVE CURRENT_PHASE must be generated
+/// before it can be used as input here... no READY cached report
+/// found.") could reach the screen. This is a hard product requirement
+/// ("This internal/backend message must NEVER be shown to the end
+/// user"), not specific to that one message, so the fix is unconditional:
+/// this branch now always shows one fixed, generic, user-facing string
+/// — never `result.errorMessage`, whatever it says. Callers that
+/// genuinely need a specific reason (only the entitlement-denied case,
+/// handled separately above) already branch before reaching here.
 Widget _aiBody({
   required bool loading,
   required PremiumAiReportResult? result,
@@ -526,10 +649,12 @@ Widget _aiBody({
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
-        result.errorMessage ??
-            (isHindi
-                ? 'सामग्री लोड करने में समस्या हुई।'
-                : 'Something went wrong loading this content.'),
+        // Never result.errorMessage — see this function's own doc
+        // comment. Always this one fixed, generic, safe string,
+        // regardless of what the backend actually said.
+        isHindi
+            ? 'सामग्री लोड करने में समस्या हुई।'
+            : 'Something went wrong loading this content.',
         style: bodyStyle,
       ),
       if (onRetry != null) ...[
@@ -690,6 +815,141 @@ class _PhaseCopy {
   static const String quickTipFallbackEn = 'No quick tip available yet.';
   static const String quickTipFallbackHi =
       'अभी कोई त्वरित सुझाव उपलब्ध नहीं है।';
+
+  // ---------------------------------------------------------------
+  // Progressive/On-Demand Generation fix — CTA / loading copy for the
+  // not-yet-generated and generating-now states. `shortName` is the
+  // same per-category name [BirthChartReportReader._shortName] already
+  // computes ("Love"/"Career"/"Finance"/"Health"/"Family"/Hindi
+  // equivalents) — every category gets the exact same phrasing pattern,
+  // per spec ("Apply the same interaction pattern consistently to every
+  // premium AI report category").
+  // ---------------------------------------------------------------
+  static String currentPhaseCta(String shortName, bool isHindi) => isHindi
+      ? 'वर्तमान $shortName चरण देखें →'
+      : 'See Current $shortName Phase →';
+
+  static String currentPhaseLoading(bool isHindi) =>
+      isHindi ? 'वर्तमान चरण का विश्लेषण हो रहा है...' : 'Analyzing current phase...';
+
+  static String currentTimingCta(String shortName, bool isHindi) => isHindi
+      ? 'वर्तमान $shortName समय जांचें →'
+      : 'Check Current $shortName Timing →';
+
+  static String currentTimingLoading(bool isHindi) =>
+      isHindi ? 'वर्तमान समय का विश्लेषण हो रहा है...' : 'Analyzing current timing...';
+}
+
+/// Progressive/On-Demand Generation fix — the two states a premium
+/// section shows before real content exists: [ctaText]+[onTap] ("not
+/// yet requested this session — tap to generate/load") or
+/// [loadingText] (a request is in flight). Same card shape as
+/// [_PremiumSubsection]/[_PremiumLockedSection] so a section never
+/// visually jumps as it moves between locked / prompt / loading /
+/// content. Deliberately shows only [label] + one short line — never a
+/// report_type code, cache status, or any backend/internal detail (see
+/// this task's own explicit "never expose" list).
+class _OnDemandCard extends StatelessWidget {
+  const _OnDemandCard({
+    required this.label,
+    required this.gold,
+    this.ctaText,
+    this.onTap,
+    this.loadingText,
+  }) : assert(
+         (ctaText == null) == (onTap == null),
+         'ctaText and onTap must both be provided together (prompt state).',
+       ),
+       assert(
+         (ctaText == null) != (loadingText == null),
+         'Provide exactly one of ctaText+onTap (prompt state) or '
+         'loadingText (loading state), never both, never neither.',
+       );
+
+  final String label;
+  final Color gold;
+
+  /// Prompt state — e.g. "See Current Love Phase →".
+  final String? ctaText;
+  final VoidCallback? onTap;
+
+  /// Loading state — e.g. "Analyzing current timing...". Mutually
+  /// exclusive with [ctaText]/[onTap].
+  final String? loadingText;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFEDE4FB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 15, color: gold),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1F1B2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (loadingText != null)
+            Row(
+              children: [
+                const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    loadingText!,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              ctaText!,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+              ),
+            ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return card;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: card,
+      ),
+    );
+  }
 }
 
 /// A labeled paragraph inside the ONE continuous Current Phase report —
@@ -751,6 +1011,7 @@ class _SubSection extends StatelessWidget {
 /// rendered — no expand toggle, nothing to expand into yet.
 class _CurrentPhaseSection extends StatelessWidget {
   const _CurrentPhaseSection({
+    required this.shortName,
     required this.loading,
     required this.result,
     required this.isHindi,
@@ -760,6 +1021,7 @@ class _CurrentPhaseSection extends StatelessWidget {
     required this.gold,
   });
 
+  final String shortName;
   final bool loading;
   final PremiumAiReportResult? result;
   final bool isHindi;
@@ -773,7 +1035,29 @@ class _CurrentPhaseSection extends StatelessWidget {
     final r = result;
     final label = isHindi ? 'वर्तमान चरण' : 'Current Phase';
 
-    if (loading || r == null || !r.isSuccess) {
+    // Progressive/On-Demand Generation fix — not yet requested this
+    // session at all (never auto-loaded on screen open; see
+    // BirthChartReportReader.initState). Distinct from both the
+    // "actively loading" and "failed" states below — a CTA, not a
+    // spinner or an error notice.
+    if (!loading && r == null) {
+      return _OnDemandCard(
+        label: label,
+        gold: gold,
+        ctaText: _PhaseCopy.currentPhaseCta(shortName, isHindi),
+        onTap: onRetry,
+      );
+    }
+
+    if (loading) {
+      return _OnDemandCard(
+        label: label,
+        gold: gold,
+        loadingText: _PhaseCopy.currentPhaseLoading(isHindi),
+      );
+    }
+
+    if (r == null || !r.isSuccess) {
       return _PremiumSubsection(
         label: label,
         loading: loading,
@@ -918,6 +1202,7 @@ class _CurrentPhaseSection extends StatelessWidget {
 /// Tip:" never remain visible inside the situation paragraph.
 class _CurrentTimingSection extends StatelessWidget {
   const _CurrentTimingSection({
+    required this.shortName,
     required this.loading,
     required this.result,
     required this.isHindi,
@@ -925,6 +1210,7 @@ class _CurrentTimingSection extends StatelessWidget {
     required this.gold,
   });
 
+  final String shortName;
   final bool loading;
   final PremiumAiReportResult? result;
   final bool isHindi;
@@ -936,7 +1222,30 @@ class _CurrentTimingSection extends StatelessWidget {
     final r = result;
     final label = isHindi ? 'वर्तमान समय' : 'Current Timing';
 
-    if (loading || r == null || !r.isSuccess) {
+    // Progressive/On-Demand Generation fix — not yet requested this
+    // session at all (never auto-loaded on screen open). `onRetry`
+    // (BirthChartReportReader._onTapCurrentTiming) is what silently
+    // ensures CURRENT_PHASE is READY first, then generates
+    // CURRENT_TIMING — this card only ever shows ITS OWN loading copy
+    // for that whole combined operation, never a dependency detail.
+    if (!loading && r == null) {
+      return _OnDemandCard(
+        label: label,
+        gold: gold,
+        ctaText: _PhaseCopy.currentTimingCta(shortName, isHindi),
+        onTap: onRetry,
+      );
+    }
+
+    if (loading) {
+      return _OnDemandCard(
+        label: label,
+        gold: gold,
+        loadingText: _PhaseCopy.currentTimingLoading(isHindi),
+      );
+    }
+
+    if (r == null || !r.isSuccess) {
       return _PremiumSubsection(
         label: label,
         loading: loading,
