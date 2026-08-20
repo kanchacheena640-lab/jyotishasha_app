@@ -6,6 +6,8 @@ import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/billing_repository.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
 
+import '../../helpers/source_characterization.dart';
+
 /// Hand-rolled fake — `PlayBillingRepository` (the real implementation)
 /// wraps `InAppPurchase.instance`, which throws "no platform
 /// implementation" in this headless test environment (same limitation
@@ -364,4 +366,79 @@ void main() {
       );
     }
   });
+
+  group(
+    'Google Play Subscription Confirm Contract fix (source characterization '
+    '-- SubscriptionProvider has no injectable HTTP client, matching this '
+    'file\'s own pre-existing loadSubscriptionInfo()/_confirmWithBackend() '
+    'limitation, so the request payload/ordering are verified directly '
+    'against source, the same technique already established elsewhere in '
+    'this codebase for exactly this situation)',
+    () {
+      late String source;
+
+      setUpAll(() {
+        source = readProjectSource('lib/core/state/subscription_provider.dart');
+      });
+
+      test(
+        'the /api/subscription/google/confirm request body includes '
+        '"platform": "ANDROID" alongside the unchanged product_id/'
+        'purchase_token fields',
+        () {
+          expectMarkersInOrder(source, [
+            'Uri.parse("\$_baseUrl/api/subscription/google/confirm")',
+            '"product_id": purchase.productID,',
+            '"purchase_token": purchase.verificationData.serverVerificationData,',
+            '"platform": "ANDROID",',
+          ]);
+        },
+      );
+
+      test(
+        'purchase_token handling itself is unchanged -- still read from '
+        'verificationData.serverVerificationData, still the exact field '
+        'sent as purchase_token (not renamed/reshaped)',
+        () {
+          expect(
+            source.contains(
+              '"purchase_token": purchase.verificationData.serverVerificationData,',
+            ),
+            isTrue,
+          );
+        },
+      );
+
+      test(
+        'verify-before-completePurchase ordering is unchanged: the early '
+        'return on a non-2xx status still happens strictly BEFORE '
+        'completePurchase() is ever reached -- a failed confirm still '
+        'cannot acknowledge/complete the purchase',
+        () {
+          expectMarkersInOrder(source, [
+            'final response = await http.post(',
+            'if (response.statusCode < 200 || response.statusCode >= 300) {',
+            'purchaseErrorMessage = "backend_confirmation_failed";',
+            'return;',
+            'if (purchase.pendingCompletePurchase) {',
+            'await InAppPurchase.instance.completePurchase(purchase);',
+          ]);
+        },
+      );
+
+      test(
+        'both PurchaseStatus.purchased and PurchaseStatus.restored route '
+        'through the same _confirmWithBackend call -- a restored purchase '
+        'automatically uses the exact same, now-corrected contract, with '
+        'no separate/stale code path',
+        () {
+          expectMarkersInOrder(source, [
+            'case PurchaseStatus.purchased:',
+            'case PurchaseStatus.restored:',
+            '_confirmWithBackend(purchase);',
+          ]);
+        },
+      );
+    },
+  );
 }

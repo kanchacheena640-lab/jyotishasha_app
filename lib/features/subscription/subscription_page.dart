@@ -188,6 +188,18 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
     // Backend's own `active`/`is_active` field only — not a client-side
     // inference.
     final isActive = data?['active'] == true || data?['is_active'] == true;
+    // Google Play Confirm Contract fix: `isActive` alone is true for
+    // BOTH an active trial AND a real paid subscription (the backend's
+    // is_active is intentionally trial-inclusive — see membership_state's
+    // own docstring). "Manage in Play Store" only makes sense for a
+    // genuine Google Play membership, which is exactly what
+    // membership_state's first-class ACTIVE/GRACE_PERIOD values mean —
+    // never inferred from is_active/is_trial booleans, matching how
+    // premium_gate.dart/_MembershipStrip already prefer membership_state
+    // over those legacy fields.
+    final membershipState = data?['membership_state']?.toString().toUpperCase();
+    final isPlayManagedSubscription =
+        membershipState == 'ACTIVE' || membershipState == 'GRACE_PERIOD';
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -196,10 +208,15 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         children: [
           // "If subscription is active, show a compact membership summary
           // at the top" — scoped exactly to that condition, per spec.
+          // Trial access itself is unchanged: the summary card still
+          // shows for an active trial; only the Play Store action below
+          // is now gated on a genuine paid membership.
           if (data != null && isActive) ...[
             _MembershipSummaryCard(data: data, isHindi: isHindi),
-            const SizedBox(height: 10),
-            _ManageInPlayStoreAction(isHindi: isHindi),
+            if (isPlayManagedSubscription) ...[
+              const SizedBox(height: 10),
+              _ManageInPlayStoreAction(isHindi: isHindi),
+            ],
             const SizedBox(height: 24),
           ] else if (data == null)
             _StatusMessage(

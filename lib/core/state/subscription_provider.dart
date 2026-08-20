@@ -307,6 +307,11 @@ class SubscriptionProvider extends ChangeNotifier {
         body: jsonEncode({
           "product_id": purchase.productID,
           "purchase_token": purchase.verificationData.serverVerificationData,
+          // Contract fix: routes_google_purchase_confirm.py requires this
+          // field (`platform must be one of ('ANDROID', 'GOOGLE_PLAY')`)
+          // and always 400s without it -- this app is Android-only, so
+          // the value is always "ANDROID", never computed/branched.
+          "platform": "ANDROID",
         }),
       );
 

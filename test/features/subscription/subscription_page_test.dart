@@ -208,6 +208,91 @@ void main() {
     );
   });
 
+  group('"Manage in Play Store" (Google Play Subscription Confirm Contract fix)', () {
+    testWidgets(
+      'shows "Manage in Play Store" for a genuine paid subscription -- '
+      'membership_state == ACTIVE',
+      (tester) async {
+        final provider = SubscriptionProvider()
+          ..subscriptionData = {
+            'active': true,
+            'is_active': true,
+            'plan': 'GOLD_MONTHLY',
+            'status': 'active',
+            'membership_state': 'ACTIVE',
+          };
+
+        await pump(tester, provider);
+
+        expect(find.text('Manage in Play Store'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'shows "Manage in Play Store" during GRACE_PERIOD -- still a real '
+      'Play subscription, just lapsed payment',
+      (tester) async {
+        final provider = SubscriptionProvider()
+          ..subscriptionData = {
+            'active': true,
+            'is_active': true,
+            'plan': 'GOLD_MONTHLY',
+            'status': 'active',
+            'in_grace_period': true,
+            'membership_state': 'GRACE_PERIOD',
+          };
+
+        await pump(tester, provider);
+
+        expect(find.text('Manage in Play Store'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'does NOT show "Manage in Play Store" during an active backend-'
+      'managed free TRIAL -- is_active is true for a trial too, but there '
+      'is no real Google Play subscription to manage',
+      (tester) async {
+        final provider = SubscriptionProvider()
+          ..subscriptionData = {
+            'plan': 'free',
+            'status': 'active',
+            'is_active': true,
+            'is_trial': true,
+            'membership_state': 'TRIAL',
+            'started_at': '2026-08-01',
+            'end_at': '2026-08-15',
+          };
+
+        await pump(tester, provider);
+
+        // Trial access itself is unaffected -- the summary card (and its
+        // Trial badge) still shows; only the Play Store action is hidden.
+        expect(find.text('Current Plan'), findsOneWidget);
+        expect(find.text('Manage in Play Store'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'does NOT show "Manage in Play Store" when there is no membership_'
+      'state field at all (older/incomplete response shape) -- never '
+      'assumed present, defaults to hidden rather than guessing',
+      (tester) async {
+        final provider = SubscriptionProvider()
+          ..subscriptionData = {
+            'active': true,
+            'is_active': true,
+            'plan': 'GOLD_MONTHLY',
+            'status': 'active',
+          };
+
+        await pump(tester, provider);
+
+        expect(find.text('Manage in Play Store'), findsNothing);
+      },
+    );
+  });
+
   testWidgets('renders Hindi copy for the empty state', (tester) async {
     final provider = SubscriptionProvider();
 
