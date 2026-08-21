@@ -229,16 +229,27 @@ void main() {
       expect(pageSource, contains('userId: _backendUserId'));
     });
 
-    test('startup billing probe remains availability-only', () {
-      final source = normalizeWhitespace(
-        readProjectSource('lib/services/play_billing_stub.dart'),
-      );
-      expect(
-        source,
-        contains(
-          'static Future<void> init() async { await _iap.isAvailable(); }',
-        ),
-      );
-    });
+    test(
+      'startup billing probe remains availability-only -- P0 fix wraps '
+      'it in a bounded timeout/catch (so it can never block runApp()), '
+      'but still only ever calls isAvailable(), nothing else',
+      () {
+        final source = normalizeWhitespace(
+          readProjectSource('lib/services/play_billing_stub.dart'),
+        );
+        expect(
+          source,
+          contains(
+            'static Future<void> init() async { try { '
+            'await _iap.isAvailable().timeout(const Duration(seconds: 3));',
+          ),
+        );
+        // Still availability-only: no purchase/query call anywhere in
+        // this file.
+        expect(source, isNot(contains('buyConsumable')));
+        expect(source, isNot(contains('buyNonConsumable')));
+        expect(source, isNot(contains('queryProductDetails')));
+      },
+    );
   });
 }

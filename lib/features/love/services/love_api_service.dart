@@ -30,11 +30,17 @@ class LoveApiService {
 
     final uri = Uri.parse('$_baseUrl$endpoint');
 
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    );
+    // Release-gate fix (P0): bounds a previously-unbounded request; a
+    // TimeoutException propagates to this method's caller exactly like
+    // the existing thrown Exceptions below already do -- no local
+    // try/catch to preserve here.
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode != 200) {
       throw Exception('Love API failed (${response.statusCode})');

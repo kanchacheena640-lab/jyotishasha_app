@@ -18,7 +18,12 @@ class LocationService {
         "&key=$_apiKey";
 
     try {
-      final res = await http.get(Uri.parse(url));
+      // Release-gate fix (P0): bounds a previously-unbounded request;
+      // TimeoutException flows into the existing catch below exactly
+      // like any other failure -- same empty-list-on-failure contract.
+      final res = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 12));
       final data = jsonDecode(res.body);
 
       if (data["status"] != "OK") return [];
@@ -46,7 +51,11 @@ class LocationService {
         "&key=$_apiKey";
 
     try {
-      final res = await http.get(Uri.parse(url));
+      // Release-gate fix (P0): see fetchAutocomplete's identical comment
+      // above.
+      final res = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 12));
       final data = jsonDecode(res.body);
 
       if (data["status"] != "OK") return null;
@@ -75,7 +84,11 @@ class LocationService {
         "&key=$_apiKey";
 
     try {
-      final res = await http.get(Uri.parse(url));
+      // Release-gate fix (P0): see fetchAutocomplete's identical comment
+      // above.
+      final res = await http
+          .get(Uri.parse(url))
+          .timeout(const Duration(seconds: 12));
       final data = jsonDecode(res.body);
 
       if (data["status"] != "OK") return null;

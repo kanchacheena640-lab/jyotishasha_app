@@ -9,7 +9,13 @@ class BlogService {
 
   static Future<List<BlogPost>> fetchBlogs() async {
     try {
-      final response = await http.get(Uri.parse(_url));
+      // Release-gate fix (P0): a stalled/never-responding request
+      // previously hung this await forever. TimeoutException flows into
+      // the existing catch below exactly like any other failure -- same
+      // empty-list-on-failure contract.
+      final response = await http
+          .get(Uri.parse(_url))
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode != 200) {
         print("❌ Blog fetch failed: ${response.statusCode}");

@@ -23,11 +23,17 @@ class HomeUpcomingEventsProvider extends ChangeNotifier {
         "https://jyotishasha-backend.onrender.com/api/events/home-upcoming";
 
     try {
-      final res = await http.post(
-        Uri.parse(endpoint),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"latitude": lat, "longitude": lng}),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving isLoading stuck. TimeoutException flows into the
+      // existing catch below exactly like any other failure.
+      final res = await http
+          .post(
+            Uri.parse(endpoint),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"latitude": lat, "longitude": lng}),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);

@@ -45,11 +45,17 @@ class KundaliProvider with ChangeNotifier {
         "lng": lng,
       };
 
-      final res = await http.post(
-        Uri.parse(fullKundaliUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving isLoading stuck. TimeoutException flows into the
+      // existing catch below exactly like any other failure.
+      final res = await http
+          .post(
+            Uri.parse(fullKundaliUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200) {
         kundaliData = jsonDecode(res.body);
@@ -102,14 +108,19 @@ class KundaliProvider with ChangeNotifier {
         "language": language,
       };
 
-      final res = await http.post(
-        Uri.parse(bootstrapUrl),
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-        },
-        body: jsonEncode(payload),
-      );
+      // Release-gate fix (P0): see fetchManualKundali's identical comment
+      // above -- TimeoutException flows into the existing catch/finally
+      // below exactly like any other failure here.
+      final res = await http
+          .post(
+            Uri.parse(bootstrapUrl),
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer $idToken",
+            },
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200) {
         return jsonDecode(res.body);

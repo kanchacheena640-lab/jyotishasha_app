@@ -34,6 +34,7 @@ import 'package:jyotishasha_app/core/notifications/panchang_dismiss_bridge.dart'
 import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
 import 'package:jyotishasha_app/features/cards/provider/cards_provider.dart';
+import 'package:jyotishasha_app/core/utils/startup_timeout.dart';
 
 class ForceIPv4 extends HttpOverrides {
   @override
@@ -127,7 +128,18 @@ Future<void> main() async {
   FirebaseMessaging.onMessageOpenedApp.listen(handleNotificationTap);
 
   // App was terminated and launched by tapping the notification.
-  final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  //
+  // Release-gate fix (P0): bounded — this is an optional platform-channel
+  // probe (was `initialMessage == null` cold-start, not a notification
+  // tap), never something the rest of startup depends on. A stall or
+  // thrown exception here (Play Services not yet ready, FCM not fully
+  // initialized on a fresh device) must never prevent runApp() from
+  // executing; on timeout/failure this just degrades to "no initial
+  // message" — a completely normal, already-handled cold-start case.
+  final initialMessage = await withStartupTimeout(
+    () => FirebaseMessaging.instance.getInitialMessage(),
+    debugLabel: 'FirebaseMessaging.getInitialMessage',
+  );
   if (initialMessage != null) {
     handleNotificationTap(initialMessage);
   }

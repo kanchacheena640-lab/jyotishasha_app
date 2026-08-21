@@ -30,10 +30,12 @@ final class HttpAlertsDashboardRepository implements AlertsDashboardRepository {
     final uri = Uri.parse('$_baseUrl/api/alerts/current');
 
     try {
-      final response = await _client.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      // Release-gate fix (P0): bounds a previously-unbounded request;
+      // TimeoutException is caught below exactly like any other network
+      // failure -- same `networkError` result contract.
+      final response = await _client
+          .get(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 12));
       final body = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode == 200) {

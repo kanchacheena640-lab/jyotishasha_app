@@ -100,13 +100,18 @@ final class HttpAccountDeletionRepository implements AccountDeletionRepository {
 
     http.Response response;
     try {
-      response = await _client.post(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $backendToken',
-          'X-Firebase-ID-Token': firebaseToken,
-        },
-      );
+      // Release-gate fix (P0): bounds a previously-unbounded request;
+      // TimeoutException is caught below exactly like any other network
+      // failure -- same `networkError` result contract.
+      response = await _client
+          .post(
+            uri,
+            headers: {
+              'Authorization': 'Bearer $backendToken',
+              'X-Firebase-ID-Token': firebaseToken,
+            },
+          )
+          .timeout(const Duration(seconds: 12));
     } catch (e) {
       return AccountDeletionResult.failure(
         status: AccountDeletionStatus.networkError,

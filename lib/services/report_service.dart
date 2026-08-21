@@ -87,11 +87,18 @@ class ReportService {
       // 🔍 DEBUG (TEMP)
       print("📤 FINAL GOOGLE PLAY REPORT CONFIRM PAYLOAD => $payload");
 
-      final res = await http.post(
-        Uri.parse("$_baseUrl/api/reports/google/confirm"),
-        headers: const {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving the purchasing UI stuck. TimeoutException flows
+      // into the existing catch below exactly like any other failure --
+      // same `success: false` contract, same caller-side handling.
+      final res = await http
+          .post(
+            Uri.parse("$_baseUrl/api/reports/google/confirm"),
+            headers: const {"Content-Type": "application/json"},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200) {
         return const ReportConfirmResult(success: true);

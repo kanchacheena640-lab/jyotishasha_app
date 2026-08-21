@@ -17,11 +17,16 @@ final class HttpPanchangRepository implements PanchangRepository {
 
   @override
   Future<PanchangResponse> getPanchang(PanchangRequest request) async {
-    final response = await _client.post(
-      _endpoint,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode(request.toJson()),
-    );
+    // Release-gate fix (P0): bounds a previously-unbounded request; a
+    // TimeoutException propagates to this method's caller exactly like
+    // the existing thrown Exception below already does.
+    final response = await _client
+        .post(
+          _endpoint,
+          headers: const {'Content-Type': 'application/json'},
+          body: jsonEncode(request.toJson()),
+        )
+        .timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       throw Exception('Panchang API error ${response.statusCode}');
     }

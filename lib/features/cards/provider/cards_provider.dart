@@ -189,11 +189,18 @@ class CardsProvider extends ChangeNotifier {
       "language": isHindi ? "hi" : "en",
     };
 
-    final res = await http.post(
-      Uri.parse(baseUrl),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(body),
-    );
+    // Release-gate fix (P0): a stalled/never-responding request (Render
+    // cold start, dropped connection) previously hung this await
+    // forever. TimeoutException propagates to this method's caller
+    // exactly like any other exception -- caught by its existing
+    // try/catch, which already resets `_loading` unconditionally.
+    final res = await http
+        .post(
+          Uri.parse(baseUrl),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode(body),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (res.statusCode != 200) return [];
 

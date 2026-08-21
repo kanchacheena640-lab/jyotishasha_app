@@ -413,4 +413,156 @@ void main() {
       },
     );
   });
+
+  group(
+    'AskNowProvider (P0 release-gate — network timeout hardening)',
+    () {
+      late _MockInAppPurchase iap;
+      late _MockHttpClient http_;
+      late AskNowProvider provider;
+      late StreamController<List<PurchaseDetails>> purchaseController;
+
+      setUp(() {
+        iap = _MockInAppPurchase();
+        http_ = _MockHttpClient();
+        purchaseController = StreamController<List<PurchaseDetails>>.broadcast();
+        when(() => iap.purchaseStream).thenAnswer((_) => purchaseController.stream);
+        when(() => iap.restorePurchases()).thenAnswer((_) async {});
+
+        final details = _MockProductDetails();
+        final response = _MockProductDetailsResponse();
+        when(() => response.productDetails).thenReturn([details]);
+        when(() => iap.queryProductDetails(any())).thenAnswer((_) async => response);
+        when(
+          () => iap.buyConsumable(
+            purchaseParam: any(named: 'purchaseParam'),
+            autoConsume: any(named: 'autoConsume'),
+          ),
+        ).thenAnswer((_) async => true);
+
+        provider = AskNowProvider(billing: iap, httpClient: http_);
+        provider.initBilling();
+      });
+
+      tearDown(() async {
+        provider.dispose();
+        await purchaseController.close();
+      });
+
+      test(
+        'a chat-pack verify request that times out is caught exactly like '
+        'the existing generic-network-failure case: isLoading resets, '
+        'nothing is acknowledged/consumed, tokens are NOT credited',
+        () async {
+          when(
+            () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
+          ).thenThrow(TimeoutException('request timed out'));
+          when(() => iap.completePurchase(any())).thenAnswer((_) async {});
+
+          await provider.startGooglePlayPackPurchase(userId: 42, productId: 'asknow10q');
+          purchaseController.add([purchaseFor('tok-timeout')]);
+          await pumpEventQueue();
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.lastErrorMessage, 'Verification failed');
+          expect(provider.remainingTokens, 0);
+          expect(provider.hasActivePack, isFalse);
+          verifyNever(() => iap.completePurchase(any()));
+
+          // Requirement 7 — the pending record survives a timeout exactly
+          // like it survives any other network failure, so a retry can
+          // still find and re-verify this same purchase.
+          final prefs = await SharedPreferences.getInstance();
+          expect(prefs.getInt('asknow_pending_user_id_v1'), 42);
+        },
+      );
+
+      test(
+        'askFreeOrFromTokens: a free-question request that times out exits '
+        'isLoading and surfaces an error, exactly as any other network '
+        'failure already does — no new code path, no stuck spinner',
+        () async {
+          provider.statusLoaded = true;
+          provider.freeAvailable = true;
+          when(
+            () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
+          ).thenThrow(TimeoutException('request timed out'));
+
+          await provider.askFreeOrFromTokens(
+            question: 'What does my chart say?',
+            profile: const {},
+            userId: 7,
+          );
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.lastErrorMessage, isNotNull);
+          expect(provider.pendingAnswer, isNull);
+        },
+      );
+
+      test(
+        'askFreeOrFromTokens: a paid-pack question that times out also '
+        'exits isLoading and surfaces an error, without crediting/'
+        'debiting tokens differently than any other failure would',
+        () async {
+          provider.statusLoaded = true;
+          provider.freeAvailable = false;
+          provider.hasActivePack = true;
+          provider.remainingTokens = 3;
+          when(
+            () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
+          ).thenThrow(TimeoutException('request timed out'));
+
+          await provider.askFreeOrFromTokens(
+            question: 'What does my chart say?',
+            profile: const {},
+            userId: 7,
+          );
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.lastErrorMessage, isNotNull);
+          // Untouched by a failed attempt — the backend never confirmed
+          // consumption, so the local count must not silently drop.
+          expect(provider.remainingTokens, 3);
+        },
+      );
+
+      test(
+        '✓ successful requests behave exactly as before this fix: '
+        'askFreeOrFromTokens still resolves the real answer and resets '
+        'isLoading on a normal 2xx response',
+        () async {
+          provider.statusLoaded = true;
+          provider.freeAvailable = true;
+          when(
+            () => http_.post(any(), headers: any(named: 'headers'), body: any(named: 'body')),
+          ).thenAnswer(
+            (invocation) async {
+              final uri = invocation.positionalArguments[0] as Uri;
+              if (uri.path.contains('/status')) {
+                return http.Response(
+                  '{"free_available":true,"free_used_today":false,"has_active_pack":false,"remaining_tokens":0}',
+                  200,
+                );
+              }
+              return http.Response(
+                '{"success":true,"answer":"Your career looks strong this month.","remaining_tokens":0}',
+                200,
+              );
+            },
+          );
+
+          await provider.askFreeOrFromTokens(
+            question: 'What does my chart say?',
+            profile: const {},
+            userId: 7,
+          );
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.lastErrorMessage, isNull);
+          expect(provider.pendingAnswer, 'Your career looks strong this month.');
+        },
+      );
+    },
+  );
 }

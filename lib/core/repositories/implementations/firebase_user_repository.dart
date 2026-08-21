@@ -59,11 +59,18 @@ final class FirebaseUserRepository implements UserRepository {
     Map<String, dynamic> profileData,
   ) async {
     final url = Uri.parse('$_baseUrl/api/user/bootstrap');
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(profileData),
-    );
+    // Release-gate fix (P0): bounds a previously-unbounded request so a
+    // stalled backend can no longer hang this await forever. A timeout
+    // throws TimeoutException, which propagates to the caller exactly
+    // like the existing "Bootstrap failed" Exception below already does
+    // -- no new code path, no contract change.
+    final response = await http
+        .post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(profileData),
+        )
+        .timeout(const Duration(seconds: 12));
 
     final data = jsonDecode(response.body);
 

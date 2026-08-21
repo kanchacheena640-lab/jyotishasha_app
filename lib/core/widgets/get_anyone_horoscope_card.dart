@@ -72,7 +72,13 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
         "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         "?input=$input&components=country:in&key=$key";
 
-    final response = await http.get(Uri.parse(url));
+    // Release-gate fix (P0): bounds a previously-unbounded request; a
+    // TimeoutException here propagates to this method's caller exactly
+    // like any other thrown exception already would (no existing
+    // try/catch in this method to preserve).
+    final response = await http
+        .get(Uri.parse(url))
+        .timeout(const Duration(seconds: 12));
     final data = jsonDecode(response.body);
 
     if (data["status"] != "OK") return [];
@@ -94,7 +100,11 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
         "https://maps.googleapis.com/maps/api/place/details/json"
         "?placeid=$placeId&key=$key";
 
-    final response = await http.get(Uri.parse(url));
+    // Release-gate fix (P0): see fetchAutocomplete's identical comment
+    // above.
+    final response = await http
+        .get(Uri.parse(url))
+        .timeout(const Duration(seconds: 12));
     final data = jsonDecode(response.body);
 
     final loc = data["result"]["geometry"]["location"];
@@ -128,13 +138,19 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
         "ayanamsa": "Lahiri",
       };
 
-      final response = await http.post(
-        Uri.parse(
-          "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
-        ),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving isLoading stuck. TimeoutException flows into the
+      // existing catch/finally below exactly like any other failure.
+      final response = await http
+          .post(
+            Uri.parse(
+              "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
+            ),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

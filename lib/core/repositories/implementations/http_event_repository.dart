@@ -21,7 +21,10 @@ final class HttpEventRepository implements EventRepository {
       '$_baseUrl/api/events/$eventId/resource',
     ).replace(queryParameters: {'lang': language});
 
-    final response = await _client.get(uri);
+    // Release-gate fix (P0): bounds a previously-unbounded request; a
+    // TimeoutException propagates to this method's caller exactly like
+    // the existing thrown Exception below already does.
+    final response = await _client.get(uri).timeout(const Duration(seconds: 12));
     if (response.statusCode != 200) {
       throw Exception('Event resource API error ${response.statusCode}');
     }

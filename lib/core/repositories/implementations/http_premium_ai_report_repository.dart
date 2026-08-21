@@ -39,10 +39,18 @@ final class HttpPremiumAiReportRepository implements PremiumAiReportRepository {
     );
 
     try {
-      final response = await _client.get(
-        uri,
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      // Release-gate fix (P0): bounds a previously-unbounded request.
+      // Longer than this file's other "normal" 12s policy on purpose —
+      // this is on-demand AI report generation (see this repository's
+      // doc comment / Progressive-Generation architecture), which can
+      // legitimately take longer server-side than a plain CRUD call;
+      // 12s risked cutting off a request that would otherwise have
+      // succeeded. Still fully bounded: TimeoutException is caught below
+      // exactly like any other network failure -- same `network_error`
+      // result contract either way.
+      final response = await _client
+          .get(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 45));
       final body = jsonDecode(response.body) as Map<String, dynamic>;
 
       if (response.statusCode < 200 || response.statusCode >= 300) {

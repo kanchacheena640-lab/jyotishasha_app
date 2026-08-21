@@ -11,6 +11,7 @@ class BackendAuthService {
     String? email,
     String? phone,
     String? name,
+    http.Client? client,
   }) async {
     final url = Uri.parse("$baseUrl/api/auth/register");
 
@@ -23,19 +24,37 @@ class BackendAuthService {
       final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
       if (idToken == null) return null;
 
-      final res = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-        },
-        body: jsonEncode({
-          "firebase_uid": firebaseUid,
-          "email": email,
-          "phone": phone,
-          "name": name,
-        }),
-      );
+      // Test-injection seam (Release-gate fix, P0): `client` is optional
+      // and defaults to today's exact behavior (a fresh client per call,
+      // same as the top-level `http.post` helper already did) -- no
+      // existing caller passes it, so production behavior is unchanged.
+      final ownsClient = client == null;
+      final effectiveClient = client ?? http.Client();
+      final http.Response res;
+      try {
+        res = await effectiveClient
+            .post(
+              url,
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer $idToken",
+              },
+              body: jsonEncode({
+                "firebase_uid": firebaseUid,
+                "email": email,
+                "phone": phone,
+                "name": name,
+              }),
+            )
+            // Release-gate fix (P0): a stalled/never-responding request
+            // (Render cold start, dropped connection) previously hung this
+            // await forever. TimeoutException flows into the existing
+            // catch below exactly like any other failure -- same `null`
+            // return, same contract.
+            .timeout(const Duration(seconds: 12));
+      } finally {
+        if (ownsClient) effectiveClient.close();
+      }
 
       final data = jsonDecode(res.body);
 
@@ -50,7 +69,10 @@ class BackendAuthService {
   }
 
   // 🔥 NEW: GET BACKEND JWT TOKEN (IMPORTANT)
-  static Future<String?> getBackendToken(String firebaseUid) async {
+  static Future<String?> getBackendToken(
+    String firebaseUid, {
+    http.Client? client,
+  }) async {
     final url = Uri.parse("$baseUrl/api/auth/token");
 
     try {
@@ -60,14 +82,30 @@ class BackendAuthService {
       final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
       if (idToken == null) return null;
 
-      final res = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-        },
-        body: jsonEncode({"firebase_uid": firebaseUid}),
-      );
+      // Test-injection seam -- see registerFirebaseUser's identical
+      // comment above.
+      final ownsClient = client == null;
+      final effectiveClient = client ?? http.Client();
+      final http.Response res;
+      try {
+        res = await effectiveClient
+            .post(
+              url,
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer $idToken",
+              },
+              body: jsonEncode({"firebase_uid": firebaseUid}),
+            )
+            // Release-gate fix (P0): see registerFirebaseUser's identical
+            // comment above -- this token exchange gates purchase
+            // confirmation across Subscription/AskNow/Report flows, so an
+            // unbounded hang here previously left every caller's
+            // isLoading/isPurchasing flag stuck forever.
+            .timeout(const Duration(seconds: 12));
+      } finally {
+        if (ownsClient) effectiveClient.close();
+      }
 
       final data = jsonDecode(res.body);
 

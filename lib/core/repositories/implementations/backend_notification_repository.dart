@@ -28,13 +28,18 @@ final class BackendNotificationRepository implements NotificationRepository {
   Future<UnreadCountResponse> getUnreadCount() async {
     final token = await _backendTokenProvider();
 
-    final response = await _client.get(
-      Uri.parse("$_baseUrl/api/user-notifications/unread-count"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
+    // Release-gate fix (P0): bounds a previously-unbounded request; a
+    // TimeoutException propagates to this method's caller exactly like
+    // the existing thrown Exceptions below already do.
+    final response = await _client
+        .get(
+          Uri.parse("$_baseUrl/api/user-notifications/unread-count"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode != 200) {
       throw Exception('Notification API error ${response.statusCode}');
@@ -49,13 +54,16 @@ final class BackendNotificationRepository implements NotificationRepository {
   Future<NotificationListResponse> getNotifications() async {
     final token = await _backendTokenProvider();
 
-    final response = await _client.get(
-      Uri.parse("$_baseUrl/api/user-notifications"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-    );
+    // Release-gate fix (P0): see getUnreadCount's identical comment above.
+    final response = await _client
+        .get(
+          Uri.parse("$_baseUrl/api/user-notifications"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode != 200) {
       throw Exception('Notification API error ${response.statusCode}');
@@ -75,14 +83,17 @@ final class BackendNotificationRepository implements NotificationRepository {
 
     final token = await _backendTokenProvider();
 
-    final response = await _client.post(
-      Uri.parse("$_baseUrl/api/user-notifications/mark-read"),
-      headers: {
-        "Authorization": "Bearer $token",
-        "Content-Type": "application/json",
-      },
-      body: jsonEncode(request.toJson()),
-    );
+    // Release-gate fix (P0): see getUnreadCount's identical comment above.
+    final response = await _client
+        .post(
+          Uri.parse("$_baseUrl/api/user-notifications/mark-read"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode(request.toJson()),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Notification API error ${response.statusCode}');
@@ -93,14 +104,19 @@ final class BackendNotificationRepository implements NotificationRepository {
   Future<void> registerDeviceToken(String token) async {
     final idToken = await _idTokenProvider();
 
-    final response = await _client.post(
-      _registrationEndpoint,
-      headers: {
-        'Authorization': 'Bearer $idToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'fcm_token': token}),
-    );
+    // Release-gate fix (P0): see getUnreadCount's identical comment above
+    // -- this call gates FCM token sync, so an unbounded hang here could
+    // previously stall whatever awaited registerDeviceToken() forever.
+    final response = await _client
+        .post(
+          _registrationEndpoint,
+          headers: {
+            'Authorization': 'Bearer $idToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'fcm_token': token}),
+        )
+        .timeout(const Duration(seconds: 12));
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(

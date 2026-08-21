@@ -282,6 +282,28 @@ void main() {
     );
 
     test(
+      '✓ P0 release-gate — network timeout hardening: a report-generation '
+      'request that times out (TimeoutException from the underlying HTTP '
+      'call, now bounded by ReportService\'s .timeout()) is caught '
+      'exactly like any other repository failure — isProcessing resets, '
+      'report_failed is surfaced, and critically nothing is acknowledged '
+      'or consumed, so the purchase stays recoverable for a retry',
+      () async {
+        repository.nextOutcomeError = TimeoutException('request timed out');
+
+        await provider.purchaseReport(request: sampleRequest());
+        final purchase = purchaseFor('tok-timeout');
+        purchaseController.add([purchase]);
+        await pumpEventQueue();
+
+        expect(provider.isProcessing, isFalse);
+        expect(provider.errorMessage, 'report_failed');
+        expect(provider.successCount, 0);
+        verifyNever(() => iap.completePurchase(any()));
+      },
+    );
+
+    test(
       '✓ duplicate callback: the same purchase token arriving twice in one '
       'burst only confirms with the backend once',
       () async {

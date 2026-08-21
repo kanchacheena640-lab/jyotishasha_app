@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import 'package:jyotishasha_app/core/constants/subscription_products.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
@@ -307,6 +311,115 @@ void main() {
     });
   });
 
+  group(
+    'SubscriptionProvider (P0 release-gate — network timeout hardening)',
+    () {
+      late _FakeBillingRepository billing;
+
+      setUp(() {
+        billing = _FakeBillingRepository();
+      });
+
+      test(
+        'loadSubscriptionInfo: a request that never responds in time '
+        'resets isLoading and surfaces an error, exactly as any other '
+        'network failure already does — no stuck spinner',
+        () async {
+          final client = MockClient((request) async {
+            throw TimeoutException('request timed out');
+          });
+          final provider = SubscriptionProvider(
+            billing: billing,
+            httpClient: client,
+            backendTokenProvider: () async => 'fixed-test-token',
+          );
+
+          await provider.loadSubscriptionInfo();
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.errorMessage, isNotNull);
+          expect(provider.subscriptionData, isNull);
+        },
+      );
+
+      test(
+        '✓ loadSubscriptionInfo: a normal, timely 200 response behaves '
+        'exactly as before this fix',
+        () async {
+          final client = MockClient((request) async {
+            return http.Response(
+              '{"membership_state":"ACTIVE","trial_available":false}',
+              200,
+            );
+          });
+          final provider = SubscriptionProvider(
+            billing: billing,
+            httpClient: client,
+            backendTokenProvider: () async => 'fixed-test-token',
+          );
+
+          await provider.loadSubscriptionInfo();
+
+          expect(provider.isLoading, isFalse);
+          expect(provider.errorMessage, isNull);
+          expect(provider.subscriptionData?['membership_state'], 'ACTIVE');
+        },
+      );
+
+      test(
+        'activateTrial: a request that never responds in time resets '
+        'isActivatingTrial and surfaces "network_error", exactly as any '
+        'other network failure already does',
+        () async {
+          final client = MockClient((request) async {
+            throw TimeoutException('request timed out');
+          });
+          final provider = SubscriptionProvider(
+            billing: billing,
+            httpClient: client,
+            backendTokenProvider: () async => 'fixed-test-token',
+          );
+
+          await provider.activateTrial();
+
+          expect(provider.isActivatingTrial, isFalse);
+          expect(provider.activateTrialErrorMessage, 'network_error');
+        },
+      );
+
+      test(
+        '✓ activateTrial: a normal, timely success response behaves '
+        'exactly as before this fix',
+        () async {
+          var subscriptionInfoCalls = 0;
+          final client = MockClient((request) async {
+            if (request.url.path.contains('activate-trial')) {
+              return http.Response('{"success":true}', 200);
+            }
+            subscriptionInfoCalls++;
+            return http.Response(
+              '{"membership_state":"TRIAL","trial_available":false}',
+              200,
+            );
+          });
+          final provider = SubscriptionProvider(
+            billing: billing,
+            httpClient: client,
+            backendTokenProvider: () async => 'fixed-test-token',
+          );
+
+          await provider.activateTrial();
+
+          expect(provider.isActivatingTrial, isFalse);
+          expect(provider.activateTrialErrorMessage, isNull);
+          // Confirms the existing "refresh from backend after success"
+          // behavior is untouched by this fix.
+          expect(subscriptionInfoCalls, 1);
+        },
+      );
+    },
+  );
+
   group('interpretConfirmResponse (S5.X — google/confirm outcome handling)', () {
     test('activated == true is success regardless of outcome value', () {
       final result = interpretConfirmResponse({
@@ -416,10 +529,33 @@ void main() {
         'cannot acknowledge/complete the purchase',
         () {
           expectMarkersInOrder(source, [
-            'final response = await http.post(',
+            'final response = await _httpClient',
+            '.post(',
             'if (response.statusCode < 200 || response.statusCode >= 300) {',
             'purchaseErrorMessage = "backend_confirmation_failed";',
             'return;',
+            'if (purchase.pendingCompletePurchase) {',
+            'await InAppPurchase.instance.completePurchase(purchase);',
+          ]);
+        },
+      );
+
+      test(
+        // Release-gate fix (P0): the confirm request is now bounded --
+        // a stalled/never-responding backend can no longer hang this
+        // await forever -- and still, structurally, strictly BEFORE
+        // completePurchase(), so a timeout can never acknowledge a
+        // purchase the backend never confirmed. Anchored on the
+        // confirm-endpoint URL (unique to this method) so this can't
+        // accidentally match loadSubscriptionInfo/activateTrial's own,
+        // separate .timeout() calls.
+        'P0 network-timeout hardening: the confirm request is bounded '
+        '(.timeout()), and that bound sits strictly BEFORE '
+        'completePurchase() is ever reached',
+        () {
+          expectMarkersInOrder(source, [
+            'Uri.parse("\$_baseUrl/api/subscription/google/confirm")',
+            '.timeout(const Duration(seconds: 12));',
             'if (purchase.pendingCompletePurchase) {',
             'await InAppPurchase.instance.completePurchase(purchase);',
           ]);

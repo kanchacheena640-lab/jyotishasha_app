@@ -45,12 +45,32 @@ import 'package:jyotishasha_app/services/backend_auth_service.dart';
 ///   — the same method `NotificationService` and the S5.1 status load
 ///   already use — no new auth/networking logic.
 class SubscriptionProvider extends ChangeNotifier {
-  SubscriptionProvider({BillingRepository? billing})
-    : _billing = billing ?? PlayBillingRepository();
+  SubscriptionProvider({
+    BillingRepository? billing,
+    http.Client? httpClient,
+    Future<String?> Function()? backendTokenProvider,
+  }) : _billing = billing ?? PlayBillingRepository(),
+       // Test-injection seam (Release-gate fix, P0), mirroring
+       // AskNowProvider's identical `httpClient` constructor param — no
+       // existing caller passes it, so production behavior (a fresh
+       // client per request) is unchanged.
+       _httpClient = httpClient ?? http.Client(),
+       // Test-injection seam, same shape as
+       // BackendNotificationRepository's existing `backendTokenProvider`
+       // callback param — lets a network-timeout regression test supply
+       // a fixed token directly instead of depending on a real
+       // FirebaseAuth app (unavailable in this headless test
+       // environment, see restorePurchases()/activateTrial()'s existing
+       // tests). No existing caller passes it, so production behavior
+       // (_requireBackendToken's real Firebase + backend-token lookup)
+       // is unchanged.
+       _backendTokenProviderOverride = backendTokenProvider;
 
   static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
 
   final BillingRepository _billing;
+  final http.Client _httpClient;
+  final Future<String?> Function()? _backendTokenProviderOverride;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
 
   // ---------------------------------------------------------------
@@ -72,13 +92,20 @@ class SubscriptionProvider extends ChangeNotifier {
         return;
       }
 
-      final response = await http.get(
-        Uri.parse("$_baseUrl/api/profile/subscription-info"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-      );
+      // Release-gate fix (P0): TimeoutException flows into the same
+      // catch below every other failure already goes through -- resets
+      // isLoading, surfaces errorMessage, no new code path. Routed
+      // through _httpClient (test-injection seam) rather than the
+      // top-level http.get, matching AskNowProvider's identical pattern.
+      final response = await _httpClient
+          .get(
+            Uri.parse("$_baseUrl/api/profile/subscription-info"),
+            headers: {
+              "Authorization": "Bearer $token",
+              "Content-Type": "application/json",
+            },
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode != 200) {
         errorMessage = "Server error (${response.statusCode}).";
@@ -133,13 +160,17 @@ class SubscriptionProvider extends ChangeNotifier {
         return;
       }
 
-      final response = await http.post(
-        Uri.parse("$_baseUrl/api/profile/activate-trial"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-      );
+      // Release-gate fix (P0): see loadSubscriptionInfo's identical
+      // comment above.
+      final response = await _httpClient
+          .post(
+            Uri.parse("$_baseUrl/api/profile/activate-trial"),
+            headers: {
+              "Authorization": "Bearer $token",
+              "Content-Type": "application/json",
+            },
+          )
+          .timeout(const Duration(seconds: 12));
 
       Map<String, dynamic>? body;
       try {
@@ -298,22 +329,33 @@ class SubscriptionProvider extends ChangeNotifier {
         return;
       }
 
-      final response = await http.post(
-        Uri.parse("$_baseUrl/api/subscription/google/confirm"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode({
-          "product_id": purchase.productID,
-          "purchase_token": purchase.verificationData.serverVerificationData,
-          // Contract fix: routes_google_purchase_confirm.py requires this
-          // field (`platform must be one of ('ANDROID', 'GOOGLE_PLAY')`)
-          // and always 400s without it -- this app is Android-only, so
-          // the value is always "ANDROID", never computed/branched.
-          "platform": "ANDROID",
-        }),
-      );
+      final response = await _httpClient
+          .post(
+            Uri.parse("$_baseUrl/api/subscription/google/confirm"),
+            headers: {
+              "Authorization": "Bearer $token",
+              "Content-Type": "application/json",
+            },
+            body: jsonEncode({
+              "product_id": purchase.productID,
+              "purchase_token": purchase.verificationData.serverVerificationData,
+              // Contract fix: routes_google_purchase_confirm.py requires this
+              // field (`platform must be one of ('ANDROID', 'GOOGLE_PLAY')`)
+              // and always 400s without it -- this app is Android-only, so
+              // the value is always "ANDROID", never computed/branched.
+              "platform": "ANDROID",
+            }),
+          )
+          // Release-gate fix (P0): a stalled/never-responding confirm
+          // request previously hung this await forever, leaving
+          // isPurchasing stuck and the purchase neither confirmed nor
+          // safely abandoned. TimeoutException flows into the existing
+          // catch below exactly like any other failure here -- isPurchasing
+          // resets, an error is surfaced, and critically `completePurchase`
+          // below is never reached, so nothing is acknowledged on a
+          // timeout. The pending Play purchase is preserved exactly as the
+          // existing non-2xx branch already documents.
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode < 200 || response.statusCode >= 300) {
         // Backend is the source of truth — if it didn't confirm, the
@@ -458,9 +500,12 @@ class SubscriptionProvider extends ChangeNotifier {
   }
 
   Future<String?> _requireBackendToken() async {
+    if (_backendTokenProviderOverride != null) {
+      return _backendTokenProviderOverride();
+    }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
-    return BackendAuthService.getBackendToken(user.uid);
+    return BackendAuthService.getBackendToken(user.uid, client: _httpClient);
   }
 
   @override

@@ -178,10 +178,14 @@ class AskNowProvider extends ChangeNotifier {
           userId: userId,
           question: question,
           profile: profile,
+          client: _httpClient,
         );
 
         // 🔒 HARD SYNC after free consume
-        final status = await AskNowService.fetchChatStatus(userId);
+        final status = await AskNowService.fetchChatStatus(
+          userId,
+          client: _httpClient,
+        );
         applyStatusFromBackend(status);
       }
       // ---------------- PAID QUESTION ----------------
@@ -190,6 +194,7 @@ class AskNowProvider extends ChangeNotifier {
           userId: userId,
           question: question,
           profile: profile,
+          client: _httpClient,
         );
       } else {
         lastErrorMessage = "PAYMENT_REQUIRED";
@@ -325,17 +330,29 @@ class AskNowProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
 
-      final res = await _httpClient.post(
-        Uri.parse(
-          "https://jyotishasha-backend.onrender.com/api/chatpack/verify",
-        ),
-        headers: const {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "user_id": _pendingUserId,
-          "product_id": purchase.productID,
-          "purchase_token": token,
-        }),
-      );
+      // Release-gate fix (P0): a stalled/never-responding verify request
+      // (Render cold start, dropped connection) previously hung this
+      // await forever, leaving isPurchasing/isLoading stuck and the
+      // purchase neither confirmed nor safely abandoned. TimeoutException
+      // flows into the existing catch below exactly like any other
+      // failure here -- isLoading resets, an error is surfaced, and
+      // critically `completePurchase`/`_consume` below are never reached,
+      // so nothing is consumed/acknowledged on a timeout. The pending
+      // purchase is preserved exactly as the existing non-2xx branch
+      // above already documents.
+      final res = await _httpClient
+          .post(
+            Uri.parse(
+              "https://jyotishasha-backend.onrender.com/api/chatpack/verify",
+            ),
+            headers: const {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "user_id": _pendingUserId,
+              "product_id": purchase.productID,
+              "purchase_token": token,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
         // Do NOT consume, do NOT acknowledge — the pending record is
@@ -454,7 +471,10 @@ class AskNowProvider extends ChangeNotifier {
   // ---------------------------------------------------------
   Future<void> earnedReward(int userId) async {
     try {
-      final res = await AskNowService.addRewardQuestion(userId);
+      final res = await AskNowService.addRewardQuestion(
+        userId,
+        client: _httpClient,
+      );
 
       if (res["success"] == true) {
         final total =

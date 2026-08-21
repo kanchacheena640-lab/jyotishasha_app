@@ -49,11 +49,17 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
     };
 
     try {
-      final res = await http.post(
-        Uri.parse(apiUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(body),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving isLoading stuck. TimeoutException flows into the
+      // existing catch/finally below exactly like any other failure.
+      final res = await http
+          .post(
+            Uri.parse(apiUrl),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (res.statusCode == 200) {
         final kundaliData = jsonDecode(res.body);

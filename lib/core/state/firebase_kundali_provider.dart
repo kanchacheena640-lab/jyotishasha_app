@@ -126,11 +126,14 @@ class FirebaseKundaliProvider extends ChangeNotifier {
         "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
       );
 
-      final response = await http.post(
-        url,
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(payload),
-      );
+      // Release-gate fix (P0): a stalled/never-responding request (Render
+      // cold start, dropped connection) previously hung this await
+      // forever, leaving isLoading stuck. TimeoutException flows into the
+      // existing catch below exactly like any other failure -- same
+      // errorMessage/finally contract.
+      final response = await http
+          .post(url, headers: {"Content-Type": "application/json"}, body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 12));
 
       print("🌐 Response → ${response.statusCode}");
 
