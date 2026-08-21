@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/auth_service.dart';
+import '../../services/profile_completeness_service.dart';
 import '../../core/constants/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
@@ -27,25 +27,38 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted || user == null) return;
 
-    final uid = user.uid;
-    final firestore = FirebaseFirestore.instance;
+    // P0 -- Recover authenticated users with incomplete birth profiles:
+    // this used to check Firestore `profiles/default` doc existence
+    // only, a source of truth independent of (and inconsistent with)
+    // what SplashPage now checks on every persisted-session relaunch.
+    // Both now resolve completeness the SAME way, via the backend
+    // AppUser's actual dob/tob/pob/lat/lng fields -- the same fields
+    // the Premium Report engine requires -- so a fresh Google sign-in
+    // and a later app relaunch never disagree about the same user.
+    final result = await ProfileCompletenessService.checkCompleteness();
 
-    try {
-      final doc = await firestore
-          .collection('users')
-          .doc(uid)
-          .collection('profiles')
-          .doc('default')
-          .get();
+    if (!mounted) return;
 
-      if (doc.exists) {
-        context.go('/dashboard'); // Existing user
-      } else {
-        context.go('/birth'); // New user setup
-      }
-    } catch (e) {
-      debugPrint("Login profile check error: $e");
-      context.go('/birth');
+    if (result.checkFailed) {
+      // Network/backend failure: do NOT force '/birth' (would be
+      // destructive re-onboarding for a genuinely complete user hitting
+      // a transient blip) and do NOT silently proceed to '/dashboard'
+      // either. Stay on this screen with the button re-enabled so the
+      // user can simply retry.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            "Couldn't verify your profile. Check your connection and try again.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (result.isComplete) {
+      context.go('/dashboard'); // Existing user, profile complete
+    } else {
+      context.go('/birth'); // New or incomplete profile -> setup
     }
   }
 

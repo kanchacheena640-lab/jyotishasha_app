@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_colors.dart';
+import '../../services/profile_completeness_service.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -11,6 +12,13 @@ class SplashPage extends StatefulWidget {
 }
 
 class _SplashPageState extends State<SplashPage> {
+  // P0 -- Recover authenticated users with incomplete birth profiles:
+  // when the completeness check itself fails (network/backend issue),
+  // this becomes true and the splash screen shows an inline retry
+  // state instead of guessing. `false` (the default) keeps today's
+  // exact loading-spinner appearance for every other case.
+  bool _showRetry = false;
+
   @override
   void initState() {
     super.initState();
@@ -18,6 +26,10 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _checkAuthAndNavigate() async {
+    if (mounted && _showRetry) {
+      setState(() => _showRetry = false);
+    }
+
     // 🔹 Short delay for splash animation
     await Future.delayed(const Duration(seconds: 2));
 
@@ -26,16 +38,43 @@ class _SplashPageState extends State<SplashPage> {
     try {
       final user = FirebaseAuth.instance.currentUser;
 
-      // 🧠 Use microtask to avoid frame collision with GoRouter
+      if (user == null) {
+        // 🌙 New or logged-out user → Onboarding / Login
+        Future.microtask(() {
+          if (!mounted) return;
+          context.go('/login');
+        });
+        return;
+      }
+
+      // 🌞 Firebase session present -- resolve backend profile
+      // completeness before deciding Dashboard vs. birth-detail setup.
+      // This is the SAME source of truth LoginPage's fresh-sign-in
+      // path now uses, so a persisted-session relaunch and a fresh
+      // login never disagree about the same user.
+      final result = await ProfileCompletenessService.checkCompleteness();
+
+      if (!mounted) return;
+
+      if (result.checkFailed) {
+        // Network/backend failure: do NOT classify as incomplete (that
+        // would force a genuinely complete user through destructive
+        // re-onboarding on a transient blip), and do NOT silently
+        // proceed to Dashboard either (that discards the whole point
+        // of this check). Show an explicit retry state instead.
+        setState(() => _showRetry = true);
+        return;
+      }
+
       Future.microtask(() {
         if (!mounted) return;
-
-        if (user == null) {
-          // 🌙 New or logged-out user → Onboarding / Login
-          context.go('/login');
-        } else {
-          // 🌞 Logged-in user → Dashboard
+        if (result.isComplete) {
           context.go('/dashboard');
+        } else {
+          // Authenticated but the backend AppUser profile is missing
+          // required birth fields -- send them to complete it, exactly
+          // like a brand-new user would go through BirthDetailPage.
+          context.go('/birth');
         }
       });
     } catch (e) {
@@ -91,10 +130,28 @@ class _SplashPageState extends State<SplashPage> {
                 ),
               ),
               const SizedBox(height: 50),
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 2.2,
-              ),
+              if (_showRetry) ...[
+                Text(
+                  "Couldn't reach the server. Check your connection and try again.",
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _checkAuthAndNavigate,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                  ),
+                  child: const Text("Retry"),
+                ),
+              ] else
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.2,
+                ),
             ],
           ),
         ),
