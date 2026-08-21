@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:provider/provider.dart';
 
 // STATE
@@ -535,12 +536,18 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
                                   : Colors.grey[200],
                               borderRadius: BorderRadius.circular(14),
                             ),
-                            child: Text(
-                              msg["text"] ?? "",
-                              style: TextStyle(
-                                color: isUser ? Colors.white : Colors.black87,
-                              ),
-                            ),
+                            child: isUser
+                                ? Text(
+                                    msg["text"] ?? "",
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                // Bot/AI answers only — Markdown fix. The
+                                // user's own typed message was never AI
+                                // output and must keep rendering exactly
+                                // as before (plain text, unchanged).
+                                : AskNowAnswerText(text: msg["text"] ?? ""),
                           ),
                         ),
                         if (!isUser) const BannerAdWidget(),
@@ -581,6 +588,63 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Renders a bot/AI Ask Now answer with Markdown support (bold, italic,
+/// headings, bullet/numbered lists, paragraphs, line breaks) instead of
+/// showing raw control characters like `**`/`- ` literally — the exact
+/// bug this fixes. Presentation-only: never touches the answer string
+/// itself, the backend, or the AI prompt; free and paid answers both
+/// arrive through the same [AskNowProvider.pendingAnswer] → this one
+/// bubble path, so fixing it here fixes both.
+///
+/// Wrapped in try/catch as a last-resort safety net. Markdown parsers
+/// are deliberately permissive — almost any input is "valid" Markdown,
+/// worst case unmatched syntax (e.g. a stray `**`) just renders as
+/// literal text rather than throwing — so this should never actually
+/// trigger in practice, but if some pathological input ever did make
+/// the parser/builder throw, the answer must still be readable rather
+/// than crash the chat: falls back to the exact same plain [Text] this
+/// replaced, so content is never hidden.
+class AskNowAnswerText extends StatelessWidget {
+  const AskNowAnswerText({super.key, required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    try {
+      return MarkdownBody(
+        data: text,
+        styleSheet: _markdownStyleSheet(context),
+      );
+    } catch (_) {
+      return Text(text, style: const TextStyle(color: Colors.black87));
+    }
+  }
+
+  /// Matches the plain-Text style this replaced (`Colors.black87`, the
+  /// ambient theme's default body size/spacing) as closely as practical
+  /// — bold/italic/headings/lists all derive from that same base color
+  /// via [MarkdownStyleSheet.fromTheme], not a bespoke design.
+  MarkdownStyleSheet _markdownStyleSheet(BuildContext context) {
+    final base = MarkdownStyleSheet.fromTheme(Theme.of(context));
+    const color = Colors.black87;
+    return base.copyWith(
+      p: base.p?.copyWith(color: color),
+      h1: base.h1?.copyWith(color: color),
+      h2: base.h2?.copyWith(color: color),
+      h3: base.h3?.copyWith(color: color),
+      h4: base.h4?.copyWith(color: color),
+      h5: base.h5?.copyWith(color: color),
+      h6: base.h6?.copyWith(color: color),
+      strong: base.strong?.copyWith(color: color),
+      em: base.em?.copyWith(color: color),
+      listBullet: base.listBullet?.copyWith(color: color),
+      blockquote: base.blockquote?.copyWith(color: color),
+      code: base.code?.copyWith(color: color),
     );
   }
 }
