@@ -14,11 +14,35 @@
       },
       "oauth_client": [
         {
+          "client_id": "657916208451-0h19sp5mikfta9qcs3npksso4ucfffis.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jyotishasha.app",
+            "certificate_hash": "5649f44e110d93c6e2f3a0cc6d223d403ffb8190"
+          }
+        },
+        {
+          "client_id": "657916208451-32e3tlsenkujuig3rh6u2k6pdlts4t35.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jyotishasha.app",
+            "certificate_hash": "f65be230093694c68f171ed339d96a53712a7f32"
+          }
+        },
+        {
           "client_id": "657916208451-f70651vhaqhk9qbh2u0gjiupmb7adnbf.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.jyotishasha.app",
             "certificate_hash": "e8e0fa15de7e13d6a53ba9e375324e624b3831b6"
+          }
+        },
+        {
+          "client_id": "657916208451-imdfekf080pjs9vkp2g4hhb6dvt3tgeq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jyotishasha.app",
+            "certificate_hash": "cf27d9a065e4f2e8a0f0d49a25bba55a639fbcd4"
           }
         },
         {
