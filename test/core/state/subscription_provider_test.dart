@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/core/constants/subscription_products.dart';
+import 'package:jyotishasha_app/core/constants/subscription_sections.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
 import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/billing_repository.dart';
@@ -59,6 +61,15 @@ class _FakeBillingRepository implements BillingRepository {
 }
 
 void main() {
+  // Global — needed now that SubscriptionProvider.reset() also clears a
+  // SharedPreferences-persisted value (the Silver section-selection
+  // fix's pending-segment key). Every group in this file benefits from
+  // the same headless-test mock, matching AskNowProvider/
+  // ReportPurchaseProvider's own test files' identical top-level setUp.
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('SubscriptionProvider (S5.2 — Google Play purchase flow)', () {
     late _FakeBillingRepository billing;
     late SubscriptionProvider provider;
@@ -96,7 +107,11 @@ void main() {
       () async {
         billing.available = false;
 
-        await provider.subscribeToPlan(SubscriptionProductIds.silverMonthly);
+        // Gold, not Silver -- this test is about the billing-
+        // availability guard, unrelated to the Silver-only section
+        // requirement (see the dedicated "Silver plan section-selection
+        // fix" group below for that).
+        await provider.subscribeToPlan(SubscriptionProductIds.goldMonthly);
 
         expect(provider.purchaseErrorMessage, 'billing_unavailable');
         expect(provider.isPurchasing, isFalse);
@@ -121,17 +136,19 @@ void main() {
       'product and leaves isPurchasing true — the result arrives '
       'asynchronously via the purchase stream, not this call',
       () async {
-        billing.products[SubscriptionProductIds.silverYearly] =
+        // Gold, not Silver -- see the billing_unavailable test above for
+        // why.
+        billing.products[SubscriptionProductIds.goldYearly] =
             const ChatPackProduct(
-              productId: 'jyotishasha.silver.yearly',
-              title: 'Silver Yearly',
-              price: '₹990',
+              productId: 'jyotishasha.gold.yearly',
+              title: 'Gold Yearly',
+              price: '₹1999',
             );
 
-        await provider.subscribeToPlan(SubscriptionProductIds.silverYearly);
+        await provider.subscribeToPlan(SubscriptionProductIds.goldYearly);
 
         expect(billing.purchaseSubscriptionCalls, [
-          SubscriptionProductIds.silverYearly,
+          SubscriptionProductIds.goldYearly,
         ]);
         expect(provider.isPurchasing, isTrue);
         expect(provider.purchaseErrorMessage, isNull);
@@ -142,15 +159,17 @@ void main() {
       'subscribeToPlan catches an exception from purchaseSubscription and '
       'never leaves isPurchasing stuck true',
       () async {
-        billing.products[SubscriptionProductIds.silverMonthly] =
+        // Gold, not Silver -- see the billing_unavailable test above for
+        // why.
+        billing.products[SubscriptionProductIds.goldMonthly] =
             const ChatPackProduct(
-              productId: 'jyotishasha.silver.monthly',
-              title: 'Silver Monthly',
-              price: '₹99',
+              productId: 'jyotishasha.gold.monthly',
+              title: 'Gold Monthly',
+              price: '₹199',
             );
         billing.purchaseSubscriptionError = Exception('play store error');
 
-        await provider.subscribeToPlan(SubscriptionProductIds.silverMonthly);
+        await provider.subscribeToPlan(SubscriptionProductIds.goldMonthly);
 
         expect(provider.isPurchasing, isFalse);
         expect(
@@ -167,6 +186,210 @@ void main() {
         expect(provider.isPurchasing, isFalse);
         expect(provider.purchaseErrorMessage, isNull);
         expect(provider.availableProducts, isEmpty);
+      },
+    );
+  });
+
+  group('SubscriptionProvider (Silver plan section-selection fix)', () {
+    late _FakeBillingRepository billing;
+    late SubscriptionProvider provider;
+
+    setUp(() {
+      billing = _FakeBillingRepository();
+      provider = SubscriptionProvider(billing: billing);
+    });
+
+    ChatPackProduct silverMonthlyProduct() => const ChatPackProduct(
+      productId: 'jyotishasha.silver.monthly',
+      title: 'Silver Monthly',
+      price: '₹99',
+    );
+
+    ChatPackProduct silverYearlyProduct() => const ChatPackProduct(
+      productId: 'jyotishasha.silver.yearly',
+      title: 'Silver Yearly',
+      price: '₹990',
+    );
+
+    ChatPackProduct goldMonthlyProduct() => const ChatPackProduct(
+      productId: 'jyotishasha.gold.monthly',
+      title: 'Gold Monthly',
+      price: '₹199',
+    );
+
+    ChatPackProduct platinumYearlyProduct() => const ChatPackProduct(
+      productId: 'jyotishasha.platinum.yearly',
+      title: 'Platinum Yearly',
+      price: '₹2999',
+    );
+
+    test(
+      'Silver Monthly: subscribeToPlan with no selectedSegment never '
+      'starts Google Play Billing — Play is never even asked whether '
+      'billing is available',
+      () async {
+        billing.products[SubscriptionProductIds.silverMonthly] = silverMonthlyProduct();
+
+        await provider.subscribeToPlan(SubscriptionProductIds.silverMonthly);
+
+        expect(provider.purchaseErrorMessage, 'segment_required');
+        expect(provider.isPurchasing, isFalse);
+        expect(billing.purchaseSubscriptionCalls, isEmpty);
+      },
+    );
+
+    test(
+      'Silver Yearly: subscribeToPlan with no selectedSegment never '
+      'starts Google Play Billing — same gate as Silver Monthly',
+      () async {
+        billing.products[SubscriptionProductIds.silverYearly] = silverYearlyProduct();
+
+        await provider.subscribeToPlan(SubscriptionProductIds.silverYearly);
+
+        expect(provider.purchaseErrorMessage, 'segment_required');
+        expect(provider.isPurchasing, isFalse);
+        expect(billing.purchaseSubscriptionCalls, isEmpty);
+      },
+    );
+
+    test(
+      'Silver Monthly: a selectedSegment that is not one of the six '
+      'canonical SubscriptionSections values is rejected exactly like a '
+      'missing one — never silently accepted/guessed',
+      () async {
+        billing.products[SubscriptionProductIds.silverMonthly] = silverMonthlyProduct();
+
+        await provider.subscribeToPlan(
+          SubscriptionProductIds.silverMonthly,
+          selectedSegment: 'NOT_A_REAL_SECTION',
+        );
+
+        expect(provider.purchaseErrorMessage, 'segment_required');
+        expect(billing.purchaseSubscriptionCalls, isEmpty);
+      },
+    );
+
+    test(
+      '✓ Silver Monthly: a valid selectedSegment starts Google Play '
+      'Billing exactly like any other plan — the gate only blocks a '
+      'missing/invalid selection, never a valid one',
+      () async {
+        billing.products[SubscriptionProductIds.silverMonthly] = silverMonthlyProduct();
+
+        await provider.subscribeToPlan(
+          SubscriptionProductIds.silverMonthly,
+          selectedSegment: SubscriptionSections.love,
+        );
+
+        expect(provider.purchaseErrorMessage, isNull);
+        expect(provider.isPurchasing, isTrue);
+        expect(billing.purchaseSubscriptionCalls, [
+          SubscriptionProductIds.silverMonthly,
+        ]);
+      },
+    );
+
+    test(
+      '✓ Silver Yearly: every one of the six canonical sections is '
+      'independently accepted (not just one hardcoded value)',
+      () async {
+        billing.products[SubscriptionProductIds.silverYearly] = silverYearlyProduct();
+
+        for (final section in SubscriptionSections.all) {
+          billing.purchaseSubscriptionCalls.clear();
+          provider.purchaseErrorMessage = null;
+
+          await provider.subscribeToPlan(
+            SubscriptionProductIds.silverYearly,
+            selectedSegment: section,
+          );
+
+          expect(
+            provider.purchaseErrorMessage,
+            isNull,
+            reason: 'section $section should have been accepted',
+          );
+          expect(billing.purchaseSubscriptionCalls, [
+            SubscriptionProductIds.silverYearly,
+          ]);
+        }
+      },
+    );
+
+    test(
+      '✓ Gold Monthly: subscribeToPlan proceeds with NO selectedSegment '
+      'at all — Gold is full-access and must never require one, exactly '
+      'as before this fix',
+      () async {
+        billing.products[SubscriptionProductIds.goldMonthly] = goldMonthlyProduct();
+
+        await provider.subscribeToPlan(SubscriptionProductIds.goldMonthly);
+
+        expect(provider.purchaseErrorMessage, isNull);
+        expect(provider.isPurchasing, isTrue);
+        expect(billing.purchaseSubscriptionCalls, [
+          SubscriptionProductIds.goldMonthly,
+        ]);
+      },
+    );
+
+    test(
+      '✓ Platinum Yearly: subscribeToPlan proceeds with NO '
+      'selectedSegment either — every full-access tier, not just Gold, '
+      'is exempt from the Silver-only requirement',
+      () async {
+        billing.products[SubscriptionProductIds.platinumYearly] = platinumYearlyProduct();
+
+        await provider.subscribeToPlan(SubscriptionProductIds.platinumYearly);
+
+        expect(provider.purchaseErrorMessage, isNull);
+        expect(provider.isPurchasing, isTrue);
+        expect(billing.purchaseSubscriptionCalls, [
+          SubscriptionProductIds.platinumYearly,
+        ]);
+      },
+    );
+
+    test(
+      'a valid Silver selection is persisted to SharedPreferences '
+      'immediately — survives an app restart between launching the '
+      'purchase and its confirm/restore landing, mirroring '
+      'AskNowProvider\'s identical pending-user-id pattern',
+      () async {
+        billing.products[SubscriptionProductIds.silverMonthly] = silverMonthlyProduct();
+
+        await provider.subscribeToPlan(
+          SubscriptionProductIds.silverMonthly,
+          selectedSegment: SubscriptionSections.career,
+        );
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getString('subscription_pending_selected_segment_v1'),
+          SubscriptionSections.career,
+        );
+      },
+    );
+
+    test(
+      'reset() clears the persisted pending segment — the same '
+      'on-logout guarantee AskNowProvider/ReportPurchaseProvider already '
+      'give their own pending state, so it can never leak into a '
+      'different account\'s next Silver purchase',
+      () async {
+        billing.products[SubscriptionProductIds.silverMonthly] = silverMonthlyProduct();
+        await provider.subscribeToPlan(
+          SubscriptionProductIds.silverMonthly,
+          selectedSegment: SubscriptionSections.health,
+        );
+
+        await provider.reset();
+
+        final prefs = await SharedPreferences.getInstance();
+        expect(
+          prefs.getString('subscription_pending_selected_segment_v1'),
+          isNull,
+        );
       },
     );
   });
@@ -572,6 +795,62 @@ void main() {
             'case PurchaseStatus.purchased:',
             'case PurchaseStatus.restored:',
             '_confirmWithBackend(purchase);',
+          ]);
+        },
+      );
+
+      test(
+        'Silver plan section-selection fix: selected_segment is resolved '
+        '(from the in-memory pending value, falling back to the '
+        'persisted one) strictly BEFORE the request body is built, and '
+        'is only ever added to that body conditionally -- never an '
+        'unconditional/hardcoded field',
+        () {
+          expectMarkersInOrder(source, [
+            'if (_isSilverProduct(purchase.productID)) {',
+            'selectedSegment = _pendingSelectedSegment ??= await _loadPendingSegment();',
+            '"platform": "ANDROID",',
+            'if (selectedSegment != null) "selected_segment": selectedSegment,',
+          ]);
+        },
+      );
+
+      test(
+        'Silver plan section-selection fix: the persisted-segment '
+        'fallback (_loadPendingSegment) is what lets a restore/re-'
+        'confirm recover a previously-chosen section without ever '
+        'fabricating one -- combined with the test above proving both '
+        'PurchaseStatus.purchased and .restored share this exact same '
+        '_confirmWithBackend call, a Silver restore can never activate '
+        'ambiguously: it either finds the real persisted segment, or '
+        'sends none and lets the backend\'s existing '
+        'ACTIVATION_FAILED/activation_incomplete handling apply, exactly '
+        'as it already does today',
+        () {
+          expect(
+            source.contains('Future<String?> _loadPendingSegment() async {'),
+            isTrue,
+          );
+          expect(
+            source.contains(
+              'selectedSegment = _pendingSelectedSegment ??= await _loadPendingSegment();',
+            ),
+            isTrue,
+          );
+        },
+      );
+
+      test(
+        'Silver plan section-selection fix: _isSilverProduct matches '
+        'only the two real Silver product ids -- Gold/Platinum purchases '
+        'never even evaluate the segment-resolution branch, so their '
+        'confirm request body is unchanged (no selected_segment key at '
+        'all, same three fields as before this fix)',
+        () {
+          expectMarkersInOrder(source, [
+            'static bool _isSilverProduct(String productId) =>',
+            'productId == SubscriptionProductIds.silverMonthly ||',
+            'productId == SubscriptionProductIds.silverYearly;',
           ]);
         },
       );

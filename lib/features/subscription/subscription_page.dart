@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
+import 'package:jyotishasha_app/core/constants/subscription_sections.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
@@ -70,6 +71,14 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
         return isHindi
             ? 'इस डिवाइस पर Google Play Billing उपलब्ध नहीं है।'
             : 'Google Play Billing is not available on this device.';
+      case 'segment_required':
+        // Defensive: the section-selection sheet always supplies a
+        // valid selection or never calls subscribeToPlan at all, so
+        // this should not be reachable through the UI — kept for
+        // completeness/any future caller of subscribeToPlan.
+        return isHindi
+            ? 'कृपया आगे बढ़ने से पहले एक सेक्शन चुनें।'
+            : 'Please choose a section before continuing.';
       case 'product_not_found':
         return isHindi
             ? 'सब्सक्रिप्शन प्रोडक्ट नहीं मिला।'
@@ -593,11 +602,155 @@ class _TierCardState extends State<_TierCard> {
                 isHindi: isHindi,
                 onPressed: selectedProduct?.productId == null
                     ? null
-                    : () => provider.subscribeToPlan(selectedProduct!.productId!),
+                    : () => _handleSubscribeTap(
+                        context,
+                        tp.tier,
+                        selectedProduct!.productId!,
+                        isHindi,
+                        provider,
+                      ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// Silver-plan section-selection fix: for every tier except Silver,
+  /// this is exactly the same direct [SubscriptionProvider.
+  /// subscribeToPlan] call the app already made — Gold/Platinum
+  /// behavior is byte-for-byte unchanged. For Silver, Google Play
+  /// Billing must never start before the user has explicitly chosen
+  /// which one of the six premium sections this plan grants — so this
+  /// awaits [_showSilverSectionSheet] first, and only calls
+  /// [SubscriptionProvider.subscribeToPlan] if the user actually picked
+  /// one. Dismissing the sheet (back gesture / tap outside / swipe
+  /// down) returns `null` here — no default/automatic selection is ever
+  /// substituted, and billing simply never starts, exactly as required.
+  Future<void> _handleSubscribeTap(
+    BuildContext context,
+    _Tier tier,
+    String productId,
+    bool isHindi,
+    SubscriptionProvider provider,
+  ) async {
+    if (tier != _Tier.silver) {
+      provider.subscribeToPlan(productId);
+      return;
+    }
+
+    final selectedSegment = await _showSilverSectionSheet(context, isHindi);
+    if (selectedSegment == null) return; // user dismissed without choosing
+
+    provider.subscribeToPlan(productId, selectedSegment: selectedSegment);
+  }
+}
+
+/// Silver-plan section-selection fix: the smallest UI that satisfies
+/// "user must select one of the six premium sections before Google Play
+/// purchase starts" without introducing a new standalone screen — a
+/// modal bottom sheet integrated into the existing Subscribe tap,
+/// matching this file's existing card/pill visual language (same
+/// [AppColors.primary], same rounded-container shape already used by
+/// `_TierCard` itself). Returns the chosen canonical
+/// [SubscriptionSections] value, or `null` if the user dismissed it
+/// without choosing — the caller ([_TierCardState._handleSubscribeTap])
+/// is the one place that turns a `null` into "billing does not start".
+Future<String?> _showSilverSectionSheet(BuildContext context, bool isHindi) {
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isHindi ? 'एक सेक्शन चुनें' : 'Choose your one section',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1F1B2E),
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                isHindi
+                    ? 'सिल्वर प्लान में नीचे दिए गए छह प्रीमियम सेक्शन में से केवल एक शामिल है। खरीदारी शुरू करने से पहले चुनें — यह चयन बाद में नहीं बदला जा सकता।'
+                    : 'Silver includes exactly ONE of the six premium sections '
+                          'below. Choose before purchase — this cannot be '
+                          'changed afterward.',
+                style: const TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: Color(0xFF6B7280),
+                ),
+              ),
+              const SizedBox(height: 16),
+              for (final section in SubscriptionSections.all) ...[
+                _SilverSectionOption(
+                  label: SubscriptionSections.label(section, isHindi),
+                  onTap: () => Navigator.of(sheetContext).pop(section),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+      );
+    },
+  );
+}
+
+/// One tappable row in [_showSilverSectionSheet] — plain, list-style
+/// selection (no pre-checked/highlighted default state anywhere), so
+/// nothing about this UI implies a section is already chosen until the
+/// user actually taps one.
+class _SilverSectionOption extends StatelessWidget {
+  const _SilverSectionOption({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F3FE),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE4D9FA)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF1F1B2E),
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: AppColors.primary,
+            ),
+          ],
+        ),
       ),
     );
   }

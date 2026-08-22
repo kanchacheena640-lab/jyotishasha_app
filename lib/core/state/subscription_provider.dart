@@ -7,8 +7,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:in_app_purchase/in_app_purchase.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/core/constants/subscription_products.dart';
+import 'package:jyotishasha_app/core/constants/subscription_sections.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/billing_repository.dart';
 import 'package:jyotishasha_app/core/repositories/implementations/play_billing_repository.dart';
@@ -72,6 +74,19 @@ class SubscriptionProvider extends ChangeNotifier {
   final http.Client _httpClient;
   final Future<String?> Function()? _backendTokenProviderOverride;
   StreamSubscription<List<PurchaseDetails>>? _purchaseSub;
+
+  /// Silver-plan section-selection fix: the one canonical
+  /// [SubscriptionSections] value the user explicitly chose before this
+  /// Silver purchase was launched. In-memory only until
+  /// [_savePendingSegment] persists it — mirrors `AskNowProvider`'s
+  /// `_pendingUserId` pattern exactly, for the same reason: a fresh
+  /// provider instance (app restart between launching the purchase and
+  /// its confirm/restore landing) still needs it. `null` for every
+  /// Gold/Platinum purchase — those never require a segment at all.
+  String? _pendingSelectedSegment;
+
+  static const String _pendingSegmentPrefsKey =
+      "subscription_pending_selected_segment_v1";
 
   // ---------------------------------------------------------------
   // S5.1 — subscription STATUS (read-only, backend is the only source)
@@ -275,12 +290,54 @@ class SubscriptionProvider extends ChangeNotifier {
     });
   }
 
+  /// `true` for `jyotishasha.silver.monthly`/`jyotishasha.silver.yearly`
+  /// only — matches the backend's own
+  /// `PLAN_SEGMENT_ACCESS["SILVER_MONTHLY"/"SILVER_YEARLY"] ==
+  /// ACCESS_SELECTED` exactly (confirmed against
+  /// `modules/entitlement/plan_access_policy.py` on the backend's
+  /// deployed `main`, not guessed). Gold/Platinum are `ACCESS_ALL` and
+  /// must never be routed through the section-selection requirement.
+  static bool _isSilverProduct(String productId) =>
+      productId == SubscriptionProductIds.silverMonthly ||
+      productId == SubscriptionProductIds.silverYearly;
+
   /// When the user taps Subscribe for [productId] (one of
   /// [SubscriptionProductIds]): checks billing availability, resolves the
   /// live product, then starts the Play purchase sheet. The result
   /// arrives asynchronously via [initPurchaseListener]'s stream, not this
   /// method's return — matching how Google Play purchases always work.
-  Future<void> subscribeToPlan(String productId) async {
+  ///
+  /// [selectedSegment] fixes the Silver activation bug: Silver Monthly/
+  /// Yearly grant access to exactly one premium section, and the
+  /// backend requires a valid `selected_segment` to activate them (see
+  /// [SubscriptionSections]) — previously never collected/sent at all,
+  /// so every Silver purchase paid Google successfully and then failed
+  /// backend activation (`ACTIVATION_FAILED`). For Silver, this
+  /// parameter is now mandatory: Google Play Billing is never started
+  /// without a valid, explicitly-chosen section — this method returns
+  /// immediately, before [_billing.isAvailable] is ever called, if it's
+  /// missing or not one of [SubscriptionSections.all]. For Gold/
+  /// Platinum it is ignored entirely (never required, never sent) —
+  /// their purchase flow is byte-for-byte unchanged.
+  Future<void> subscribeToPlan(String productId, {String? selectedSegment}) async {
+    if (_isSilverProduct(productId)) {
+      if (selectedSegment == null || !SubscriptionSections.all.contains(selectedSegment)) {
+        // "Never silently guess a section" / "Do NOT start Google Play
+        // Billing until a valid section is selected" — this is a hard
+        // gate, not a soft default. Billing has not started; nothing
+        // Play-side to cancel/roll back.
+        purchaseErrorMessage = "segment_required";
+        notifyListeners();
+        return;
+      }
+      // Persisted immediately (not only after a successful purchase) —
+      // survives an app restart between launching the purchase and its
+      // confirm/restore landing, exactly like AskNowProvider's
+      // `_savePendingUserId` does for the same reason.
+      _pendingSelectedSegment = selectedSegment;
+      await _savePendingSegment(selectedSegment);
+    }
+
     purchaseErrorMessage = null;
     isPurchasing = true;
     notifyListeners();
@@ -329,6 +386,24 @@ class SubscriptionProvider extends ChangeNotifier {
         return;
       }
 
+      // Silver activation fix: this is the request body's ONLY change.
+      // `_pendingSelectedSegment` is already set for a fresh purchase
+      // (subscribeToPlan just set it above, in the same call chain);
+      // `_loadPendingSegment()` recovers it for a restore/replayed
+      // purchase confirmed by a fresh provider instance (app restart,
+      // or Restore Purchases triggering this same listener). If neither
+      // has a value -- a genuinely orphaned Silver purchase that was
+      // never confirmed with a segment -- `selected_segment` is simply
+      // omitted, never guessed; the backend's own existing
+      // ACTIVATION_FAILED/`activation_incomplete` handling below covers
+      // that case exactly as it already does today. Gold/Platinum
+      // purchases never reach this branch, so their request body is
+      // unchanged.
+      String? selectedSegment;
+      if (_isSilverProduct(purchase.productID)) {
+        selectedSegment = _pendingSelectedSegment ??= await _loadPendingSegment();
+      }
+
       final response = await _httpClient
           .post(
             Uri.parse("$_baseUrl/api/subscription/google/confirm"),
@@ -344,6 +419,7 @@ class SubscriptionProvider extends ChangeNotifier {
               // and always 400s without it -- this app is Android-only, so
               // the value is always "ANDROID", never computed/branched.
               "platform": "ANDROID",
+              if (selectedSegment != null) "selected_segment": selectedSegment,
             }),
           )
           // Release-gate fix (P0): a stalled/never-responding confirm
@@ -483,7 +559,7 @@ class SubscriptionProvider extends ChangeNotifier {
   /// billing infrastructure registered once at app startup, not
   /// per-user state, and must keep listening across a logout/login
   /// within the same session (a purchase completing mid-restore, etc.).
-  void reset() {
+  Future<void> reset() async {
     isLoading = false;
     errorMessage = null;
     subscriptionData = null;
@@ -496,6 +572,12 @@ class SubscriptionProvider extends ChangeNotifier {
     // over subscriptionData, already cleared above (null -> false).
     isActivatingTrial = false;
     activateTrialErrorMessage = null;
+    // Same "on logout, this account's pending state must not leak into
+    // the next login" reasoning as AskNowProvider's identical
+    // `_pendingUserId = null; await _clearPendingUserId();` in its own
+    // reset().
+    _pendingSelectedSegment = null;
+    await _clearPendingSegment();
     notifyListeners();
   }
 
@@ -506,6 +588,21 @@ class SubscriptionProvider extends ChangeNotifier {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return null;
     return BackendAuthService.getBackendToken(user.uid, client: _httpClient);
+  }
+
+  Future<void> _savePendingSegment(String segment) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingSegmentPrefsKey, segment);
+  }
+
+  Future<String?> _loadPendingSegment() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_pendingSegmentPrefsKey);
+  }
+
+  Future<void> _clearPendingSegment() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_pendingSegmentPrefsKey);
   }
 
   @override

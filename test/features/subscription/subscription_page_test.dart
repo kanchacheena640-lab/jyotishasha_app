@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
 import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
@@ -20,6 +21,7 @@ class _FakeBillingRepository implements BillingRepository {
   bool available = true;
   final Map<String, ChatPackProduct> products = {};
   int restorePurchasesCalls = 0;
+  final List<String> purchaseSubscriptionCalls = [];
 
   @override
   Future<bool> isAvailable() async => available;
@@ -32,7 +34,9 @@ class _FakeBillingRepository implements BillingRepository {
   Future<void> purchaseConsumable(ChatPackProduct product) async {}
 
   @override
-  Future<void> purchaseSubscription(ChatPackProduct product) async {}
+  Future<void> purchaseSubscription(ChatPackProduct product) async {
+    purchaseSubscriptionCalls.add(product.productId ?? '');
+  }
 
   @override
   Future<void> restorePurchases() async {
@@ -47,6 +51,14 @@ class _FakeBillingRepository implements BillingRepository {
 }
 
 void main() {
+  // Needed now that the Silver section-selection fix's subscribeToPlan
+  // persists the chosen segment via SharedPreferences before starting
+  // billing — same mock every other provider's tests already set up
+  // for their own SharedPreferences-touching code paths.
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   // autoLoad:false everywhere below — the provider state is set up
   // directly by each test, so the page must not also attempt a real
   // `loadSubscriptionInfo()` call (which would touch FirebaseAuth,
@@ -630,11 +642,16 @@ void main() {
       'tapping Subscribe starts the purchase for that specific product — '
       'the exact same SubscriptionProvider.subscribeToPlan call as before',
       (tester) async {
+        // Gold, not Silver -- this test is specifically about the
+        // direct/unmediated Subscribe tap, which the Silver
+        // section-selection fix intentionally changes (see the
+        // dedicated "Silver plan section-selection fix" group below for
+        // that new behavior). Gold's tap is untouched by this fix.
         final billing = _FakeBillingRepository()
-          ..products['jyotishasha.silver.monthly'] = const ChatPackProduct(
-            productId: 'jyotishasha.silver.monthly',
-            title: 'Silver Monthly',
-            price: '₹99',
+          ..products['jyotishasha.gold.monthly'] = const ChatPackProduct(
+            productId: 'jyotishasha.gold.monthly',
+            title: 'Gold Monthly',
+            price: '₹199',
           );
         final provider = SubscriptionProvider(billing: billing);
         await provider.loadAvailableProducts();
@@ -790,4 +807,147 @@ void main() {
       expect(provider.isLoading, isFalse);
     },
   );
+
+  group('Silver plan section-selection fix', () {
+    _FakeBillingRepository silverBilling() => _FakeBillingRepository()
+      ..products['jyotishasha.silver.monthly'] = const ChatPackProduct(
+        productId: 'jyotishasha.silver.monthly',
+        title: 'Silver Monthly',
+        price: '₹99',
+      );
+
+    _FakeBillingRepository goldBilling() => _FakeBillingRepository()
+      ..products['jyotishasha.gold.monthly'] = const ChatPackProduct(
+        productId: 'jyotishasha.gold.monthly',
+        title: 'Gold Monthly',
+        price: '₹199',
+      );
+
+    testWidgets(
+      'English: tapping Subscribe on the Silver card opens the '
+      'section-selection sheet with all six sections, none pre-selected '
+      '-- billing has not started yet',
+      (tester) async {
+        final billing = silverBilling();
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'en');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Subscribe'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Choose your one section'), findsOneWidget);
+        expect(find.text('Love & Relationship'), findsOneWidget);
+        expect(find.text('Career & Education'), findsOneWidget);
+        expect(find.text('Finance & Wealth'), findsOneWidget);
+        expect(find.text('Health & Wellness'), findsOneWidget);
+        expect(find.text('Family & Social Life'), findsOneWidget);
+        expect(find.text('Alerts & Opportunities'), findsOneWidget);
+        // Billing must not have started merely by opening the sheet.
+        expect(billing.purchaseSubscriptionCalls, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'Hindi: the same section-selection sheet renders the Hindi labels '
+      'for all six sections',
+      (tester) async {
+        final billing = silverBilling();
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'hi');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'सब्सक्राइब करें'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('एक सेक्शन चुनें'), findsOneWidget);
+        expect(find.text('प्रेम और रिश्ते'), findsOneWidget);
+        expect(find.text('करियर और शिक्षा'), findsOneWidget);
+        expect(find.text('वित्त और धन'), findsOneWidget);
+        expect(find.text('स्वास्थ्य और कल्याण'), findsOneWidget);
+        expect(find.text('परिवार और सामाजिक जीवन'), findsOneWidget);
+        expect(find.text('अलर्ट और अवसर'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '✓ tapping one section in the sheet closes it and starts Google '
+      'Play Billing for the Silver product with exactly that section',
+      (tester) async {
+        final billing = silverBilling();
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'en');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Subscribe'));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Career & Education'));
+        // Not pumpAndSettle(): subscribeToPlan leaves isPurchasing true
+        // (by design -- "the stream listener resolves it next"), which
+        // renders an indeterminate CircularProgressIndicator that would
+        // never let pumpAndSettle() finish. A bounded pump sequence lets
+        // the sheet's close animation finish and the fake billing
+        // repository's (immediately-resolving) async chain run, exactly
+        // like the pre-existing "tapping Subscribe starts the purchase"
+        // test above does with its own single pump().
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump();
+
+        expect(find.text('Choose your one section'), findsNothing);
+        expect(billing.purchaseSubscriptionCalls, [
+          'jyotishasha.silver.monthly',
+        ]);
+      },
+    );
+
+    testWidgets(
+      'dismissing the sheet without choosing a section never starts '
+      'billing -- no default/automatic selection is ever substituted',
+      (tester) async {
+        final billing = silverBilling();
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'en');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Subscribe'));
+        await tester.pumpAndSettle();
+
+        // Tap the barrier behind the sheet (top-left corner is outside
+        // the sheet's own content area) to dismiss without choosing.
+        await tester.tapAt(const Offset(10, 10));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Choose your one section'), findsNothing);
+        expect(billing.purchaseSubscriptionCalls, isEmpty);
+        expect(provider.purchaseErrorMessage, isNull);
+        expect(provider.isPurchasing, isFalse);
+      },
+    );
+
+    testWidgets(
+      '✓ Gold: tapping Subscribe never shows the section-selection '
+      'sheet -- Google Play Billing starts immediately, exactly as '
+      'before this fix',
+      (tester) async {
+        final billing = goldBilling();
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'en');
+        await tester.tap(find.widgetWithText(ElevatedButton, 'Subscribe'));
+        // Not pumpAndSettle() -- same indeterminate-spinner reasoning as
+        // the Silver section-tap test above (Gold starts billing
+        // immediately here, with the exact same isPurchasing-stays-true
+        // shape).
+        await tester.pump();
+
+        expect(find.text('Choose your one section'), findsNothing);
+        expect(billing.purchaseSubscriptionCalls, [
+          'jyotishasha.gold.monthly',
+        ]);
+      },
+    );
+  });
 }
