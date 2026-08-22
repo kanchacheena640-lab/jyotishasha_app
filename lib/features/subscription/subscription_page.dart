@@ -275,38 +275,91 @@ extension on _Tier {
     _Tier.platinum => isHindi ? 'प्लैटिनम' : 'Platinum',
   };
 
-  /// Illustrative, tier-differentiated copy — the product/backend
-  /// contract has no per-tier feature-list field, so this is
-  /// hand-maintained UI copy (same spirit as `SubscriptionProductIds`
-  /// itself being a hand-maintained tier→SKU mapping). Deliberately
-  /// generic and never asserts anything not already true of this app
-  /// (Premium Reports, AI Love Insights, and the Current Planetary
-  /// Condition sections all already exist elsewhere in the app).
-  List<String> features(bool isHindi) => switch (this) {
+  /// Entitlement-accurate, tier- AND period-differentiated copy — the
+  /// product/backend contract has no per-tier feature-list field, so
+  /// this is hand-maintained UI copy (same spirit as
+  /// `SubscriptionProductIds` itself being a hand-maintained tier→SKU
+  /// mapping). Verified directly against
+  /// `modules/entitlement/plan_access_policy.py::PLAN_SEGMENT_ACCESS`
+  /// on the backend's deployed `main` (not guessed): Silver is
+  /// `ACCESS_SELECTED` (exactly one of the six [SubscriptionSections]
+  /// the user picks before purchase — see `_showSilverSectionSheet`,
+  /// which this copy must stay consistent with); Gold and Platinum are
+  /// both `ACCESS_ALL` (identical entitlement — the backend grants
+  /// Platinum nothing beyond what Gold already grants; confirmed no
+  /// other Platinum-specific benefit exists anywhere in the backend's
+  /// config/contracts). Never claims a "savings"/"best value" framing
+  /// for Platinum: its real Play Console price
+  /// (`config/google_play_products.py`) is actually HIGHER per month
+  /// than Gold Yearly for the exact same access, so any such claim
+  /// would be false.
+  ///
+  /// [isYearly] is required because Silver/Gold's transit-report
+  /// entitlement genuinely differs by billing period (a monthly plan
+  /// grants that allowance once; a yearly plan grants it every month of
+  /// the subscription year) — this is the "smallest presentation-layer
+  /// adjustment" this task's own audit called for, since `_Tier` alone
+  /// can't express that distinction. Platinum has no monthly variant at
+  /// all (`SubscriptionProductIds` — yearly-only), so its copy is fixed
+  /// regardless of [isYearly].
+  ///
+  /// Transit-report business rules (confirmed by the product owner, not
+  /// invented): Short Planet = Venus/Mars/Mercury only, explicitly
+  /// confirmed. "Big Planet" is deliberately never itemized by name —
+  /// no authoritative definition of which planets qualify exists
+  /// anywhere in this app or the backend, so naming any would be
+  /// inventing a claim. Every transit line uses "when applicable"/"up
+  /// to" so this copy never promises a transit event that may not occur
+  /// during the relevant period. This describes the PURCHASED PLAN'S
+  /// ENTITLEMENT only — the Transit Report Auto-Generation Engine
+  /// itself is a separate, not-yet-built phase (explicitly out of scope
+  /// here); nothing below claims a report is generated automatically by
+  /// the current app build.
+  List<String> features(bool isHindi, bool isYearly) => switch (this) {
     _Tier.silver => isHindi
-        ? const ['प्रीमियम रिपोर्ट्स तक पहुंच', 'मासिक ग्रह अपडेट']
-        : const ['Access to Premium Reports', 'Monthly planetary updates'],
-    _Tier.gold => isHindi
-        ? const [
-            'सिल्वर की सभी सुविधाएं',
-            'प्राथमिकता रिपोर्ट अपडेट',
-            'एआई लव इनसाइट्स शामिल',
+        ? [
+            '1 प्रीमियम सेक्शन चुनें',
+            isYearly
+                ? 'हर महीने 1 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'
+                : '1 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट',
+            'शुक्र, मंगल या बुध',
           ]
-        : const [
-            'Everything in Silver',
-            'Priority report updates',
-            'AI Love Insights included',
+        : [
+            'Choose 1 Premium Section',
+            isYearly
+                ? '1 Short Planet Transit Report each month'
+                : '1 Short Planet Transit Report',
+            'Venus, Mars or Mercury',
+          ],
+    _Tier.gold => isHindi
+        ? [
+            'सभी 6 प्रीमियम सेक्शन',
+            isYearly
+                ? 'हर महीने अधिकतम 2 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'
+                : 'अधिकतम 2 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट',
+            isYearly
+                ? 'सदस्यता वर्ष के दौरान लागू होने पर बिग प्लैनेट ट्रांजिट रिपोर्ट'
+                : 'लागू होने पर 1 बिग प्लैनेट ट्रांजिट रिपोर्ट',
+          ]
+        : [
+            'All 6 Premium Sections',
+            isYearly
+                ? 'Up to 2 Short Planet Transit Reports each month'
+                : 'Up to 2 Short Planet Transit Reports',
+            isYearly
+                ? 'Big Planet Transit Reports when applicable during your subscription year'
+                : '1 Big Planet Transit Report when applicable',
           ],
     _Tier.platinum => isHindi
         ? const [
-            'गोल्ड की सभी सुविधाएं',
-            'सभी प्रीमियम सुविधाओं तक पूरी पहुंच',
-            'वार्षिक बिलिंग के साथ सर्वोत्तम मूल्य',
+            'सभी 6 प्रीमियम सेक्शन',
+            'सभी लागू ट्रांजिट रिपोर्ट',
+            'पूरे साल का प्रीमियम एक्सेस',
           ]
         : const [
-            'Everything in Gold',
-            'Full access to all premium features',
-            'Best value with yearly billing',
+            'All 6 Premium Sections',
+            'All Applicable Transit Reports',
+            'Full-year premium access',
           ],
   };
 }
@@ -549,7 +602,7 @@ class _TierCardState extends State<_TierCard> {
             ],
           ),
           const SizedBox(height: 10),
-          for (final feature in tp.tier.features(isHindi)) ...[
+          for (final feature in tp.tier.features(isHindi, _yearlySelected)) ...[
             _FeatureLine(text: feature),
             const SizedBox(height: 4),
           ],

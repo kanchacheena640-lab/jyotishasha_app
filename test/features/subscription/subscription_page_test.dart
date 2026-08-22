@@ -620,7 +620,9 @@ void main() {
     );
 
     testWidgets(
-      'shows a short feature summary for each tier',
+      '✓ Silver Monthly: states ONE chosen section plus the monthly-only '
+      'transit allowance (no "each month"/recurring wording), and the '
+      'confirmed Venus/Mars/Mercury clarification',
       (tester) async {
         final billing = _FakeBillingRepository()
           ..products['jyotishasha.silver.monthly'] = const ChatPackProduct(
@@ -633,8 +635,186 @@ void main() {
 
         await pump(tester, provider);
 
-        expect(find.text('Access to Premium Reports'), findsOneWidget);
-        expect(find.text('Monthly planetary updates'), findsOneWidget);
+        expect(find.text('Choose 1 Premium Section'), findsOneWidget);
+        expect(find.text('1 Short Planet Transit Report'), findsOneWidget);
+        expect(find.text('Venus, Mars or Mercury'), findsOneWidget);
+        expect(
+          find.text('1 Short Planet Transit Report each month'),
+          findsNothing,
+        );
+        // Never claims full/unlimited access for Silver.
+        expect(find.textContaining('All 6'), findsNothing);
+        expect(find.textContaining('Everything'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '✓ Silver Yearly: states ONE chosen section plus the recurring '
+      '"each month" transit allowance -- yearly wording must never show '
+      'the Monthly-only phrasing',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.silver.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.silver.yearly',
+            title: 'Silver Yearly',
+            price: '₹990',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider);
+
+        expect(find.text('Choose 1 Premium Section'), findsOneWidget);
+        expect(
+          find.text('1 Short Planet Transit Report each month'),
+          findsOneWidget,
+        );
+        expect(find.text('Venus, Mars or Mercury'), findsOneWidget);
+        // The Monthly-only phrasing (no "each month") must not appear.
+        expect(find.text('1 Short Planet Transit Report'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '✓ Gold Monthly: states ALL 6 sections, up to 2 short-planet '
+      'transit reports for the month, and one big-planet report ONLY '
+      'when applicable -- never names which planets qualify as "big" '
+      '(no authoritative definition exists)',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.gold.monthly'] = const ChatPackProduct(
+            productId: 'jyotishasha.gold.monthly',
+            title: 'Gold Monthly',
+            price: '₹199',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider);
+
+        expect(find.text('All 6 Premium Sections'), findsOneWidget);
+        expect(
+          find.text('Up to 2 Short Planet Transit Reports'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('1 Big Planet Transit Report when applicable'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('each month'), findsNothing);
+        expect(find.textContaining('subscription year'), findsNothing);
+        // Never implies Gold is limited to one section, and never
+        // repeats the now-removed, unverifiable "Priority report
+        // updates" / "AI Love Insights included" claims.
+        expect(find.textContaining('Choose 1'), findsNothing);
+        expect(find.textContaining('Priority'), findsNothing);
+        expect(find.textContaining('Love Insights'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '✓ Gold Yearly: same ALL-6-sections + transit entitlement as '
+      'Gold Monthly, but with the recurring "each month"/"subscription '
+      'year" wording -- Monthly-only phrasing must never show',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.gold.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.gold.yearly',
+            title: 'Gold Yearly',
+            price: '₹1999',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider);
+
+        expect(find.text('All 6 Premium Sections'), findsOneWidget);
+        expect(
+          find.text('Up to 2 Short Planet Transit Reports each month'),
+          findsOneWidget,
+        );
+        expect(
+          find.text(
+            'Big Planet Transit Reports when applicable during your subscription year',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.text('Up to 2 Short Planet Transit Reports'),
+          findsNothing,
+        );
+        expect(
+          find.text('1 Big Planet Transit Report when applicable'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      '✓ Platinum Yearly: ALL 6 sections, ALL applicable transit reports '
+      'for the year, full-year access -- identical entitlement to Gold '
+      '(verified: PLAN_SEGMENT_ACCESS has no Platinum-exclusive benefit), '
+      'and never claims a "best value"/"savings" framing this app\'s '
+      'real Play Console pricing does not support (Platinum Yearly '
+      'prices higher per month than Gold Yearly for the same access)',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.platinum.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.platinum.yearly',
+            title: 'Platinum Yearly',
+            price: '₹3999',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider);
+
+        expect(find.text('All 6 Premium Sections'), findsOneWidget);
+        expect(find.text('All Applicable Transit Reports'), findsOneWidget);
+        expect(find.text('Full-year premium access'), findsOneWidget);
+        expect(find.textContaining('Best value'), findsNothing);
+        expect(find.textContaining('Save'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '✓ Monthly/Yearly transit wording never crosses over: toggling '
+      'the SAME Silver card between Monthly and Yearly swaps the '
+      'copy cleanly -- proves the period-aware features() plumbing '
+      '(the smallest presentation-layer fix this task\'s audit called '
+      'for), not just two independently-stubbed products',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.silver.monthly'] = const ChatPackProduct(
+            productId: 'jyotishasha.silver.monthly',
+            title: 'Silver Monthly',
+            price: '₹99',
+          )
+          ..products['jyotishasha.silver.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.silver.yearly',
+            title: 'Silver Yearly',
+            price: '₹990',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider);
+
+        // Defaults to Yearly (existing, unchanged convention).
+        expect(
+          find.text('1 Short Planet Transit Report each month'),
+          findsOneWidget,
+        );
+        expect(find.text('1 Short Planet Transit Report'), findsNothing);
+
+        await tester.tap(find.text('Monthly'));
+        await tester.pump();
+
+        expect(find.text('1 Short Planet Transit Report'), findsOneWidget);
+        expect(
+          find.text('1 Short Planet Transit Report each month'),
+          findsNothing,
+        );
       },
     );
 
@@ -770,6 +950,109 @@ void main() {
       expect(find.text('सिल्वर'), findsOneWidget);
       expect(find.text('सब्सक्राइब करें'), findsOneWidget);
     });
+
+    testWidgets(
+      '✓ entitlement-accurate copy (Hindi): Silver/Gold/Platinum feature '
+      'bullets carry the same corrected, period-aware meaning in Hindi '
+      'as in English -- Silver Monthly = one chosen section + monthly-'
+      'only transit line, Gold/Platinum = all six sections',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.silver.monthly'] = const ChatPackProduct(
+            productId: 'jyotishasha.silver.monthly',
+            title: 'Silver Monthly',
+            price: '₹99',
+          )
+          ..products['jyotishasha.gold.monthly'] = const ChatPackProduct(
+            productId: 'jyotishasha.gold.monthly',
+            title: 'Gold Monthly',
+            price: '₹199',
+          )
+          ..products['jyotishasha.platinum.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.platinum.yearly',
+            title: 'Platinum Yearly',
+            price: '₹3999',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'hi');
+
+        expect(find.text('1 प्रीमियम सेक्शन चुनें'), findsOneWidget);
+        expect(find.text('1 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'), findsOneWidget);
+        expect(find.text('शुक्र, मंगल या बुध'), findsOneWidget);
+        expect(find.text('सभी 6 प्रीमियम सेक्शन'), findsNWidgets(2)); // Gold + Platinum
+        expect(
+          find.text('अधिकतम 2 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('लागू होने पर 1 बिग प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsOneWidget,
+        );
+        expect(find.text('सभी लागू ट्रांजिट रिपोर्ट'), findsOneWidget);
+        expect(find.text('पूरे साल का प्रीमियम एक्सेस'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '✓ Hindi: Silver Yearly shows the recurring "हर महीने" '
+      '(each month) transit wording, never the Monthly-only phrasing',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.silver.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.silver.yearly',
+            title: 'Silver Yearly',
+            price: '₹990',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'hi');
+
+        expect(
+          find.text('हर महीने 1 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsOneWidget,
+        );
+        expect(find.text('1 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      '✓ Hindi: Gold Yearly shows the recurring "हर महीने" short-planet '
+      'wording and the subscription-year big-planet wording -- exact '
+      'strings per the final business copy, never the Monthly-only '
+      'phrasing',
+      (tester) async {
+        final billing = _FakeBillingRepository()
+          ..products['jyotishasha.gold.yearly'] = const ChatPackProduct(
+            productId: 'jyotishasha.gold.yearly',
+            title: 'Gold Yearly',
+            price: '₹1999',
+          );
+        final provider = SubscriptionProvider(billing: billing);
+        await provider.loadAvailableProducts();
+
+        await pump(tester, provider, lang: 'hi');
+
+        expect(
+          find.text('हर महीने अधिकतम 2 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('सदस्यता वर्ष के दौरान लागू होने पर बिग प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsOneWidget,
+        );
+        expect(
+          find.text('अधिकतम 2 शॉर्ट प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsNothing,
+        );
+        expect(
+          find.text('लागू होने पर 1 बिग प्लैनेट ट्रांजिट रिपोर्ट'),
+          findsNothing,
+        );
+      },
+    );
   });
 
   testWidgets(
