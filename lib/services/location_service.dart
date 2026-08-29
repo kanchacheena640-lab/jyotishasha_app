@@ -1,8 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/constants/google_maps_config.dart';
+
 class LocationService {
-  static const String _apiKey = "AIzaSyBxt6et6THD47K936GIXWJ8o-TP65RayOc";
+  // Flutter Secret Exposure Remediation: single source of truth is now
+  // GoogleMapsConfig.apiKey -- see that file's own docstring for why
+  // this is a client-publishable key, not a server secret.
+  static const String _apiKey = GoogleMapsConfig.apiKey;
 
   // ----------------------------------------------------------------------
   // 🔍 1) AUTOCOMPLETE (Search Suggestions)

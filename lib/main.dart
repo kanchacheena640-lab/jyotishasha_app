@@ -93,7 +93,6 @@ Future<void> main() async {
   HttpOverrides.global =
       ForceIPv4(); // ⭐ to avoid IPv6 error occuring in love api
 
-  // await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // Must be registered before runApp(), and before any await that could

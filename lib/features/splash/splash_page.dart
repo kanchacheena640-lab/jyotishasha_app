@@ -3,6 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/profile_completeness_service.dart';
+import '../../services/app_version_gate_service.dart';
+import '../update_required/update_required_page.dart';
+import '../update_required/soft_update_dialog.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -19,6 +22,13 @@ class _SplashPageState extends State<SplashPage> {
   // exact loading-spinner appearance for every other case.
   bool _showRetry = false;
 
+  // Ask Now Security + Force Update task, Part D -- set only when a
+  // valid backend response explicitly established this build is
+  // unsupported (AppVersionGateService's own fail-open contract means
+  // every other outcome, including any failure, leaves this null and
+  // the existing flow below proceeds completely unchanged).
+  AppVersionGateResult? _blockingUpdate;
+
   @override
   void initState() {
     super.initState();
@@ -28,6 +38,34 @@ class _SplashPageState extends State<SplashPage> {
   Future<void> _checkAuthAndNavigate() async {
     if (mounted && _showRetry) {
       setState(() => _showRetry = false);
+    }
+
+    // Reusable App Update System -- runs FIRST, before the splash
+    // animation delay and before any auth/profile check, so a
+    // FORCE-state build is never allowed to reach /login or /dashboard
+    // even briefly. Fail-open (AppVersionGateService's own contract):
+    // any network/parse failure resolves to AppUpdateStatus.none here,
+    // so this never adds a blocking step to the normal startup path.
+    final gate = await AppVersionGateService.checkForUpdate();
+    if (!mounted) return;
+
+    switch (gate.status) {
+      case AppUpdateStatus.force:
+        setState(() => _blockingUpdate = gate);
+        return; // Never proceeds into login/dashboard/birth routing below.
+      case AppUpdateStatus.soft:
+        // Non-blocking: shown once, then the normal startup flow below
+        // continues regardless of which button (or dismissal path) the
+        // user took -- there is nothing to block here.
+        await showSoftUpdatePrompt(
+          context,
+          storeUrl: gate.storeUrl,
+          operatorMessage: gate.message,
+        );
+        if (!mounted) return;
+        break;
+      case AppUpdateStatus.none:
+        break;
     }
 
     // 🔹 Short delay for splash animation
@@ -85,6 +123,14 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
+    final blockingUpdate = _blockingUpdate;
+    if (blockingUpdate != null) {
+      return UpdateRequiredPage(
+        storeUrl: blockingUpdate.storeUrl,
+        operatorMessage: blockingUpdate.message,
+      );
+    }
+
     final theme = Theme.of(context);
 
     return PopScope(

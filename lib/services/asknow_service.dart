@@ -1,8 +1,46 @@
 import 'dart:convert';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:jyotishasha_app/services/backend_auth_service.dart';
 
 class AskNowService {
   static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+
+  // =====================================================
+  // 🔹 INTERNAL: AUTHENTICATED REQUEST HEADERS
+  // =====================================================
+  // Trust Foundation Phase 0: every Ask Now endpoint now requires a
+  // verified backend JWT -- the backend resolves the caller's own
+  // account id from this token server-side and no longer trusts a
+  // client-supplied "user_id" body field at all. Reuses
+  // BackendAuthService.getBackendToken() -- the exact same helper
+  // SubscriptionProvider._requireBackendToken() already calls -- so this
+  // is not a new auth flow, just this service's first use of the
+  // existing one. Throws (rather than silently sending an
+  // unauthenticated request) when no signed-in Firebase user or backend
+  // token is available, so a missing/expired session surfaces as a
+  // request failure through each call site's own existing error
+  // handling, instead of a 401 with no clear cause.
+  static Future<Map<String, String>> _authHeaders({http.Client? client}) async {
+    final firebaseUid = FirebaseAuth.instance.currentUser?.uid;
+    if (firebaseUid == null) {
+      throw Exception('AskNow: no signed-in user; cannot authenticate request.');
+    }
+
+    final token = await BackendAuthService.getBackendToken(
+      firebaseUid,
+      client: client,
+    );
+    if (token == null) {
+      throw Exception('AskNow: unable to obtain a backend session token.');
+    }
+
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
 
   // =====================================================
   // 🔹 INTERNAL: POST JSON + CLEAN CHAT ANSWER (FINAL)
@@ -25,6 +63,8 @@ class AskNowService {
     final effectiveClient = client ?? http.Client();
 
     try {
+      final headers = await _authHeaders(client: effectiveClient);
+
       // Release-gate fix (P0): a stalled/never-responding request (Render
       // cold start, dropped connection) previously hung this await
       // forever. The thrown TimeoutException propagates to the caller
@@ -35,7 +75,7 @@ class AskNowService {
       final res = await effectiveClient
           .post(
             uri,
-            headers: const {'Content-Type': 'application/json'},
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 12));
@@ -159,10 +199,12 @@ class AskNowService {
     final ownsClient = client == null;
     final effectiveClient = client ?? http.Client();
     try {
+      final headers = await _authHeaders(client: effectiveClient);
+
       final res = await effectiveClient
           .post(
             Uri.parse("$_baseUrl/api/chat/status"),
-            headers: const {"Content-Type": "application/json"},
+            headers: headers,
             body: jsonEncode({"user_id": userId}),
           )
           .timeout(const Duration(seconds: 12));
@@ -188,10 +230,12 @@ class AskNowService {
     final ownsClient = client == null;
     final effectiveClient = client ?? http.Client();
     try {
+      final headers = await _authHeaders(client: effectiveClient);
+
       final res = await effectiveClient
           .post(
             Uri.parse("$_baseUrl/api/chat/reward"),
-            headers: const {"Content-Type": "application/json"},
+            headers: headers,
             body: jsonEncode({"user_id": userId}),
           )
           .timeout(const Duration(seconds: 12));

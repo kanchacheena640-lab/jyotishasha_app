@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:jyotishasha_app/core/constants/google_maps_config.dart';
 
 class PlaceAutocompleteField extends StatefulWidget {
   final TextEditingController controller;
@@ -30,7 +30,7 @@ class _PlaceAutocompleteFieldState extends State<PlaceAutocompleteField> {
       return;
     }
 
-    final key = dotenv.env['GOOGLE_PLACES_KEY'];
+    final key = GoogleMapsConfig.apiKey;
     final url =
         "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         "?input=$input&components=country:in&key=$key";
@@ -62,7 +62,7 @@ class _PlaceAutocompleteFieldState extends State<PlaceAutocompleteField> {
   Future<void> selectPrediction(Map<String, String> p) async {
     widget.controller.text = p["description"]!;
 
-    final key = dotenv.env['GOOGLE_PLACES_KEY'];
+    final key = GoogleMapsConfig.apiKey;
     final url =
         "https://maps.googleapis.com/maps/api/place/details/json"
         "?place_id=${p["place_id"]}&key=$key";

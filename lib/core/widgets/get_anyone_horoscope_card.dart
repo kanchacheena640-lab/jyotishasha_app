@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:jyotishasha_app/core/constants/google_maps_config.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 import 'package:http/http.dart' as http;
 
@@ -67,7 +67,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
   Future<List<Map<String, String>>> fetchAutocomplete(String input) async {
     if (input.length < 3) return [];
 
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final key = GoogleMapsConfig.apiKey;
     final url =
         "https://maps.googleapis.com/maps/api/place/autocomplete/json"
         "?input=$input&components=country:in&key=$key";
@@ -95,7 +95,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
 
   // ⭐ REST API – Geocode lat/lng
   Future<void> fetchLatLng(String placeId) async {
-    final key = dotenv.env['GOOGLE_MAPS_API_KEY']!;
+    final key = GoogleMapsConfig.apiKey;
     final url =
         "https://maps.googleapis.com/maps/api/place/details/json"
         "?placeid=$placeId&key=$key";
