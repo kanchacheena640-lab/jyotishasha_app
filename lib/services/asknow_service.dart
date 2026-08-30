@@ -72,13 +72,26 @@ class AskNowService {
       // (e.g. the non-2xx case below) -- AskNowProvider's existing
       // try/catch/finally already resets isLoading and surfaces an error
       // for that case, so it does the same here with no new code path.
+      //
+      // Ask Now Timeout Delivery Fix: this method is the ONE Ask Now
+      // generation call site (askFreeQuestion/askPaidQuestion only --
+      // fetchChatStatus/addRewardQuestion below are separate, unrelated
+      // fast calls and keep their own 12s timeout, untouched). 25s here
+      // is chosen to exceed the backend's own bounded 20s OpenAI
+      // generation timeout (modules/services/chat_engine.py's
+      // _GENERATION_TIMEOUT_SECONDS) plus kundali-calculation and
+      // network/JSON overhead, while staying under this deployment's
+      // proven ~30s gunicorn default worker timeout (see chat_engine.py
+      // for the render.yaml evidence) -- waiting longer than that would
+      // just be waiting on a connection the server infrastructure has
+      // already killed.
       final res = await effectiveClient
           .post(
             uri,
             headers: headers,
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 12));
+          .timeout(const Duration(seconds: 25));
 
       if (res.statusCode < 200 || res.statusCode >= 300) {
         throw Exception('AskNow API error ${res.statusCode}: ${res.body}');

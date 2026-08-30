@@ -45,6 +45,16 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
 
   int _adsWatched = 0;
 
+  /// Ask Now Credit Safety (Phase E): [_sendQuestion] does an `await
+  /// _getBackendUserId()` (a Firestore round-trip) BEFORE
+  /// [AskNowProvider.isLoading] is ever set -- that gap let a second
+  /// rapid tap pass the `provider.isLoading` guard too, letting two
+  /// submissions run concurrently. This flag is checked and set
+  /// SYNCHRONOUSLY, before the first `await`, so a second tap is
+  /// rejected immediately regardless of how long the first call's async
+  /// work takes. Always released in a `finally`.
+  bool _isSending = false;
+
   /// HOLD (product decision): the old "2 rewarded ads = 1 Ask Now
   /// question" economics are no longer accepted. Keeping this a single
   /// named flag — rather than removing the reward entry point, its
@@ -167,6 +177,9 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
           if (err == "WAIT_SYNC") msg = "Please wait… syncing chat status.";
           if (err == "PAYMENT_REQUIRED") msg = "Please buy a pack to continue.";
           if (err == "Payment cancelled") msg = "Payment cancelled.";
+          if (err == "ANSWER_TIMEOUT") {
+            msg = "This is taking longer than usual. Please try asking again.";
+          }
 
           ScaffoldMessenger.of(
             context,
@@ -246,43 +259,53 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   // 🚀 Send Question (entry)
   // ---------------------------
   Future<void> _sendQuestion() async {
+    // Ask Now Credit Safety (Phase E): engaged synchronously, before any
+    // `await` below — see [_isSending]'s own doc comment for why this
+    // must happen here and not any later.
+    if (_isSending) return;
+
     final q = _questionController.text.trim();
     if (q.isEmpty) return;
 
     final provider = context.read<AskNowProvider>();
     if (provider.isLoading) return;
 
-    final userId = await _getBackendUserId();
-    if (userId == null) return;
+    _isSending = true;
+    try {
+      final userId = await _getBackendUserId();
+      if (userId == null) return;
 
-    // Release-gate fix (P1): `_getBackendUserId()` above is an async
-    // Firestore round-trip — if the user backs out of this page while it
-    // is in flight, `this` is disposed by the time it resolves. Every
-    // other async gap in this file already guards with `mounted`; this
-    // one was missing it, and both `context.read` below and `setState`
-    // itself throw once the State is no longer mounted.
-    if (!mounted) return;
+      // Release-gate fix (P1): `_getBackendUserId()` above is an async
+      // Firestore round-trip — if the user backs out of this page while it
+      // is in flight, `this` is disposed by the time it resolves. Every
+      // other async gap in this file already guards with `mounted`; this
+      // one was missing it, and both `context.read` below and `setState`
+      // itself throw once the State is no longer mounted.
+      if (!mounted) return;
 
-    final profile = context.read<ProfileProvider>().activeProfile ?? {};
+      final profile = context.read<ProfileProvider>().activeProfile ?? {};
 
-    setState(() {
-      chatMessages.add({"sender": "user", "text": q});
-      _questionController.clear();
-    });
-    _scrollToBottom();
+      setState(() {
+        chatMessages.add({"sender": "user", "text": q});
+        _questionController.clear();
+      });
+      _scrollToBottom();
 
-    final bool needPayment =
-        provider.freeAvailable != true && provider.remainingTokens == 0;
+      final bool needPayment =
+          provider.freeAvailable != true && provider.remainingTokens == 0;
 
-    if (needPayment) {
-      _pendingQuestion = q;
-      _pendingProfile = profile;
-      _userIdForPayment = userId;
-      _showPackSheet();
-      return;
+      if (needPayment) {
+        _pendingQuestion = q;
+        _pendingProfile = profile;
+        _userIdForPayment = userId;
+        _showPackSheet();
+        return;
+      }
+
+      await _sendQuestionInternal(q, profile, userId);
+    } finally {
+      _isSending = false;
     }
-
-    await _sendQuestionInternal(q, profile, userId);
   }
 
   // ---------------------------

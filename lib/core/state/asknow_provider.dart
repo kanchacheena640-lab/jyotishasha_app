@@ -164,6 +164,14 @@ class AskNowProvider extends ChangeNotifier {
     lastErrorMessage = null;
     notifyListeners();
 
+    // Ask Now Credit Safety: tracks whether a network call that could
+    // have affected quota was actually attempted this call (WAIT_SYNC /
+    // PAYMENT_REQUIRED never reach the network, so there is nothing to
+    // reconcile for those). Read in `finally` below, which is the one
+    // place reconciliation happens now -- unconditionally, on BOTH
+    // success and failure, for BOTH free and paid/earned paths.
+    bool attemptedNetworkCall = false;
+
     try {
       if (!statusLoaded) {
         lastErrorMessage = "WAIT_SYNC";
@@ -174,22 +182,17 @@ class AskNowProvider extends ChangeNotifier {
 
       // ---------------- FREE QUESTION ----------------
       if (freeAvailable) {
+        attemptedNetworkCall = true;
         res = await AskNowService.askFreeQuestion(
           userId: userId,
           question: question,
           profile: profile,
           client: _httpClient,
         );
-
-        // 🔒 HARD SYNC after free consume
-        final status = await AskNowService.fetchChatStatus(
-          userId,
-          client: _httpClient,
-        );
-        applyStatusFromBackend(status);
       }
       // ---------------- PAID QUESTION ----------------
       else if (hasActivePack && remainingTokens > 0) {
+        attemptedNetworkCall = true;
         res = await AskNowService.askPaidQuestion(
           userId: userId,
           question: question,
@@ -208,7 +211,10 @@ class AskNowProvider extends ChangeNotifier {
         lastErrorMessage = "No answer received.";
       }
 
-      // Token update only if backend sends it
+      // Best-effort immediate update from this response's own field --
+      // the unconditional authoritative reconciliation below is the
+      // real source of truth regardless; this only avoids a visible
+      // flicker on the paid/earned path before that lands.
       if (res.containsKey("remaining_tokens")) {
         final parsed = int.tryParse(res["remaining_tokens"].toString());
         if (parsed != null) {
@@ -217,8 +223,36 @@ class AskNowProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      lastErrorMessage = e.toString();
+      // Ask Now Timeout Delivery Fix: a raw TimeoutException.toString()
+      // ("TimeoutException after 0:00:25.000000: Future not completed")
+      // is not something to show a user. A distinct sentinel here (the
+      // same pattern WAIT_SYNC/PAYMENT_REQUIRED already use) lets the UI
+      // map it to a clear message. This is surfaced ONLY -- nothing here
+      // (or anywhere else in this method) automatically re-sends the
+      // question; the user must tap send again, exactly like every other
+      // failure already requires.
+      lastErrorMessage = e is TimeoutException ? "ANSWER_TIMEOUT" : e.toString();
     } finally {
+      // Ask Now Credit Safety: reconcile authoritative balance after
+      // EVERY attempt that could have affected quota -- success or
+      // failure, free or paid/earned alike -- so the header never shows
+      // a stale balance and the next eligible source becomes usable
+      // immediately in the SAME conversation, with no manual refresh.
+      // A failure of this sync step itself must never overwrite/hide
+      // the original request's own error set above.
+      if (attemptedNetworkCall) {
+        try {
+          final status = await AskNowService.fetchChatStatus(
+            userId,
+            client: _httpClient,
+          );
+          applyStatusFromBackend(status);
+        } catch (_) {
+          // Deliberately swallowed -- lastErrorMessage (if any) from the
+          // actual question attempt above is what the user must see,
+          // not a secondary status-sync failure.
+        }
+      }
       isLoading = false;
       notifyListeners();
     }
@@ -477,19 +511,32 @@ class AskNowProvider extends ChangeNotifier {
       );
 
       if (res["success"] == true) {
-        final total =
-            int.tryParse(res["total_tokens"]?.toString() ?? "") ??
-            remainingTokens;
-
-        remainingTokens = total;
-        hasActivePack = total > 0;
-        statusLoaded = true;
-
-        freeAvailable = false;
-        freeUsedToday = true;
-
-        notifyListeners();
+        // Ask Now Credit Safety (Phase D): earning a reward question has
+        // no relationship to the Free Daily Question -- /api/chat/reward
+        // never touches FreeDailyQuestion server-side, so nothing here
+        // may claim it did. Reconcile from the authoritative status
+        // endpoint so Earned AND Free both end up matching backend
+        // truth, rather than fabricating either locally.
+        try {
+          final status = await AskNowService.fetchChatStatus(
+            userId,
+            client: _httpClient,
+          );
+          applyStatusFromBackend(status);
+        } catch (_) {
+          // Authoritative sync itself failed -- fall back to this
+          // response's own total_tokens for remainingTokens only.
+          // Still never touches freeAvailable/freeUsedToday.
+          final total =
+              int.tryParse(res["total_tokens"]?.toString() ?? "") ??
+              remainingTokens;
+          remainingTokens = total;
+          hasActivePack = total > 0;
+          statusLoaded = true;
+        }
       }
+
+      notifyListeners();
     } catch (e) {
       lastErrorMessage = e.toString();
       notifyListeners();
