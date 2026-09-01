@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/auth/session_cleanup.dart';
 import 'package:jyotishasha_app/core/models/account/account_deletion_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/account_deletion_repository.dart';
@@ -127,6 +128,12 @@ class _AccountPageState extends State<AccountPage> {
   /// (upgrade, restore, trial activation) reactively once the user
   /// returns — no extra refresh call needed here.
   void _openSubscription() {
+    // Phase 5B -- fire-and-forget, never awaited; navigation below
+    // proceeds unconditionally regardless of analytics outcome.
+    ActivityEvents.ctaClick(
+      ctaId: 'account_page_subscription',
+      screenName: 'account',
+    );
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const SubscriptionPage()),

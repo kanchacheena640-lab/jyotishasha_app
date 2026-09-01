@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/analytics/session_start_producer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/profile_completeness_service.dart';
 import '../../services/app_version_gate_service.dart';
@@ -84,6 +85,14 @@ class _SplashPageState extends State<SplashPage> {
         });
         return;
       }
+
+      // Phase 5B -- a real, already-authenticated Firebase user is
+      // present at this exact point (the `user == null` branch above
+      // already returned). This is the "returning user cold start" seam:
+      // fire-and-forget, at most once per process (SessionStartProducer's
+      // own in-memory guard) -- never awaited, never allowed to affect
+      // the navigation decision below in any way.
+      SessionStartProducer.attemptOnce(entryPoint: 'cold_start');
 
       // 🌞 Firebase session present -- resolve backend profile
       // completeness before deciding Dashboard vs. birth-detail setup.

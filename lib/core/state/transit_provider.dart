@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../analytics/activity_events.dart';
+
 class TransitProvider extends ChangeNotifier {
   bool isLoading = false;
   Map<String, dynamic>? transitData;
@@ -166,6 +168,13 @@ class TransitProvider extends ChangeNotifier {
 
       if (res.statusCode == 200) {
         contentData = jsonDecode(res.body);
+        // Phase 5B -- fetchTransitContent() only ever runs from a real
+        // user tap selecting a specific planet (see
+        // transit_alert_widget.dart) -- unlike fetchTransit()'s own
+        // automatic app-startup call, which this deliberately does NOT
+        // instrument (it fires on every cold start regardless of whether
+        // the user ever visits Transit at all).
+        ActivityEvents.featureUsed('transit_view');
       } else {
         errorMessage = "Content API Error: ${res.statusCode}";
       }

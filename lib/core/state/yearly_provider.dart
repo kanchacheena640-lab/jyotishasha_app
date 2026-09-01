@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../analytics/activity_events.dart';
 import '../models/horoscope/horoscope_contracts.dart';
 import '../repositories/horoscope_repository.dart';
 import '../repositories/implementations/http_horoscope_repository.dart';
@@ -61,6 +62,9 @@ class YearlyProvider extends ChangeNotifier {
       _lastSign = s;
       _lastLang = l;
       _lastYear = year;
+      // Phase 5B -- fired only on a genuinely new, successful fetch (the
+      // cache-hit guard above already returns before this method runs).
+      ActivityEvents.featureUsed('horoscope_yearly');
     } catch (e) {
       final message = e.toString();
       final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(

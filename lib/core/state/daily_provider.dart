@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../analytics/activity_events.dart';
 import '../models/horoscope/horoscope_contracts.dart';
 import '../repositories/horoscope_repository.dart';
 import '../repositories/implementations/http_horoscope_repository.dart';
@@ -64,6 +65,10 @@ class DailyProvider extends ChangeNotifier {
 
       _lastSign = s;
       _lastLang = l;
+      // Phase 5B -- fired only on a genuinely new, successful fetch (the
+      // cache-hit guard above already returns before this whole method
+      // runs) -- fire-and-forget.
+      ActivityEvents.featureUsed('horoscope_daily');
     } catch (e) {
       final message = e.toString();
       final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(

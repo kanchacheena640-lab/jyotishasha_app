@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/state/firebase_kundali_provider.dart';
 import 'package:jyotishasha_app/core/state/daily_provider.dart';
@@ -185,6 +186,12 @@ class _DashboardPageState extends State<DashboardPage> {
   // ------------------------------------------------------------
   void _onBottomNavTap(int index) {
     if (index == 1) {
+      // Phase 5B -- fire-and-forget, never awaited; navigation below
+      // proceeds unconditionally regardless of analytics outcome.
+      ActivityEvents.ctaClick(
+        ctaId: 'bottom_nav_ask_now',
+        screenName: 'dashboard',
+      );
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AskNowChatPage()),

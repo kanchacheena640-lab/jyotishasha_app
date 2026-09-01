@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/models/alerts/alerts_dashboard_contracts.dart';
 import 'package:jyotishasha_app/core/repositories/alerts_dashboard_repository.dart';
@@ -234,10 +235,18 @@ class _LockedState extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SubscriptionPage()),
-            ),
+            onPressed: () {
+              // Phase 5B -- fire-and-forget, never awaited; navigation
+              // below proceeds unconditionally regardless of outcome.
+              ActivityEvents.ctaClick(
+                ctaId: 'alerts_dashboard_subscription',
+                screenName: 'alerts_dashboard',
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+              );
+            },
             icon: const Icon(Icons.workspace_premium_rounded, size: 18),
             label: Text(
               isHindi ? 'सदस्यता प्लान देखें' : 'View Subscription Plans',

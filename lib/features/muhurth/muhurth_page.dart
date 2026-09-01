@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
@@ -223,7 +224,12 @@ class _MuhurthPageState extends State<MuhurthPage> {
   // ---------------------------------------------------------------------------
   // MAIN MUHURTH API with CACHE
   // ---------------------------------------------------------------------------
-  Future<void> _fetchMuhurth() async {
+  /// `isExplicitUserAction` (Phase 5B) -- true only when the CALLER is a
+  /// genuine user-triggered re-search (activity dropdown change, a new
+  /// location picked). Deliberately false for the one automatic call in
+  /// `initState()` -- per the locked Phase 5B semantic, the initial
+  /// automatic page load must never count as `muhurth_search`.
+  Future<void> _fetchMuhurth({bool isExplicitUserAction = false}) async {
     final lang = AppLocalizations.of(context)!.localeName;
     final cacheKey = "$selectedActivity|$latitude|$longitude|$lang";
 
@@ -233,6 +239,11 @@ class _MuhurthPageState extends State<MuhurthPage> {
         muhurthResults = muhurthCache[cacheKey]!;
         isLoading = false;
       });
+      if (isExplicitUserAction) {
+        // A real explicit search that happened to hit cache is still a
+        // genuine, successful search from the user's point of view.
+        ActivityEvents.featureUsed('muhurth_search');
+      }
       return;
     }
 
@@ -269,6 +280,9 @@ class _MuhurthPageState extends State<MuhurthPage> {
         setState(() {
           muhurthResults = muhurthCache[cacheKey]!;
         });
+        if (isExplicitUserAction) {
+          ActivityEvents.featureUsed('muhurth_search');
+        }
       } else {
         debugPrint("Muhurth API error: ${res.statusCode}");
       }
@@ -383,7 +397,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                                     });
 
                                     Navigator.pop(context);
-                                    _fetchMuhurth();
+                                    _fetchMuhurth(isExplicitUserAction: true);
                                   },
                                 );
                               },
@@ -488,7 +502,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
                         return; // avoid double fetch
                       }
 
-                      _fetchMuhurth();
+                      _fetchMuhurth(isExplicitUserAction: true);
                     },
                     items: activities.map((a) {
                       final title = (lang == "hi")

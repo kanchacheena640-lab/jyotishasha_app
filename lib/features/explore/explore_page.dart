@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
 import 'package:jyotishasha_app/core/utils/trial_countdown.dart';
 import 'package:jyotishasha_app/features/alerts/alerts_dashboard_page.dart';
@@ -217,6 +218,12 @@ class _MembershipStripState extends State<_MembershipStrip> {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: () {
+          // Phase 5B -- fire-and-forget, never awaited; navigation below
+          // proceeds unconditionally regardless of analytics outcome.
+          ActivityEvents.ctaClick(
+            ctaId: 'explore_page_subscription',
+            screenName: 'explore',
+          );
           // Every state — active, expired, or no subscription — opens
           // the same existing SubscriptionPage. No new Plans page.
           Navigator.push(
@@ -552,6 +559,12 @@ class _ReportHubCard extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const AlertsDashboardPage()),
               )
             : () {
+                // Phase 5B -- report_type is this category's own stable
+                // PremiumReportType enum name (love/career/finance/
+                // health/family) -- never price/content/any other field.
+                // Fire-and-forget, never awaited; navigation below
+                // proceeds unconditionally regardless of outcome.
+                ActivityEvents.reportDiscoveryViewed(reportType.name);
                 Navigator.push(
                   context,
                   MaterialPageRoute(

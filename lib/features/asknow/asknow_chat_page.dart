@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:provider/provider.dart';
 
+// ANALYTICS
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
+
 // STATE
 import 'package:jyotishasha_app/core/state/asknow_provider.dart';
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
@@ -73,6 +76,13 @@ class _AskNowChatPageState extends State<AskNowChatPage> {
   @override
   void initState() {
     super.initState();
+
+    // Phase 5B -- one `asknow_entry_viewed` per real navigation to this
+    // page instance (initState runs exactly once per instance, never on
+    // rebuild). No properties (frozen schema: `{}`) -- deliberately never
+    // includes widget.prefillQuestion or any other Ask Now state.
+    // Fire-and-forget, never awaited.
+    ActivityEvents.asknowEntryViewed();
 
     // ✅ Prefill question (Trending → AskNow)
     _questionController = TextEditingController(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/profile_completeness_service.dart';
+import '../../core/analytics/session_start_producer.dart';
 import '../../core/constants/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
@@ -26,6 +27,14 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = false);
 
     if (!mounted || user == null) return;
+
+    // Phase 5B -- a fresh sign-in has just completed at this exact point.
+    // This is the "fresh login" seam: fire-and-forget, at most once per
+    // process (SessionStartProducer's own in-memory guard covers the
+    // case where SplashPage never got a chance to attempt this, since
+    // reaching LoginPage at all implies it didn't). Never awaited, never
+    // allowed to affect the completeness check/navigation below.
+    SessionStartProducer.attemptOnce(entryPoint: 'login');
 
     // P0 -- Recover authenticated users with incomplete birth profiles:
     // this used to check Firestore `profiles/default` doc existence

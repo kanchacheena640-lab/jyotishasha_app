@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/features/asknow/asknow_chat_page.dart';
 
@@ -46,6 +47,12 @@ class _TrendingQuestionsWidgetState extends State<TrendingQuestionsWidget> {
 
     return GestureDetector(
       onTap: () {
+        // Phase 5B -- fire-and-forget, never awaited; navigation below
+        // proceeds unconditionally regardless of analytics outcome.
+        ActivityEvents.ctaClick(
+          ctaId: 'home_ask_now_hero',
+          screenName: 'dashboard_home',
+        );
         Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const AskNowChatPage()),

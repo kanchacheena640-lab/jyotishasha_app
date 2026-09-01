@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/repositories/implementations/asset_report_repository.dart';
 import 'package:jyotishasha_app/core/repositories/report_repository.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
@@ -386,6 +387,18 @@ class _ReportCatalogPageState extends State<ReportCatalogPage> {
                                 ),
                               ),
                               onPressed: () {
+                                // Phase 5B -- the genuine purchase-intent
+                                // moment (the catalog card's own "Buy Now"
+                                // only opens this details dialog; THIS
+                                // button is what actually proceeds toward
+                                // checkout). Fire-and-forget, never
+                                // awaited; navigation below proceeds
+                                // unconditionally regardless of outcome.
+                                ActivityEvents.ctaClick(
+                                  ctaId: 'report_catalog_buy_now',
+                                  screenName: 'report_catalog',
+                                );
+
                                 // Proper dialog close
                                 Navigator.of(
                                   context,

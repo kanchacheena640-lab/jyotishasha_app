@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
@@ -63,6 +64,11 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
 
       if (res.statusCode == 200) {
         final kundaliData = jsonDecode(res.body);
+        // Phase 5B -- fired only on an actual successful generation, not
+        // on the button tap itself (that's the separate cta_click below)
+        // and never on failure -- see _KUNDALI CTA VS FEATURE_ locked
+        // semantics. Fire-and-forget, never awaited.
+        ActivityEvents.featureUsed('kundali_generate');
         if (!mounted) return;
         Navigator.push(
           context,
@@ -183,6 +189,12 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
                         ),
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
+                            // Phase 5B -- fire-and-forget, never awaited;
+                            // form submission proceeds unconditionally.
+                            ActivityEvents.ctaClick(
+                              ctaId: 'kundali_form_generate',
+                              screenName: 'kundali_form',
+                            );
                             _generateKundali();
                           }
                         },

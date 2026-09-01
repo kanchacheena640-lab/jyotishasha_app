@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../analytics/activity_events.dart';
 import '../models/panchang/panchang_contracts.dart';
 import '../repositories/implementations/http_panchang_repository.dart';
 import '../repositories/panchang_repository.dart';
@@ -92,6 +93,10 @@ class PanchangProvider extends ChangeNotifier {
         lastFetchDate = today;
         lastLang = lang;
         errorMessage = null;
+        // Phase 5B -- fired only on a genuinely new, successful fetch
+        // (this provider's own sign/lang/date cache guard above already
+        // skips this whole method on a cache hit) -- fire-and-forget.
+        ActivityEvents.featureUsed('panchang_view');
       } else {
         errorMessage = "Invalid panchang data";
       }

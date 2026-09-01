@@ -1484,7 +1484,8 @@ class _PremiumLockedSection extends StatelessWidget {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: () => requirePremium(context, () {}),
+        onTap: () =>
+            requirePremium(context, () {}, screenName: 'premium_report'),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),

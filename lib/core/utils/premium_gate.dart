@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
 import 'package:jyotishasha_app/features/subscription/subscription_page.dart';
 
@@ -29,11 +30,29 @@ bool hasActiveSubscription(BuildContext context) {
 /// opens the existing [SubscriptionPage] — never a new purchase dialog,
 /// never a bypass, matching "whenever a locked feature is opened,
 /// navigate to the existing SubscriptionPage."
-void requirePremium(BuildContext context, VoidCallback onUnlocked) {
+/// `screenName` (Phase 5B) is the calling screen's own stable semantic
+/// name, used only for the `cta_click(premium_gate_locked_content)`
+/// analytics fired when this gate actually blocks access -- optional,
+/// defaulting to this function's one current call site's screen so
+/// nothing breaks if a future caller omits it, but every real call site
+/// should pass its own screen name explicitly.
+void requirePremium(
+  BuildContext context,
+  VoidCallback onUnlocked, {
+  String screenName = 'premium_report',
+}) {
   if (hasActiveSubscription(context)) {
     onUnlocked();
     return;
   }
+  // Phase 5B -- fired only on the locked (blocked) branch, never when
+  // already-subscribed access is granted immediately above.
+  // Fire-and-forget, never awaited; navigation below proceeds
+  // unconditionally regardless of analytics outcome.
+  ActivityEvents.ctaClick(
+    ctaId: 'premium_gate_locked_content',
+    screenName: screenName,
+  );
   Navigator.push(
     context,
     MaterialPageRoute(builder: (_) => const SubscriptionPage()),

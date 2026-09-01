@@ -30,6 +30,7 @@ import 'package:jyotishasha_app/core/state/welcome_gift_provider.dart';
 import 'package:jyotishasha_app/core/utils/global_context.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 import 'package:jyotishasha_app/core/notifications/notification_navigation_service.dart';
+import 'package:jyotishasha_app/core/notifications/notification_opened_producer.dart';
 import 'package:jyotishasha_app/core/notifications/panchang_dismiss_bridge.dart';
 import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
@@ -66,6 +67,12 @@ final notificationNavigationService = NotificationNavigationService(
 void handleNotificationTap(RemoteMessage message) {
   final destination = NotificationDispatcher.parse(message);
   debugPrint("🔔 handleNotificationTap → $destination");
+  // Phase 5B -- this function is reached ONLY for a real tap (background
+  // via onMessageOpenedApp, or cold-start via getInitialMessage()), never
+  // for foreground receipt (onMessage, wired separately below) and never
+  // on a generic launch. Fire-and-forget, never awaited, never allowed to
+  // delay or alter the navigation call right after it.
+  NotificationOpenedProducer.emit(destination);
   notificationNavigationService.openDestination(destination);
 }
 

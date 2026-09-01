@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../analytics/activity_events.dart';
 import '../models/horoscope/horoscope_contracts.dart';
 import '../repositories/horoscope_repository.dart';
 import '../repositories/implementations/http_horoscope_repository.dart';
@@ -76,6 +77,9 @@ class MonthlyProvider extends ChangeNotifier {
       _lastSign = s;
       _lastLang = l;
       _lastMonth = m;
+      // Phase 5B -- fired only on a genuinely new, successful fetch (the
+      // cache-hit guard above already returns before this method runs).
+      ActivityEvents.featureUsed('horoscope_monthly');
     } catch (e) {
       final message = e.toString();
       final statusMatch = RegExp(r'Horoscope API error (\d+)').firstMatch(
