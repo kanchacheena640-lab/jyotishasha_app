@@ -48,6 +48,12 @@ dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_markdown_plus: ^1.0.12
   package_info_plus: ^8.1.2
+  # Task 5 -- official Google Play Install Referrer API wrapper (uses the
+  # modern InstallReferrerClient, not the deprecated broadcast receiver).
+  # Verified on pub.dev before adding: actively maintained, verified
+  # publisher, Flutter-only dependency (no transitive deps beyond
+  # Flutter itself). See lib/core/analytics/install_referrer_service.dart.
+  play_install_referrer: ^0.5.0
 
 dev_dependencies:
   flutter_test:

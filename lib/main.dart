@@ -36,6 +36,7 @@ import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
 import 'package:jyotishasha_app/features/cards/provider/cards_provider.dart';
 import 'package:jyotishasha_app/core/utils/startup_timeout.dart';
+import 'package:jyotishasha_app/core/analytics/install_referrer_service.dart';
 
 class ForceIPv4 extends HttpOverrides {
   @override
@@ -96,6 +97,17 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Task 5 -- fire-and-forget, never awaited: reads the Google Play
+  // Install Referrer (if any) and safely persists only the allowlisted,
+  // non-PII campaign-attribution fields locally. Independent of
+  // Firebase/notifications setup below (a pure Android/Play Services
+  // platform-channel call), bounded by its own internal startup
+  // timeout, and never emits an activity event (see
+  // InstallReferrerService's own class docstring for why). Must never
+  // delay runApp() below -- this call is not awaited anywhere in this
+  // function.
+  InstallReferrerService.captureOnce();
 
   HttpOverrides.global =
       ForceIPv4(); // ⭐ to avoid IPv6 error occuring in love api
