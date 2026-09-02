@@ -80,4 +80,141 @@ void main() {
       },
     );
   });
+
+  // =====================================================================
+  // Phase 5D.3 -- login_completed producer. Same structural-
+  // characterization technique as the group above, for the same reason
+  // (AuthService/ProfileCompletenessService can't yet be supplied
+  // deterministically to LoginPage -- see the TODO above). Facade-level
+  // behavior (exact event shape, no-guard double-call, failure isolation)
+  // is proven separately in test/core/analytics/activity_events_test.dart
+  // and test/services/activity_event_client_test.dart, which this file's
+  // own seam-placement proof relies on being correct.
+  group('login_completed producer (Phase 5D.3)', () {
+    test(
+      'B/C/D/F/G/L/M: the login_completed call sits after the null-user '
+      'guard, BEFORE both SessionStartProducer and the completeness/'
+      'navigation flow -- so it depends on neither, and remains a '
+      'separate call from session_start',
+      () {
+        final source = readProjectSource(
+          'lib/features/login/login_page.dart',
+        );
+
+        expectMarkersInOrder(source, const [
+          'final user = await auth.signInWithGoogle();',
+          'if (!mounted || user == null) return;',
+          "ActivityEvents.loginCompleted(method: 'google');",
+          "SessionStartProducer.attemptOnce(entryPoint: 'login');",
+          'final result = await ProfileCompletenessService.checkCompleteness();',
+          "context.go('/dashboard');",
+          "context.go('/birth');",
+        ]);
+      },
+    );
+
+    test(
+      'D: the call is NOT awaited -- fire-and-forget, matching every '
+      'other Phase 5B/5C producer call site in this same function',
+      () {
+        final source = readProjectSource(
+          'lib/features/login/login_page.dart',
+        );
+        expect(
+          source,
+          isNot(contains("await ActivityEvents.loginCompleted(")),
+        );
+      },
+    );
+
+    test(
+      'J/K: no once-per-process (or any other) guard wraps the '
+      'login_completed call -- it is reached unconditionally once past '
+      'the null-user early-return, unlike SessionStartProducer.attemptOnce '
+      'which owns its own separate, unrelated guard',
+      () {
+        final source = readProjectSource(
+          'lib/features/login/login_page.dart',
+        );
+        final callIndex = source.indexOf(
+          "ActivityEvents.loginCompleted(method: 'google');",
+        );
+        expect(callIndex, greaterThanOrEqualTo(0));
+
+        // Nothing between the null-user guard and the call introduces a
+        // second conditional/guard around it.
+        final guardIndex = source.indexOf(
+          'if (!mounted || user == null) return;',
+        );
+        final between = source.substring(
+          guardIndex + 'if (!mounted || user == null) return;'.length,
+          callIndex,
+        );
+        expect(
+          between,
+          isNot(contains('if (')),
+          reason:
+              'no conditional may sit between the null-user guard and the '
+              'login_completed call -- it must be unconditional',
+        );
+
+        // No login-specific attempted-flag/persistence mechanism exists
+        // anywhere in this file.
+        expect(source, isNot(contains('SharedPreferences')));
+        expect(source, isNot(contains('_loginCompletedAttempted')));
+        expect(source, isNot(contains('_attempted')));
+      },
+    );
+
+    test(
+      'N: no signup_completed reference exists anywhere in this file -- '
+      'Flutter never emits it (backend-owned, Phase 5D.1)',
+      () {
+        final source = readProjectSource(
+          'lib/features/login/login_page.dart',
+        );
+        expect(source, isNot(contains('signup_completed')));
+        expect(source, isNot(contains('signupCompleted')));
+      },
+    );
+
+    test(
+      '10: Facebook login is not instrumented -- no reachable UI call '
+      'site exists for it in this file (Phase 5D audit: dead code, not '
+      'revived here)',
+      () {
+        final source = readProjectSource(
+          'lib/features/login/login_page.dart',
+        );
+        expect(source, isNot(contains('signInWithFacebook')));
+        expect(source, isNot(contains("method: 'facebook'")));
+      },
+    );
+
+    test(
+      'E: SplashPage never references login_completed -- cold-start '
+      'restored-session recognition must never emit it',
+      () {
+        final source = readProjectSource(
+          'lib/features/splash/splash_page.dart',
+        );
+        expect(source, isNot(contains('login_completed')));
+        expect(source, isNot(contains('loginCompleted')));
+        expect(source, isNot(contains('ActivityEvents.login')));
+      },
+    );
+
+    test(
+      "4: BackendAuthService's /api/auth/token exchange never emits "
+      'login_completed -- it is a routine JWT-acquisition helper, not '
+      'the interactive-login seam',
+      () {
+        final source = readProjectSource(
+          'lib/services/backend_auth_service.dart',
+        );
+        expect(source, isNot(contains('login_completed')));
+        expect(source, isNot(contains('loginCompleted')));
+      },
+    );
+  });
 }

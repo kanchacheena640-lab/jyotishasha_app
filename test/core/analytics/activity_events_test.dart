@@ -99,6 +99,51 @@ void main() {
     },
   );
 
+  test(
+    // Phase 5D.3 -- backend client-ingestion unblocker (5D.2) makes
+    // login_completed reachable through this endpoint; this is the
+    // Flutter producer's own facade method.
+    'loginCompleted sends event_name=login_completed, event_version '
+    'defaults to 1, with exactly {method}',
+    () async {
+      await ActivityEvents.loginCompleted(method: 'google');
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body['event_name'], 'login_completed');
+      expect(body['event_version'], 1);
+      expect(body['properties'], {'method': 'google'});
+    },
+  );
+
+  test(
+    // O/P -- only method=google is ever sent; no PII/token/provider
+    // payload, and no other key, regardless of what a caller might try
+    // to pass through the (single, required, String) method parameter.
+    'loginCompleted never sends any key other than method',
+    () async {
+      await ActivityEvents.loginCompleted(method: 'google');
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect((body['properties'] as Map).keys, {'method'});
+    },
+  );
+
+  test(
+    // J/K -- no once-per-process guard: unlike SessionStartProducer,
+    // this facade method has no static "attempted" flag at all (see its
+    // own source) -- two independent calls in the same process must
+    // both deliver, exactly modeling a genuine logout-then-login-again.
+    'loginCompleted has no once-per-process guard -- two calls in the '
+    'same process both deliver as two independent events',
+    () async {
+      await ActivityEvents.loginCompleted(method: 'google');
+      await ActivityEvents.loginCompleted(method: 'google');
+      expect(captured.length, 2);
+      for (final request in captured) {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['event_name'], 'login_completed');
+      }
+    },
+  );
+
   test('no forbidden field is ever present in any facade call', () async {
     await ActivityEvents.ctaClick(ctaId: 'x', screenName: 'y');
     final body = jsonDecode(captured.single.body) as Map<String, dynamic>;

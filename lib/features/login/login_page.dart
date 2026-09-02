@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/auth_service.dart';
 import '../../services/profile_completeness_service.dart';
+import '../../core/analytics/activity_events.dart';
 import '../../core/analytics/session_start_producer.dart';
 import '../../core/constants/app_colors.dart';
 
@@ -27,6 +28,16 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoading = false);
 
     if (!mounted || user == null) return;
+
+    // Phase 5D.3 -- a REAL INTERACTIVE AUTHENTICATION has just
+    // completed at this exact point: never a restored/cold-start
+    // Firebase session, never a backend JWT refresh. Fire-and-forget,
+    // never awaited; never allowed to affect the completeness check/
+    // navigation below. Deliberately NO once-per-process guard --
+    // unlike SessionStartProducer just below, a genuine logout then a
+    // second interactive login in this same process must be able to
+    // produce a second, equally legitimate login_completed.
+    ActivityEvents.loginCompleted(method: 'google');
 
     // Phase 5B -- a fresh sign-in has just completed at this exact point.
     // This is the "fresh login" seam: fire-and-forget, at most once per

@@ -96,4 +96,20 @@ class ActivityEvents {
       properties: {'placement': placement},
     );
   }
+
+  /// `login_completed` -- Phase 5D.2 backend client-ingestion unblocker;
+  /// frozen properties are `{method}` only. Represents a REAL
+  /// INTERACTIVE AUTHENTICATION successfully completed by the user --
+  /// never a restored/cold-start Firebase session, never a backend JWT
+  /// refresh. See `LoginPage._handleGoogleLogin()` for the one current
+  /// call site and its own seam-placement reasoning. Deliberately no
+  /// once-per-process guard here (unlike [SessionStartProducer]): a
+  /// genuine logout-then-login-again in the same process is a second,
+  /// equally legitimate `login_completed`.
+  static Future<void> loginCompleted({required String method}) {
+    return _current.record(
+      eventName: 'login_completed',
+      properties: {'method': method},
+    );
+  }
 }
