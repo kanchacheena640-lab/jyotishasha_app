@@ -228,7 +228,11 @@ class _MembershipStripState extends State<_MembershipStrip> {
           // the same existing SubscriptionPage. No new Plans page.
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+            MaterialPageRoute(
+              builder: (_) => const SubscriptionPage(
+                placement: SubscriptionDiscoveryPlacement.explore,
+              ),
+            ),
           );
         },
         child: Container(

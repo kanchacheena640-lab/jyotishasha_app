@@ -4,11 +4,55 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:jyotishasha_app/core/analytics/activity_events.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/constants/subscription_sections.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
 import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/core/state/subscription_provider.dart';
+
+/// Phase 5C.1 -- the closed, stable-string vocabulary of "where the
+/// discovery/paywall surface was opened from", threaded explicitly into
+/// [SubscriptionPage] by every production constructor site rather than
+/// inferred/defaulted here. [value] (not [name]) is what's actually sent
+/// in `subscription_discovery_viewed`'s `placement` property -- keeping
+/// the two separate means a future Dart identifier rename can never
+/// silently change the string already being recorded server-side.
+enum SubscriptionDiscoveryPlacement {
+  /// account_page.dart -- Profile/Account's "Manage Subscription" entry.
+  account,
+
+  /// explore_page.dart -- `_MembershipStrip`'s tap target.
+  explore,
+
+  /// alerts_dashboard_page.dart -- the locked-state upsell action.
+  alertsDashboard,
+
+  /// premium_gate.dart's `requirePremium()` -- fired whenever a locked
+  /// premium feature blocks access and opens this page instead.
+  premiumLockedContent,
+
+  /// birth_chart_report_reader.dart's own separate `_SubscriptionCta` --
+  /// deliberately distinct from [premiumLockedContent]: a different
+  /// entry mechanism on the same reader, not the same locked-content
+  /// gate.
+  premiumReportReader,
+
+  /// app_routes.dart's `/subscription` GoRoute -- direct/router-driven
+  /// navigation with no other known in-app caller today.
+  directRoute;
+
+  String get value => switch (this) {
+    SubscriptionDiscoveryPlacement.account => 'account',
+    SubscriptionDiscoveryPlacement.explore => 'explore',
+    SubscriptionDiscoveryPlacement.alertsDashboard => 'alerts_dashboard',
+    SubscriptionDiscoveryPlacement.premiumLockedContent =>
+      'premium_locked_content',
+    SubscriptionDiscoveryPlacement.premiumReportReader =>
+      'premium_report_reader',
+    SubscriptionDiscoveryPlacement.directRoute => 'direct_route',
+  };
+}
 
 /// S5.1 status foundation + S5.2 Google Play purchase flow + S5.4
 /// Restore Purchases + premium pricing redesign. `GET
@@ -29,7 +73,18 @@ class SubscriptionPage extends StatefulWidget {
   /// racing a real fetch attempt.
   final bool autoLoad;
 
-  const SubscriptionPage({super.key, this.autoLoad = true});
+  /// Phase 5C.1 -- required, not defaulted: every production navigation
+  /// to this page must intentionally state where it came from, so
+  /// `subscription_discovery_viewed`'s `placement` is never a silent
+  /// guess. See [SubscriptionDiscoveryPlacement]'s own doc comment for
+  /// the full mapping.
+  final SubscriptionDiscoveryPlacement placement;
+
+  const SubscriptionPage({
+    super.key,
+    this.autoLoad = true,
+    required this.placement,
+  });
 
   @override
   State<SubscriptionPage> createState() => _SubscriptionPageState();
@@ -50,6 +105,16 @@ class _SubscriptionPageState extends State<SubscriptionPage> {
   @override
   void initState() {
     super.initState();
+    // Phase 5C.1 -- the one DESTINATION `subscription_discovery_viewed`
+    // call site, fired exactly once per SubscriptionPage State instance
+    // (initState never re-runs on a rebuild of the same instance; a
+    // genuinely new navigation creates a new State and fires again).
+    // Fire-and-forget, never awaited -- ActivityEvents/ActivityEventClient
+    // never throws, so this can never block/alter the page building
+    // below, matching every other Phase 5B producer call site's
+    // "analytics never gates product behavior" contract.
+    ActivityEvents.subscriptionDiscoveryViewed(widget.placement.value);
+
     if (widget.autoLoad) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final provider = context.read<SubscriptionProvider>();

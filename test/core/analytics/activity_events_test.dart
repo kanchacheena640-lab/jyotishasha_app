@@ -84,6 +84,21 @@ void main() {
     },
   );
 
+  test(
+    // Phase 5C.1 -- backend schema now allows {plan, placement}; this
+    // facade method only ever sends placement (see its own doc comment
+    // for why plan is deliberately never fabricated here).
+    'subscriptionDiscoveryViewed sends event_name=subscription_discovery_'
+    'viewed with exactly {placement} -- never a fabricated plan',
+    () async {
+      await ActivityEvents.subscriptionDiscoveryViewed('account');
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body['event_name'], 'subscription_discovery_viewed');
+      expect(body['properties'], {'placement': 'account'});
+      expect((body['properties'] as Map).containsKey('plan'), isFalse);
+    },
+  );
+
   test('no forbidden field is ever present in any facade call', () async {
     await ActivityEvents.ctaClick(ctaId: 'x', screenName: 'y');
     final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
@@ -160,6 +175,29 @@ void main() {
       await ActivityEvents.reportDiscoveryViewed(reportType);
       final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
       expect(body['properties'], {'report_type': reportType});
+    });
+  }
+
+  // -----------------------------------------------------------------
+  // Phase 5C.1 -- exact subscription_discovery_viewed placement
+  // vocabulary. Every value SubscriptionPage's own production
+  // constructor sites actually send (see that file's
+  // SubscriptionDiscoveryPlacement enum for the file:line mapping).
+  // -----------------------------------------------------------------
+  const wiredPlacements = <String>[
+    'account',
+    'explore',
+    'alerts_dashboard',
+    'premium_locked_content',
+    'premium_report_reader',
+    'direct_route',
+  ];
+
+  for (final placement in wiredPlacements) {
+    test('wired subscription_discovery_viewed placement "$placement"', () async {
+      await ActivityEvents.subscriptionDiscoveryViewed(placement);
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body['properties'], {'placement': placement});
     });
   }
 }

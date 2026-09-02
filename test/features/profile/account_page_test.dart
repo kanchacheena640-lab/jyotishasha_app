@@ -236,6 +236,23 @@ void main() {
     },
   );
 
+  testWidgets(
+    // Phase 5C.1
+    'tapping Manage Subscription opens SubscriptionPage with '
+    'placement=account',
+    (tester) async {
+      await pump(tester);
+
+      await tester.tap(find.text('Manage Subscription'));
+      await tester.pumpAndSettle();
+
+      final page = tester.widget<SubscriptionPage>(
+        find.byType(SubscriptionPage),
+      );
+      expect(page.placement, SubscriptionDiscoveryPlacement.account);
+    },
+  );
+
   group('Removed obsolete rows (Gate 10)', () {
     testWidgets(
       'Free Horoscope PDF, Premium Reports, AI Love Insights, and '

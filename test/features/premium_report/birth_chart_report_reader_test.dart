@@ -232,6 +232,34 @@ void main() {
         expect(find.byType(SubscriptionPage), findsOneWidget);
       },
     );
+
+    testWidgets(
+      // Phase 5C.1 -- the separate _SubscriptionCta path, distinct from
+      // the requirePremium locked-section path tested below.
+      'the separate _SubscriptionCta opens SubscriptionPage with '
+      'placement=premium_report_reader',
+      (tester) async {
+        await pump(
+          tester,
+          PremiumReportType.family,
+          repository: _FakePremiumAiReportRepository(),
+        );
+        await tester.pump();
+
+        await tester.ensureVisible(find.text('View Subscription Plans'));
+        await tester.tap(find.text('View Subscription Plans'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+
+        final page = tester.widget<SubscriptionPage>(
+          find.byType(SubscriptionPage),
+        );
+        expect(
+          page.placement,
+          SubscriptionDiscoveryPlacement.premiumReportReader,
+        );
+      },
+    );
   });
 
   group(
@@ -488,6 +516,33 @@ void main() {
 
         expect(find.byType(SubscriptionPage), findsOneWidget);
       });
+
+      testWidgets(
+        // Phase 5C.1 -- the premium_gate/requirePremium path, distinct
+        // from the separate _SubscriptionCta path tested above.
+        'the requirePremium gate opens SubscriptionPage with '
+        'placement=premium_locked_content',
+        (tester) async {
+          await pump(
+            tester,
+            PremiumReportType.career,
+            repository: _FakePremiumAiReportRepository(),
+          );
+          await tester.pump();
+
+          await tester.tap(find.text('Current Phase').first);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+
+          final page = tester.widget<SubscriptionPage>(
+            find.byType(SubscriptionPage),
+          );
+          expect(
+            page.placement,
+            SubscriptionDiscoveryPlacement.premiumLockedContent,
+          );
+        },
+      );
 
       testWidgets(
         'TRIAL unlocks both premium sections exactly like ACTIVE — a trial '

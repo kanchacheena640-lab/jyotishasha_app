@@ -70,9 +70,11 @@ void main() {
     SubscriptionProvider provider, {
     bool autoLoad = false,
     String lang = 'en',
+    SubscriptionDiscoveryPlacement placement =
+        SubscriptionDiscoveryPlacement.account,
   }) async {
     await tester.pumpTestHarness(
-      SubscriptionPage(autoLoad: autoLoad),
+      SubscriptionPage(autoLoad: autoLoad, placement: placement),
       providers: [
         ChangeNotifierProvider<SubscriptionProvider>.value(value: provider),
         ChangeNotifierProvider<LanguageProvider>.value(

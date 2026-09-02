@@ -55,6 +55,10 @@ void requirePremium(
   );
   Navigator.push(
     context,
-    MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+    MaterialPageRoute(
+      builder: (_) => const SubscriptionPage(
+        placement: SubscriptionDiscoveryPlacement.premiumLockedContent,
+      ),
+    ),
   );
 }

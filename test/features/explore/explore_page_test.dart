@@ -226,6 +226,23 @@ void main() {
         expect(find.byType(SubscriptionPage), findsOneWidget);
       },
     );
+
+    testWidgets(
+      // Phase 5C.1
+      'the strip opens SubscriptionPage with placement=explore',
+      (tester) async {
+        await pump(tester, data: {'active': false, 'status': 'expired'});
+
+        await tester.tap(find.text('Expired'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+
+        final page = tester.widget<SubscriptionPage>(
+          find.byType(SubscriptionPage),
+        );
+        expect(page.placement, SubscriptionDiscoveryPlacement.explore);
+      },
+    );
   });
 
   group('Trial activation card (Manual Trial Activation)', () {

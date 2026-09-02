@@ -80,4 +80,20 @@ class ActivityEvents {
   static Future<void> asknowEntryViewed() {
     return _current.record(eventName: 'asknow_entry_viewed');
   }
+
+  /// `subscription_discovery_viewed` -- Phase 5C.1 backend schema
+  /// extension: frozen properties are `{placement}` only. This is a
+  /// DESTINATION discovery event (fired once by [SubscriptionPage]
+  /// itself, not by every source CTA) -- see that page's own
+  /// `initState` for the one call site. Deliberately never sends
+  /// `plan`: `plan` is a different, backend-authoritative business
+  /// fact (which plan a user has/chose) with no meaning at the moment
+  /// a discovery surface is merely viewed, and is not fabricated here
+  /// just to populate an allowed key.
+  static Future<void> subscriptionDiscoveryViewed(String placement) {
+    return _current.record(
+      eventName: 'subscription_discovery_viewed',
+      properties: {'placement': placement},
+    );
+  }
 }

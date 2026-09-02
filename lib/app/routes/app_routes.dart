@@ -90,7 +90,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(path: '/profile', builder: (_, __) => const ProfilePage()),
     GoRoute(
       path: '/subscription',
-      builder: (_, __) => const SubscriptionPage(),
+      // Phase 5C.1 -- no known in-app caller today; explicit
+      // `direct_route` placement so any future direct/router-driven
+      // navigation has a non-ambiguous origin rather than a silent
+      // default (SubscriptionPage intentionally has none).
+      builder: (_, __) => const SubscriptionPage(
+        placement: SubscriptionDiscoveryPlacement.directRoute,
+      ),
     ),
     GoRoute(
       path: '/darshan',

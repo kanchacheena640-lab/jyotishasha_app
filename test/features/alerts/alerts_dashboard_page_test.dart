@@ -239,6 +239,30 @@ void main() {
         expect(find.byType(SubscriptionPage), findsOneWidget);
       },
     );
+
+    testWidgets(
+      // Phase 5C.1
+      'the locked-state upsell opens SubscriptionPage with '
+      'placement=alerts_dashboard',
+      (tester) async {
+        final repo = _FakeAlertsDashboardRepository(
+          AlertsDashboardResult.failure(status: AlertsDashboardStatus.locked),
+        );
+        await pump(tester, repository: repo);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('View Subscription Plans'));
+        await tester.pumpAndSettle();
+
+        final page = tester.widget<SubscriptionPage>(
+          find.byType(SubscriptionPage),
+        );
+        expect(
+          page.placement,
+          SubscriptionDiscoveryPlacement.alertsDashboard,
+        );
+      },
+    );
   });
 
   group('error state', () {

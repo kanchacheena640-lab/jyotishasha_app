@@ -288,7 +288,21 @@ class _PremiumAiReportContentPageState
               ElevatedButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+                  MaterialPageRoute(
+                    // Phase 5C.1 -- compile-time compatibility only: this
+                    // page (confirmed unreachable, no navigation caller)
+                    // is not being revived or newly instrumented. This
+                    // Subscribe button only reaches this line when
+                    // `isEntitlementDenied` is true, i.e. it is the same
+                    // "locked premium content, opens SubscriptionPage"
+                    // shape premium_gate.dart's own requirePremium()
+                    // covers for reachable callers, so it reuses that
+                    // same placement rather than inventing a new one.
+                    builder: (_) => const SubscriptionPage(
+                      placement:
+                          SubscriptionDiscoveryPlacement.premiumLockedContent,
+                    ),
+                  ),
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,

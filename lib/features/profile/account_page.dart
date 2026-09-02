@@ -136,7 +136,11 @@ class _AccountPageState extends State<AccountPage> {
     );
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionPage(
+          placement: SubscriptionDiscoveryPlacement.account,
+        ),
+      ),
     );
   }
 

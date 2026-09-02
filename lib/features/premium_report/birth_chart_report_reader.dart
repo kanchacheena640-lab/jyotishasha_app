@@ -1546,7 +1546,11 @@ class _SubscriptionCta extends StatelessWidget {
       child: OutlinedButton.icon(
         onPressed: () => Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+          MaterialPageRoute(
+            builder: (_) => const SubscriptionPage(
+              placement: SubscriptionDiscoveryPlacement.premiumReportReader,
+            ),
+          ),
         ),
         icon: const Icon(Icons.workspace_premium_rounded, size: 18),
         label: Text(

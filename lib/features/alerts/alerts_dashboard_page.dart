@@ -244,7 +244,11 @@ class _LockedState extends StatelessWidget {
               );
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SubscriptionPage()),
+                MaterialPageRoute(
+                  builder: (_) => const SubscriptionPage(
+                    placement: SubscriptionDiscoveryPlacement.alertsDashboard,
+                  ),
+                ),
               );
             },
             icon: const Icon(Icons.workspace_premium_rounded, size: 18),
