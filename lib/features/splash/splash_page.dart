@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/analytics/session_start_producer.dart';
+import '../../core/analytics/install_attribution_producer.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/profile_completeness_service.dart';
 import '../../services/app_version_gate_service.dart';
@@ -93,6 +94,20 @@ class _SplashPageState extends State<SplashPage> {
       // own in-memory guard) -- never awaited, never allowed to affect
       // the navigation decision below in any way.
       SessionStartProducer.attemptOnce(entryPoint: 'cold_start');
+
+      // Task 5A -- FIRST SAFE AUTHENTICATED OPPORTUNITY (restored-session
+      // case): a real authenticated Firebase user is present at this
+      // exact point (the `user == null` branch above already returned),
+      // which is exactly what "first authenticated opportunity" must
+      // cover beyond just a fresh interactive login -- a user whose
+      // session was restored on a later cold start, who never touched
+      // LoginPage this run, must still get a chance to have any captured
+      // install attribution recorded. Fire-and-forget, at most a no-op
+      // if already recorded or already attempted with nothing to send
+      // (InstallAttributionProducer's own idempotent guard), never
+      // allowed to affect the profile-completeness check/navigation
+      // below.
+      InstallAttributionProducer.attemptOnce();
 
       // 🌞 Firebase session present -- resolve backend profile
       // completeness before deciding Dashboard vs. birth-detail setup.

@@ -89,7 +89,25 @@ class ActivityEventClient {
   /// this method itself awaits the network call internally only to
   /// enforce the timeout/error handling below, not to let any failure
   /// propagate back out.
-  Future<void> record({
+  ///
+  /// Task 5A -- returns `Future<bool>` (was `Future<void>`): `true` only
+  /// when the backend confirmed the event as written (HTTP 201) or an
+  /// already-recorded duplicate (HTTP 200 -- the exact semantic an
+  /// idempotency_key retry produces), `false` for every drop reason
+  /// (unsupported platform, no signed-in user, no backend token, any
+  /// non-2xx response, any thrown exception/timeout). Every EXISTING
+  /// call site (ActivityEvents' own facade methods, SessionStartProducer,
+  /// the login_completed producer) still declares/returns `Future<void>`
+  /// and still never awaits or inspects this value -- a `Future<void>`-
+  /// typed function returning a `Future<bool>` value is valid, ordinary
+  /// Dart (void-context covariance), so nothing about their existing
+  /// fire-and-forget behavior changes. This is the one, narrowly-scoped
+  /// extension Task 5A's own exactly-once/dedupe requirement needs (a
+  /// caller must be able to tell "confirmed" from "dropped" to decide
+  /// whether to mark its own local state permanently) -- not a pipeline
+  /// redesign: the delivery mechanism, timeout, retry-never policy, and
+  /// every existing failure-swallowing behavior are all unchanged.
+  Future<bool> record({
     required String eventName,
     int eventVersion = 1,
     Map<String, Object?>? properties,
@@ -103,13 +121,13 @@ class ActivityEventClient {
       final platform = _resolvePlatform();
       if (platform == null) {
         _log('activity event dropped: unsupported platform');
-        return;
+        return false;
       }
 
       final firebaseUid = _identityPort.currentFirebaseUid;
       if (firebaseUid == null) {
         _log('activity event dropped: no signed-in user');
-        return;
+        return false;
       }
 
       final ownsClient = _httpClient == null;
@@ -118,7 +136,7 @@ class ActivityEventClient {
         final token = await _tokenProvider(firebaseUid, client: client);
         if (token == null) {
           _log('activity event dropped: no backend token');
-          return;
+          return false;
         }
 
         final body = <String, Object?>{
@@ -152,8 +170,10 @@ class ActivityEventClient {
 
         if (res.statusCode == 200 || res.statusCode == 201) {
           _log('activity event delivered: HTTP ${res.statusCode}');
+          return true;
         } else {
           _log('activity event dropped: HTTP ${res.statusCode}');
+          return false;
         }
       } finally {
         if (ownsClient) client.close();
@@ -164,6 +184,7 @@ class ActivityEventClient {
       // malformed response, anything at all: analytics is dropped, never
       // surfaced to the caller.
       _log('activity event dropped: ${e.runtimeType}');
+      return false;
     }
   }
 

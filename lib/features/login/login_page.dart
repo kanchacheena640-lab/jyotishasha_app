@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/profile_completeness_service.dart';
 import '../../core/analytics/activity_events.dart';
 import '../../core/analytics/session_start_producer.dart';
+import '../../core/analytics/install_attribution_producer.dart';
 import '../../core/constants/app_colors.dart';
 
 class LoginPage extends StatefulWidget {
@@ -46,6 +47,14 @@ class _LoginPageState extends State<LoginPage> {
     // reaching LoginPage at all implies it didn't). Never awaited, never
     // allowed to affect the completeness check/navigation below.
     SessionStartProducer.attemptOnce(entryPoint: 'login');
+
+    // Task 5A -- FIRST SAFE AUTHENTICATED OPPORTUNITY (fresh interactive
+    // sign-in case). Fire-and-forget, never awaited, never allowed to
+    // affect the completeness check/navigation below. Idempotent -- see
+    // InstallAttributionProducer's own class docstring for why calling
+    // this from both here AND SplashPage's restored-session branch is
+    // intentional and safe, not duplicate instrumentation.
+    InstallAttributionProducer.attemptOnce();
 
     // P0 -- Recover authenticated users with incomplete birth profiles:
     // this used to check Firestore `profiles/default` doc existence
