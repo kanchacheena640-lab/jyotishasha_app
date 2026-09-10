@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:jyotishasha_app/services/backend_auth_service.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 import '../../models/premium_reports/premium_ai_report_contracts.dart';
 import '../premium_ai_report_repository.dart';
@@ -16,7 +17,7 @@ final class HttpPremiumAiReportRepository implements PremiumAiReportRepository {
   HttpPremiumAiReportRepository({http.Client? client})
     : _client = client ?? http.Client();
 
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
   final http.Client _client;
 
   @override

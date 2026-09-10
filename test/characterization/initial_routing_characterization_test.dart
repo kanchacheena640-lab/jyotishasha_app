@@ -47,6 +47,10 @@ void main() {
         // Planet-in-House article URL), added alongside /event and
         // /notification-detail rather than replacing either.
         '/transit-article',
+        // N6 — Campaign C (ADMIN_CAMPAIGN) WEB_URL notification-tap
+        // destination, added alongside the others above rather than
+        // replacing any of them.
+        '/campaign-web',
       ]);
       expect(source, contains('Page Not Found'));
     });

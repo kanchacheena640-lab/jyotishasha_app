@@ -31,6 +31,7 @@ import 'package:jyotishasha_app/core/utils/global_context.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 import 'package:jyotishasha_app/core/notifications/notification_navigation_service.dart';
 import 'package:jyotishasha_app/core/notifications/notification_opened_producer.dart';
+import 'package:jyotishasha_app/core/notifications/destination_opened_producer.dart';
 import 'package:jyotishasha_app/core/notifications/panchang_dismiss_bridge.dart';
 import 'package:jyotishasha_app/core/messaging/fcm_token_manager.dart';
 import 'package:jyotishasha_app/app/routes/app_routes.dart';
@@ -75,6 +76,13 @@ void handleNotificationTap(RemoteMessage message) {
   // delay or alter the navigation call right after it.
   NotificationOpenedProducer.emit(destination);
   notificationNavigationService.openDestination(destination);
+  // N6 -- Campaign C only: fires ONLY when this push tap resolved to a
+  // genuine APP_DEEP_LINK route (never NONE, never an unsupported target
+  // that fell back to Notification Detail, never WEB_URL -- that one's
+  // own success signal fires later, from CampaignWebResourcePage itself).
+  // A/B's existing behavior (no destination_opened concept at all) is
+  // completely untouched -- this is a no-op for every non-Campaign-C tap.
+  DestinationOpenedProducer.maybeEmitForDeepLink(destination);
 }
 
 /// Must be a top-level (or static) function: on Android this runs in a

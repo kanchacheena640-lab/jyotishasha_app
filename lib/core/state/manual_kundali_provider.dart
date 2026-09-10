@@ -2,13 +2,15 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 class ManualKundaliProvider with ChangeNotifier {
   Map<String, dynamic>? kundali;
   bool isLoading = false;
   String? error;
 
   static const String apiUrl =
-      "https://jyotishasha-backend.onrender.com/api/full-kundali-modern";
+      "${AppConfig.backendBaseUrl}/api/full-kundali-modern";
 
   Future<bool> generateKundali({
     required String name,

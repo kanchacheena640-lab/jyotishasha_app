@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../analytics/activity_events.dart';
 
 class TransitProvider extends ChangeNotifier {
@@ -117,7 +119,7 @@ class TransitProvider extends ChangeNotifier {
       final res = await http
           .get(
             Uri.parse(
-              "https://jyotishasha-backend.onrender.com/api/transit/current",
+              "${AppConfig.backendBaseUrl}/api/transit/current",
             ),
           )
           .timeout(const Duration(seconds: 15));
@@ -154,7 +156,7 @@ class TransitProvider extends ChangeNotifier {
 
       final url =
           Uri.parse(
-            "https://jyotishasha-backend.onrender.com/api/transit",
+            "${AppConfig.backendBaseUrl}/api/transit",
           ).replace(
             queryParameters: {
               "ascendant": ascendant,

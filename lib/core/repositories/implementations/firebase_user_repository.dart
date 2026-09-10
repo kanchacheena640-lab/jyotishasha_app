@@ -3,13 +3,15 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../../services/backend_auth_service.dart';
 import '../../models/user/user.dart';
 import '../../models/user/user_identity.dart';
 import '../user_repository.dart';
 
 final class FirebaseUserRepository implements UserRepository {
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   FirebaseUserRepository({
     FirebaseFirestore? firestore,

@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../enums/love_tool.dart';
 
 class LoveApiService {
   // 🔒 Same backend base URL you already use elsewhere
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   Future<Map<String, dynamic>> run(
     LoveTool tool,

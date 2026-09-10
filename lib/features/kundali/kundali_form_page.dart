@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:jyotishasha_app/core/analytics/activity_events.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
@@ -35,7 +36,7 @@ class _KundaliFormPageState extends State<KundaliFormPage> {
   Future<void> _generateKundali() async {
     setState(() => isLoading = true);
     const apiUrl =
-        "https://jyotishasha-backend.onrender.com/api/full-kundali-modern";
+        "${AppConfig.backendBaseUrl}/api/full-kundali-modern";
 
     final body = {
       "name": nameCtrl.text,

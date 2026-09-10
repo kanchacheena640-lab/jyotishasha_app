@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 class CardsProvider extends ChangeNotifier {
   List<CardModel> _cards = [];
@@ -178,7 +179,7 @@ class CardsProvider extends ChangeNotifier {
       return _muhurthCache[cacheKey]!;
     }
 
-    const baseUrl = "https://jyotishasha-backend.onrender.com/api/muhurth/list";
+    const baseUrl = "${AppConfig.backendBaseUrl}/api/muhurth/list";
 
     final body = {
       "activity": activity,

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 class HomeUpcomingEventsProvider extends ChangeNotifier {
   bool isLoading = false;
   String? error;
@@ -20,7 +22,7 @@ class HomeUpcomingEventsProvider extends ChangeNotifier {
     savedLng = lng;
 
     const endpoint =
-        "https://jyotishasha-backend.onrender.com/api/events/home-upcoming";
+        "${AppConfig.backendBaseUrl}/api/events/home-upcoming";
 
     try {
       // Release-gate fix (P0): a stalled/never-responding request (Render

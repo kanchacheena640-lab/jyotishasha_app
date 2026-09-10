@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import '../astrology/astrology_page.dart';
 import 'package:jyotishasha_app/core/widgets/kundali_chart_north_widget.dart';
 import 'package:jyotishasha_app/core/registry/tool_registry.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 class ToolResultPage extends StatefulWidget {
   final String toolId;
@@ -123,7 +124,7 @@ class _ToolResultPageState extends State<ToolResultPage> {
       debugPrint("ToolResultPage → Request: $payload");
 
       final url = Uri.parse(
-        'https://jyotishasha-backend.onrender.com/api/full-kundali-modern',
+        '${AppConfig.backendBaseUrl}/api/full-kundali-modern',
       );
 
       // Release-gate fix (P0): a stalled/never-responding request (Render

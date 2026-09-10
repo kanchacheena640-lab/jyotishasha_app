@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import 'backend_auth_service.dart';
 
 /// P0 -- Recover authenticated users with incomplete birth profiles.
@@ -31,7 +33,7 @@ class ProfileCompletenessResult {
 }
 
 class ProfileCompletenessService {
-  static const String baseUrl = "https://jyotishasha-backend.onrender.com";
+  static const String baseUrl = AppConfig.backendBaseUrl;
 
   /// Calls GET /api/profile/completeness for the currently signed-in
   /// Firebase user. Requires a backend JWT (obtained the same way every

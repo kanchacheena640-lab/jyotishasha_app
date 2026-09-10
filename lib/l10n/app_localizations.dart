@@ -2663,6 +2663,24 @@ abstract class AppLocalizations {
   /// **'No notifications yet.'**
   String get bellEmptyState;
 
+  /// No description provided for @bellMarkAllRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all read'**
+  String get bellMarkAllRead;
+
+  /// No description provided for @bellClearAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get bellClearAll;
+
+  /// No description provided for @bellDismissTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get bellDismissTooltip;
+
   /// No description provided for @authorityAppBarTitle.
   ///
   /// In en, this message translates to:

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:jyotishasha_app/core/analytics/analytics_session_context.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
 import 'package:jyotishasha_app/core/identity/firebase_current_user_identity_port.dart';
 import 'package:jyotishasha_app/services/backend_auth_service.dart';
@@ -54,7 +55,7 @@ class ActivityEventClient {
        _tokenProvider = tokenProvider ?? BackendAuthService.getBackendToken,
        _sessionContext = sessionContext ?? AnalyticsSessionContext.instance;
 
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
   static const String _path = '/api/activity-events';
 
   /// The one fixed `source` literal every Flutter-originated client event

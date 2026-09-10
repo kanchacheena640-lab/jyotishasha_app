@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/cards/card_contracts.dart';
 import '../card_repository.dart';
 
@@ -9,7 +11,7 @@ final class HttpCardRepository implements CardRepository {
   HttpCardRepository({http.Client? client}) : _client = client ?? http.Client();
 
   static final Uri _endpoint = Uri.parse(
-    'https://jyotishasha-backend.onrender.com/api/cards',
+    '${AppConfig.backendBaseUrl}/api/cards',
   );
   final http.Client _client;
 

@@ -4,4 +4,13 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- N6 QA infrastructure: DEBUG BUILD ONLY. Gradle merges this
+         android:networkSecurityConfig attribute into the application
+         element from src/main/AndroidManifest.xml for debug builds only;
+         a release/profile build never sees this file or attribute at all.
+         See res/xml/network_security_config.xml's own docstring for the
+         exact, narrow allowlist this enables (loopback/emulator alias
+         only: no real LAN IP, no blanket cleartext everywhere). -->
+    <application android:networkSecurityConfig="@xml/network_security_config"/>
 </manifest>

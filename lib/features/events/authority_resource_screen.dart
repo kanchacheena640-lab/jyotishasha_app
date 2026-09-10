@@ -14,9 +14,19 @@ import 'package:jyotishasha_app/l10n/app_localizations.dart';
 /// syntax, load failure, offline) is handled entirely by the WebView
 /// itself, not duplicated here.
 class AuthorityResourceScreen extends StatelessWidget {
-  const AuthorityResourceScreen({super.key, required this.resource});
+  const AuthorityResourceScreen({
+    super.key,
+    required this.resource,
+    this.isNavigationAllowed,
+  });
 
   final ResourceDto resource;
+
+  /// P3E -- forwarded verbatim to [InAppWebView] (see its own docstring).
+  /// `null` (every existing call site: TransitArticlePage,
+  /// EventDispatcherPage's "Know More") preserves this screen's original,
+  /// unchanged unrestricted-navigation behavior exactly.
+  final bool Function(Uri uri)? isNavigationAllowed;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +63,10 @@ class AuthorityResourceScreen extends StatelessWidget {
       );
     }
 
-    return InAppWebView(url: url, title: t.authorityAppBarTitle);
+    return InAppWebView(
+      url: url,
+      title: t.authorityAppBarTitle,
+      isNavigationAllowed: isNavigationAllowed,
+    );
   }
 }

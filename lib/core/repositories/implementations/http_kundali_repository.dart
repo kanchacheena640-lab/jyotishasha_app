@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/kundali/kundali_contracts.dart';
 import '../kundali_repository.dart';
 
@@ -10,7 +12,7 @@ final class HttpKundaliRepository implements KundaliRepository {
     : _client = client ?? http.Client();
 
   static final Uri _endpoint = Uri.parse(
-    'https://jyotishasha-backend.onrender.com/api/full-kundali-modern',
+    '${AppConfig.backendBaseUrl}/api/full-kundali-modern',
   );
 
   final http.Client _client;

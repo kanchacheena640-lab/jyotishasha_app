@@ -3,6 +3,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 /// Report Purchase CANCELED Recovery Dead-End fix: `sendReportRequest()`
 /// used to collapse every non-200 response to a bare `false`, so a
 /// caller could not tell "this token can never succeed (Google
@@ -18,7 +20,7 @@ class ReportConfirmResult {
 }
 
 class ReportService {
-  static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   // P0 — Flutter Google Play Report Purchase Integration: report
   // purchases now go through Google Play, verified server-side via

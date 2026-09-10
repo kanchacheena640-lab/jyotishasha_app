@@ -503,6 +503,9 @@
   "notificationDetailAntardashaLabel": "Antardasha",
 
   "bellEmptyState": "No notifications yet.",
+  "bellMarkAllRead": "Mark all read",
+  "bellClearAll": "Clear",
+  "bellDismissTooltip": "Dismiss",
 
   "authorityAppBarTitle": "Authority",
   "authorityContentNotAvailableTitle": "Content not available",

@@ -626,6 +626,9 @@
   "notificationDetailAntardashaLabel": "अंतर्दशा",
 
   "bellEmptyState": "अभी कोई सूचना नहीं है।",
+  "bellMarkAllRead": "सभी को पढ़ा हुआ चिह्नित करें",
+  "bellClearAll": "साफ़ करें",
+  "bellDismissTooltip": "हटाएं",
 
   "authorityAppBarTitle": "प्राधिकरण",
   "authorityContentNotAvailableTitle": "सामग्री उपलब्ध नहीं है",

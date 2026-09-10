@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/services/asknow_service.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 class AskNowProvider extends ChangeNotifier {
   /// Google Play product ID for the paid Ask Now pack — the ONE named
@@ -377,7 +378,7 @@ class AskNowProvider extends ChangeNotifier {
       final res = await _httpClient
           .post(
             Uri.parse(
-              "https://jyotishasha-backend.onrender.com/api/chatpack/verify",
+              "${AppConfig.backendBaseUrl}/api/chatpack/verify",
             ),
             headers: const {"Content-Type": "application/json"},
             body: jsonEncode({

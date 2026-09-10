@@ -6,6 +6,7 @@ import 'package:jyotishasha_app/features/astrology/astrology_tool_detail_page.da
 import 'package:jyotishasha_app/features/events/event_dispatcher_page.dart';
 import 'package:jyotishasha_app/features/events/notification_detail_page.dart';
 import 'package:jyotishasha_app/features/events/transit_article_page.dart';
+import 'package:jyotishasha_app/features/events/campaign_web_resource_page.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 
 // 🌅 Entry Screens
@@ -153,6 +154,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final extra = state.extra;
         return TransitArticlePage(
+          destination: extra is NotificationDispatchDestination ? extra : null,
+        );
+      },
+    ),
+
+    // 🔔 N6 -- Campaign C (ADMIN_CAMPAIGN) WEB_URL notification-tap landing
+    // page. See NotificationDispatcher._resolveCampaignRoute() for the
+    // routing decision that sends a Campaign C WEB_URL destination here.
+    GoRoute(
+      path: '/campaign-web',
+      builder: (context, state) {
+        final extra = state.extra;
+        return CampaignWebResourcePage(
           destination: extra is NotificationDispatchDestination ? extra : null,
         );
       },

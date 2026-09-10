@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../../services/asknow_service.dart';
 import '../../models/asknow/asknow_contracts.dart';
 import '../asknow_repository.dart';
@@ -11,7 +13,7 @@ final class BackendAskNowRepository implements AskNowRepository {
     : _client = client ?? http.Client();
 
   static final Uri _verificationEndpoint = Uri.parse(
-    'https://jyotishasha-backend.onrender.com/api/chatpack/verify',
+    '${AppConfig.backendBaseUrl}/api/chatpack/verify',
   );
 
   final http.Client _client;

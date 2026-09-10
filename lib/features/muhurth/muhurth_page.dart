@@ -11,6 +11,7 @@ import 'package:jyotishasha_app/core/ads/banner_ad_widget.dart';
 import 'package:jyotishasha_app/core/widgets/global_share_button.dart';
 import 'package:jyotishasha_app/core/utils/share_templates.dart';
 import 'package:jyotishasha_app/services/location_service.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 import '../cards/data/card_model.dart';
 import '../cards/presentation/widgets/card_renderer.dart';
@@ -249,7 +250,7 @@ class _MuhurthPageState extends State<MuhurthPage> {
 
     setState(() => isLoading = true);
 
-    const baseUrl = "https://jyotishasha-backend.onrender.com/api/muhurth/list";
+    const baseUrl = "${AppConfig.backendBaseUrl}/api/muhurth/list";
 
     final body = {
       "activity": selectedActivity,

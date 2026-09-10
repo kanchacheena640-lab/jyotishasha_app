@@ -23,10 +23,28 @@ bool isMainFrameWebResourceError(WebResourceError error) =>
 /// Handles loading and error/offline states; never injects JavaScript into
 /// the page and never intercepts/blocks navigation within it.
 class InAppWebView extends StatefulWidget {
-  const InAppWebView({super.key, required this.url, this.title});
+  const InAppWebView({
+    super.key,
+    required this.url,
+    this.title,
+    this.isNavigationAllowed,
+  });
 
   final String url;
   final String? title;
+
+  /// P3E -- OPT-IN defense-in-depth against redirects. `null` (the
+  /// default for every existing call site -- BlogReaderPage,
+  /// TransitArticlePage, EventDispatcherPage's "Know More") preserves
+  /// this widget's original, unchanged behavior EXACTLY: every navigation
+  /// (including any in-page redirect) is allowed, matching this class's
+  /// own long-standing "never intercept navigation" contract. Only a
+  /// caller that supplies this (today: [CampaignWebResourcePage], via
+  /// [AuthorityResourceScreen]) gets BOTH the initial load AND every
+  /// subsequent navigation request (redirects, in-page link taps)
+  /// checked against it; a rejected navigation fails closed to this
+  /// widget's existing error state, never a silent partial load.
+  final bool Function(Uri uri)? isNavigationAllowed;
 
   @override
   State<InAppWebView> createState() => _InAppWebViewState();
@@ -49,6 +67,15 @@ class _InAppWebViewState extends State<InAppWebView> {
       return;
     }
 
+    // P3E -- the initial load itself is checked too, not only subsequent
+    // navigation requests below: a caller that opted into
+    // [isNavigationAllowed] gets the SAME guarantee on the very first URL,
+    // never just on redirects after it.
+    if (widget.isNavigationAllowed != null && !widget.isNavigationAllowed!(uri)) {
+      _state = _WebViewLoadState.error;
+      return;
+    }
+
     // TEMP LOG (BUG-011B)
     debugPrint('[BUG-011B][InAppWebView] RAW URL: ${widget.url}');
     // TEMP LOG (BUG-011B)
@@ -60,9 +87,29 @@ class _InAppWebViewState extends State<InAppWebView> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
-          // Never intercept navigation — everything stays inside the app,
-          // matching the existing WebView (BlogReaderPage) behavior.
-          onNavigationRequest: (request) => NavigationDecision.navigate,
+          // Default (widget.isNavigationAllowed == null): never intercept
+          // navigation — everything stays inside the app, matching the
+          // existing WebView (BlogReaderPage) behavior, byte-for-byte
+          // unchanged for every call site that doesn't opt in below.
+          //
+          // P3E -- when a caller DOES opt in, every navigation request
+          // (a redirect the loaded page issues, a link tap inside it,
+          // anything) is checked against the SAME predicate the initial
+          // load already was; a rejected request never partially loads --
+          // WebViewController stays on its last successfully-loaded
+          // content, and the failed request is silently prevented (no
+          // error banner for a REJECTED navigation specifically, since
+          // this is normal, expected behavior for a page that tries to
+          // leave the approved destination, not a load failure).
+          onNavigationRequest: (request) {
+            final allowed = widget.isNavigationAllowed;
+            if (allowed == null) return NavigationDecision.navigate;
+            final uri = Uri.tryParse(request.url);
+            if (uri == null || !allowed(uri)) {
+              return NavigationDecision.prevent;
+            }
+            return NavigationDecision.navigate;
+          },
           onPageFinished: (_) {
             if (!mounted) return;
             setState(() => _state = _WebViewLoadState.loaded);

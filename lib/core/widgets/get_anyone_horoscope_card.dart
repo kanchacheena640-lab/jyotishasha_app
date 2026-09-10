@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:jyotishasha_app/core/constants/app_colors.dart';
 import 'package:jyotishasha_app/core/constants/google_maps_config.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_detail_page.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 import 'package:http/http.dart' as http;
 
 class GetAnyoneHoroscopeCard extends StatefulWidget {
@@ -145,7 +146,7 @@ class _GetAnyoneHoroscopeCardState extends State<GetAnyoneHoroscopeCard> {
       final response = await http
           .post(
             Uri.parse(
-              "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
+              "${AppConfig.backendBaseUrl}/api/full-kundali-modern",
             ),
             headers: {"Content-Type": "application/json"},
             body: jsonEncode(payload),

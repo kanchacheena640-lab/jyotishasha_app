@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 class FirebaseKundaliProvider extends ChangeNotifier {
   Map<String, dynamic>? kundaliData;
   Map<String, dynamic>? profileData;
@@ -123,7 +125,7 @@ class FirebaseKundaliProvider extends ChangeNotifier {
 
       // BACKEND CALL
       final url = Uri.parse(
-        "https://jyotishasha-backend.onrender.com/api/full-kundali-modern",
+        "${AppConfig.backendBaseUrl}/api/full-kundali-modern",
       );
 
       // Release-gate fix (P0): a stalled/never-responding request (Render

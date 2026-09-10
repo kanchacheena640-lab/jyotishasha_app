@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 /// Reusable App Update System -- backend-controlled, three-state Android
 /// update gate. Operators change behavior entirely through
 /// PATCH /admin/api/app-version-policy; no Flutter or backend code
@@ -69,7 +71,7 @@ class AppVersionGateResult {
 }
 
 class AppVersionGateService {
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   /// Reusable App Update System -- tracks whether the user already
   /// dismissed a SOFT prompt during the CURRENT app process lifetime

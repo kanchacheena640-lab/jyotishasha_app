@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
 import 'package:jyotishasha_app/core/constants/subscription_products.dart';
 import 'package:jyotishasha_app/core/constants/subscription_sections.dart';
 import 'package:jyotishasha_app/core/models/asknow/asknow_contracts.dart';
@@ -68,7 +69,7 @@ class SubscriptionProvider extends ChangeNotifier {
        // is unchanged.
        _backendTokenProviderOverride = backendTokenProvider;
 
-  static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   final BillingRepository _billing;
   final http.Client _httpClient;

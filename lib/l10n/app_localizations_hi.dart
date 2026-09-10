@@ -1323,6 +1323,15 @@ class AppLocalizationsHi extends AppLocalizations {
   String get bellEmptyState => 'अभी कोई सूचना नहीं है।';
 
   @override
+  String get bellMarkAllRead => 'सभी को पढ़ा हुआ चिह्नित करें';
+
+  @override
+  String get bellClearAll => 'साफ़ करें';
+
+  @override
+  String get bellDismissTooltip => 'हटाएं';
+
+  @override
   String get authorityAppBarTitle => 'प्राधिकरण';
 
   @override

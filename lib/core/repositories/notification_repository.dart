@@ -16,5 +16,18 @@ abstract interface class NotificationRepository {
 
   Future<void> markAsRead(MarkNotificationReadRequest request);
 
+  /// N6 -- presentation-only, unified across A/B/C. No "mark unread"
+  /// exists in this interface, by design (N6 v1 contract).
+  Future<void> markAllRead();
+
+  /// N6 -- presentation-only removal of every currently-visible item
+  /// (both sources). Never implies deletion of operational campaign
+  /// history.
+  Future<void> clearAll();
+
+  /// N6 -- presentation-only removal of one item, addressed by its exact
+  /// backend-supplied composite id (`"ab:<int>"` / `"cc:<uuid>"`).
+  Future<void> dismiss(String itemId);
+
   Future<void> registerDeviceToken(String token);
 }

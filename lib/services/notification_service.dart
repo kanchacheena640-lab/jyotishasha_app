@@ -107,7 +107,12 @@ class NotificationService {
     }
   }
 
-  static Future<void> markAsRead(int notificationId) async {
+  /// N6 -- `itemId` is the exact backend-supplied composite Bell id
+  /// (`"ab:<int>"` / `"cc:<uuid>"`), sent verbatim. Replaces the legacy
+  /// int-only signature (this app's Bell no longer receives a plain
+  /// integer id from the unified list response, so there is no
+  /// meaningful legacy call site left to preserve).
+  static Future<void> markAsRead(String itemId) async {
     final user = _currentUserOrNull();
     if (user == null) {
       return;
@@ -120,10 +125,39 @@ class NotificationService {
 
     try {
       await _repository.markAsRead(
-        MarkNotificationReadRequest(notificationId: notificationId),
+        MarkNotificationReadRequest(itemId: itemId),
       );
     } catch (e) {
       print("❌ Mark as read error: $e");
     }
+  }
+
+  /// N6 -- presentation-only, unified across A/B/C. Rethrows on failure
+  /// (never fakes success) so the caller (NotificationProvider) can
+  /// decide how to reflect that to the UI.
+  static Future<void> markAllRead() async {
+    final user = _currentUserOrNull();
+    if (user == null) return;
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) return;
+    await _repository.markAllRead();
+  }
+
+  /// N6 -- presentation-only removal of every currently-visible item.
+  static Future<void> clearAll() async {
+    final user = _currentUserOrNull();
+    if (user == null) return;
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) return;
+    await _repository.clearAll();
+  }
+
+  /// N6 -- presentation-only removal of one item.
+  static Future<void> dismiss(String itemId) async {
+    final user = _currentUserOrNull();
+    if (user == null) return;
+    final token = await BackendAuthService.getBackendToken(user.uid);
+    if (token == null) return;
+    await _repository.dismiss(itemId);
   }
 }

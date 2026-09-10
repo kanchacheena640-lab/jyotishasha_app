@@ -14,6 +14,8 @@ import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/services/notification_service.dart';
 import 'package:jyotishasha_app/core/state/notification_provider.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
+import 'package:jyotishasha_app/core/notifications/notification_opened_producer.dart';
+import 'package:jyotishasha_app/core/notifications/destination_opened_producer.dart';
 import 'package:jyotishasha_app/features/kundali/kundali_overview_page.dart';
 import 'package:jyotishasha_app/l10n/app_localizations.dart';
 import 'package:jyotishasha_app/main.dart' show notificationNavigationService;
@@ -685,16 +687,40 @@ class _NotificationPreviewState extends State<NotificationPreview> {
           );
         }
 
-        // ✅ SUCCESS LIST
-        return ListView.separated(
-          padding: const EdgeInsets.all(12),
-          itemCount: list.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
-          itemBuilder: (context, index) {
-            final n = list[index];
-            final isRead = n["is_read"] == true;
+        // ✅ SUCCESS LIST -- N6 adds a "Mark all read"/"Clear" header row
+        // above the list. Both are presentation-only, unified across
+        // A/B/C via NotificationProvider's own N6 methods; neither
+        // locally fakes success -- the list only refreshes after the
+        // backend call actually completes.
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => _handleMarkAllRead(context),
+                    child: Text(t.bellMarkAllRead),
+                  ),
+                  TextButton(
+                    onPressed: () => _handleClearAll(context),
+                    child: Text(t.bellClearAll),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.all(12),
+                itemCount: list.length,
+                separatorBuilder: (_, __) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final n = list[index];
+                  final isRead = n["is_read"] == true;
 
-            return ListTile(
+                  return ListTile(
               contentPadding: const EdgeInsets.symmetric(
                 vertical: 6,
                 horizontal: 4,
@@ -709,10 +735,16 @@ class _NotificationPreviewState extends State<NotificationPreview> {
               ),
 
               onTap: () async {
-                // 🔥 SAFE ID PARSE (important)
-                final id = n["id"] is int
-                    ? n["id"]
-                    : int.tryParse("${n["id"]}");
+                // N6 fix: this row's map is AppNotification.toJson() (see
+                // notification_service.dart::getNotifications()), where the
+                // unified list's real identity always lives in "item_id"
+                // ("ab:<int>" / "cc:<uuid>"); "id" is the legacy nullable
+                // int kept only for old call sites and is ALWAYS null for
+                // every N6 composite-id row. Reading n["id"] here made this
+                // row tap's mark-read a silent no-op for every notification
+                // — the exact same composite-id defect already fixed for
+                // the dismiss button below (see its own onPressed comment).
+                final itemId = n["item_id"]?.toString();
 
                 // Same NotificationDispatcher used by the FCM tap path
                 // (main.dart) — Notification Center and FCM must resolve
@@ -720,16 +752,23 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                 final destination =
                     NotificationDispatcher.fromNotificationCenterItem(n);
 
-                print("CLICKED ID: $id");
-
                 // 🔹 Extract dependencies first
                 final provider = context.read<NotificationProvider>();
 
-                // 🔥 MARK AS READ
-                if (id != null) {
-                  await NotificationService.markAsRead(id);
-                } else {
-                  print("❌ Invalid notification id");
+                // 🔥 MARK AS READ (presentation only -- never mutates
+                // campaign/execution/delivery/attempt/attribution history)
+                if (itemId != null) {
+                  await provider.markAsRead(itemId);
+                }
+
+                // N6 -- Campaign C only: a Bell tap must ALSO emit
+                // notification_opened (a push tap already does, via
+                // main.dart::handleNotificationTap). A/B's existing
+                // silence on a Bell tap is left completely unchanged --
+                // this app has never emitted notification_opened for an
+                // A/B Bell tap, and still does not.
+                if (destination.type == NotificationDispatcher.campaignType) {
+                  NotificationOpenedProducer.emit(destination);
                 }
 
                 // 🔄 REFRESH BELL COUNT
@@ -756,6 +795,12 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                 // state cannot be corrupted by a bad destination.
                 if (!context.mounted) return;
                 notificationNavigationService.openDestination(destination);
+
+                // N6 -- Campaign C only, and only for a deep-link that
+                // actually resolved to a real (non-fallback) route; see
+                // DestinationOpenedProducer.maybeEmitForDeepLink's own
+                // docstring for the exact gating and dedupe reasoning.
+                DestinationOpenedProducer.maybeEmitForDeepLink(destination);
               },
 
               leading: _NotificationTypeIcon(
@@ -791,18 +836,90 @@ class _NotificationPreviewState extends State<NotificationPreview> {
                   ),
                 ],
               ),
-            );
-          },
+
+              // N6 -- subtle individual dismiss. A dedicated small icon
+              // button (not a swipe/Dismissible) so a dismiss gesture can
+              // never be mistaken for -- or accidentally trigger -- the
+              // row's own tap-to-open/mark-read/notification_opened flow
+              // above; presentation-only, never touches operational
+              // history.
+              trailing: IconButton(
+                icon: const Icon(Icons.close_rounded, size: 16),
+                tooltip: t.bellDismissTooltip,
+                color: Colors.grey.shade400,
+                // N6 fix: this row's map is AppNotification.toJson() (see
+                // notification_service.dart::getNotifications()), where the
+                // unified list's real identity always lives in "item_id"
+                // ("ab:<int>" / "cc:<uuid>"); "id" is the legacy nullable
+                // int kept only for old call sites and is ALWAYS null for
+                // every N6 composite-id row. Reading n["id"] here made
+                // _handleDismissOne's itemId always null, so its own
+                // `if (itemId == null) return;` guard silently swallowed
+                // every tap before any request was ever sent -- the button
+                // still showed its own ripple (a real Flutter tap was
+                // recognized), so the failure was invisible in the UI.
+                onPressed: () => _handleDismissOne(context, n["item_id"]?.toString()),
+              ),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
   }
 
+  // N6 -- Mark all read / Clear / individual dismiss are all
+  // presentation-only and unified across A/B/C via NotificationProvider's
+  // own new methods. Each awaits the authoritative backend call before
+  // refreshing the visible list -- never optimistically mutates local
+  // state ahead of a confirmed success, and a failure leaves the list
+  // exactly as it was (no silent/fake success).
+  Future<void> _handleMarkAllRead(BuildContext context) async {
+    final provider = context.read<NotificationProvider>();
+    try {
+      await provider.markAllRead();
+      if (!mounted) return;
+      setState(() { _future = _load(); });
+    } catch (e) {
+      debugPrint('[NotificationPreview] mark-all-read failed: $e');
+    }
+  }
+
+  Future<void> _handleClearAll(BuildContext context) async {
+    final provider = context.read<NotificationProvider>();
+    try {
+      await provider.clearAll();
+      if (!mounted) return;
+      setState(() { _future = _load(); });
+    } catch (e) {
+      debugPrint('[NotificationPreview] clear-all failed: $e');
+    }
+  }
+
+  Future<void> _handleDismissOne(BuildContext context, String? itemId) async {
+    if (itemId == null) return;
+    final provider = context.read<NotificationProvider>();
+    try {
+      await provider.dismiss(itemId);
+      if (!mounted) return;
+      setState(() { _future = _load(); });
+    } catch (e) {
+      debugPrint('[NotificationPreview] dismiss failed: $e');
+    }
+  }
+
   /// `n["data"]["type"]` — the same authoritative discriminator
   /// NotificationNavigationService already routes on (event/transit/
-  /// dasha/dasha_pre/panchang/panchak/alert). Purely for choosing a
-  /// small leading icon; never used for navigation or eligibility.
+  /// dasha/dasha_pre/panchang/panchak/alert) -- or, for a Campaign C row
+  /// (`n["source"] == "ADMIN_CAMPAIGN"`, checked first since these rows
+  /// carry no `data` key at all), the same synthetic
+  /// `NotificationDispatcher.campaignType` used for routing. Purely for
+  /// choosing a small leading icon; never used for navigation or
+  /// eligibility.
   static String? _extractType(Map n) {
+    if (n["source"] == 'ADMIN_CAMPAIGN') return NotificationDispatcher.campaignType;
     final data = n["data"];
     if (data is Map) return data["type"]?.toString();
     return null;
@@ -872,6 +989,7 @@ class _NotificationTypeIcon extends StatelessWidget {
     'panchang': Icons.wb_sunny_rounded,
     'panchak': Icons.warning_amber_rounded,
     'alert': Icons.bolt_rounded,
+    'admin_campaign': Icons.campaign_rounded,
   };
 
   @override

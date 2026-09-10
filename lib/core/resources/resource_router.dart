@@ -4,10 +4,17 @@ import 'package:jyotishasha_app/core/models/events/event_resource_contracts.dart
 import 'package:jyotishasha_app/features/events/authority_resource_screen.dart';
 
 /// Handles navigating to the screen for one [ResourceDto.type].
+///
+/// P3E -- [isNavigationAllowed] is an OPTIONAL, OPT-IN extra a caller may
+/// supply (today: [CampaignWebResourcePage] only); every existing handler
+/// ignores it exactly as before if not given one -- see
+/// [InAppWebView.isNavigationAllowed]'s own docstring for the full
+/// contract.
 typedef ResourceHandler = void Function(
   BuildContext context,
-  ResourceDto resource,
-);
+  ResourceDto resource, {
+  bool Function(Uri uri)? isNavigationAllowed,
+});
 
 /// Centralized decision point for "where should this resource open" — the
 /// single place every "Know More" tap (and any future resource entry point)
@@ -27,21 +34,32 @@ final class ResourceRouter {
   /// (`video`, `pdf`, `tool`, `community`, `calculator`, `ai_insight`, or
   /// anything else) never crash — they safely surface "Not implemented"
   /// instead of navigating.
-  static void open(BuildContext context, ResourceDto resource) {
+  static void open(
+    BuildContext context,
+    ResourceDto resource, {
+    bool Function(Uri uri)? isNavigationAllowed,
+  }) {
     final handler = _handlers[resource.type];
     if (handler == null) {
       _notImplemented(context);
       return;
     }
-    handler(context, resource);
+    handler(context, resource, isNavigationAllowed: isNavigationAllowed);
   }
 
-  static void _openAuthority(BuildContext context, ResourceDto resource) {
+  static void _openAuthority(
+    BuildContext context,
+    ResourceDto resource, {
+    bool Function(Uri uri)? isNavigationAllowed,
+  }) {
     // TEMP LOG (BUG-011B)
     debugPrint('[BUG-011B][ResourceRouter] URL passed to AuthorityResourceScreen: ${resource.url}');
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => AuthorityResourceScreen(resource: resource),
+        builder: (_) => AuthorityResourceScreen(
+          resource: resource,
+          isNavigationAllowed: isNavigationAllowed,
+        ),
       ),
     );
   }

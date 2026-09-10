@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import 'card_model.dart';
 
 class CardService {
   static const String baseUrl =
-      "https://jyotishasha-backend.onrender.com/api/cards";
+      "${AppConfig.backendBaseUrl}/api/cards";
 
   static Future<List<CardModel>> fetchCards({
     required double lat,

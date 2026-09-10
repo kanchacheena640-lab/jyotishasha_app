@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/muhurth/muhurth_contracts.dart';
 import '../muhurth_repository.dart';
 
@@ -10,7 +12,7 @@ final class HttpMuhurthRepository implements MuhurthRepository {
     : _client = client ?? http.Client();
 
   static final Uri _endpoint = Uri.parse(
-    'https://jyotishasha-backend.onrender.com/api/muhurth/list',
+    '${AppConfig.backendBaseUrl}/api/muhurth/list',
   );
   final http.Client _client;
 

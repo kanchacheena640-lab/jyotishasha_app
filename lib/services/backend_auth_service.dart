@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 class BackendAuthService {
-  static const String baseUrl = "https://jyotishasha-backend.onrender.com";
+  static const String baseUrl = AppConfig.backendBaseUrl;
 
   // 🔥 REGISTER / LINK USER
   static Future<int?> registerFirebaseUser({

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:jyotishasha_app/services/backend_auth_service.dart';
+import 'package:jyotishasha_app/core/config/app_config.dart';
 
 import '../../models/account/account_deletion_contracts.dart';
 import '../account_deletion_repository.dart';
@@ -50,7 +51,7 @@ final class HttpAccountDeletionRepository implements AccountDeletionRepository {
            fetchFreshFirebaseIdToken ?? _defaultFetchFreshFirebaseIdToken,
        _fetchBackendToken = fetchBackendToken ?? _defaultFetchBackendToken;
 
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   final http.Client _client;
   final Future<String?> Function() _fetchFreshFirebaseIdToken;

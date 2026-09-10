@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  N6 QA infrastructure: DEBUG BUILD ONLY (lives under src/debug/, which
+  Gradle never merges into a release/profile build; see
+  android/app/src/debug/AndroidManifest.xml's own reference to this file).
+
+  Permits plaintext HTTP to a small, explicit allowlist of STABLE,
+  environment-independent local-development hosts only, never a real
+  machine's own LAN IP (which changes per network and must never be
+  hardcoded into source, per this task's own instruction), and never a
+  blanket "allow all cleartext" default. Every other domain (including the
+  real production backend, which is always HTTPS) is unaffected, and this
+  file has no effect whatsoever on a release or profile build, which fall
+  back to Android's own secure (HTTPS only) default with no network
+  security config at all.
+
+  Entries:
+    - 10.0.2.2: the Android EMULATOR's fixed alias for the host machine's
+      own loopback.
+    - localhost / 127.0.0.1: for a PHYSICAL device reached via
+      `adb reverse tcp:5000 tcp:5000` (recommended for this QA; see the
+      task report's own "Exact physical-device flutter run command"
+      section): the device's own 127.0.0.1:5000 then tunnels over USB to
+      this machine's local Flask server, so the device never needs to
+      know this machine's LAN IP at all.
+
+  If a same-Wi-Fi (non-USB) LAN-IP connection is used instead, that IP is
+  NOT pre-added here (it would mean checking a specific machine's network
+  address into source control); add it as one more domain line,
+  deliberately, for that session, and remove it afterward. Do not leave a
+  real LAN IP committed here permanently.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

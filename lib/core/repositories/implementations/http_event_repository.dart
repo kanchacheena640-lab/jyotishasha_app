@@ -2,13 +2,15 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/events/event_resource_contracts.dart';
 import '../event_repository.dart';
 
 final class HttpEventRepository implements EventRepository {
   HttpEventRepository({http.Client? client}) : _client = client ?? http.Client();
 
-  static const String _baseUrl = 'https://jyotishasha-backend.onrender.com';
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   final http.Client _client;
 

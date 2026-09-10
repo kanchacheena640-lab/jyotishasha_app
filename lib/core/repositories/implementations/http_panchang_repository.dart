@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/panchang/panchang_contracts.dart';
 import '../panchang_repository.dart';
 
@@ -10,7 +12,7 @@ final class HttpPanchangRepository implements PanchangRepository {
     : _client = client ?? http.Client();
 
   static final Uri _endpoint = Uri.parse(
-    'https://jyotishasha-backend.onrender.com/api/panchang',
+    '${AppConfig.backendBaseUrl}/api/panchang',
   );
 
   final http.Client _client;

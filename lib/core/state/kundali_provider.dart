@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 class KundaliProvider with ChangeNotifier {
   Map<String, dynamic>? kundaliData;
 
@@ -15,10 +17,10 @@ class KundaliProvider with ChangeNotifier {
 
   // 🌐 Your backend endpoints
   static const String fullKundaliUrl =
-      "https://jyotishasha-backend.onrender.com/api/full-kundali-modern";
+      "${AppConfig.backendBaseUrl}/api/full-kundali-modern";
 
   static const String bootstrapUrl =
-      "https://jyotishasha-backend.onrender.com/api/user/bootstrap";
+      "${AppConfig.backendBaseUrl}/api/user/bootstrap";
 
   // ---------------------------------------------------------------------------
   // 1) MANUAL KUNDALI → /api/full-kundali-modern

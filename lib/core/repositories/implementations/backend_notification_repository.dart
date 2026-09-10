@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'package:jyotishasha_app/core/config/app_config.dart';
+
 import '../../models/notifications/notification_contracts.dart';
 import '../notification_repository.dart';
 
@@ -14,7 +16,7 @@ final class BackendNotificationRepository implements NotificationRepository {
        _backendTokenProvider = backendTokenProvider,
        _idTokenProvider = idTokenProvider;
 
-  static const String _baseUrl = "https://jyotishasha-backend.onrender.com";
+  static const String _baseUrl = AppConfig.backendBaseUrl;
 
   static final Uri _registrationEndpoint = Uri.parse(
     '$_baseUrl/api/users/update-fcm',
@@ -76,9 +78,8 @@ final class BackendNotificationRepository implements NotificationRepository {
 
   @override
   Future<void> markAsRead(MarkNotificationReadRequest request) async {
-    final notificationId = request.notificationId;
-    if (notificationId == null) {
-      throw ArgumentError.value(notificationId, 'notificationId');
+    if (request.itemId == null && request.notificationId == null) {
+      throw ArgumentError.value(null, 'itemId/notificationId');
     }
 
     final token = await _backendTokenProvider();
@@ -92,6 +93,61 @@ final class BackendNotificationRepository implements NotificationRepository {
             "Content-Type": "application/json",
           },
           body: jsonEncode(request.toJson()),
+        )
+        .timeout(const Duration(seconds: 12));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Notification API error ${response.statusCode}');
+    }
+  }
+
+  @override
+  Future<void> markAllRead() async {
+    final token = await _backendTokenProvider();
+    final response = await _client
+        .post(
+          Uri.parse("$_baseUrl/api/user-notifications/mark-all-read"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        )
+        .timeout(const Duration(seconds: 12));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Notification API error ${response.statusCode}');
+    }
+  }
+
+  @override
+  Future<void> clearAll() async {
+    final token = await _backendTokenProvider();
+    final response = await _client
+        .post(
+          Uri.parse("$_baseUrl/api/user-notifications/clear"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+        )
+        .timeout(const Duration(seconds: 12));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Notification API error ${response.statusCode}');
+    }
+  }
+
+  @override
+  Future<void> dismiss(String itemId) async {
+    final token = await _backendTokenProvider();
+    final response = await _client
+        .post(
+          Uri.parse("$_baseUrl/api/user-notifications/dismiss"),
+          headers: {
+            "Authorization": "Bearer $token",
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode({'item_id': itemId}),
         )
         .timeout(const Duration(seconds: 12));
 

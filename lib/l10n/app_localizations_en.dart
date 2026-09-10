@@ -1323,6 +1323,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bellEmptyState => 'No notifications yet.';
 
   @override
+  String get bellMarkAllRead => 'Mark all read';
+
+  @override
+  String get bellClearAll => 'Clear';
+
+  @override
+  String get bellDismissTooltip => 'Dismiss';
+
+  @override
   String get authorityAppBarTitle => 'Authority';
 
   @override
