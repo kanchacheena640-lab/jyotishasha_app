@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jyotishasha_app/core/state/profile_provider.dart';
-import 'package:jyotishasha_app/core/state/language_provider.dart';
 import 'package:jyotishasha_app/services/location_service.dart';
 import 'package:jyotishasha_app/core/widgets/keyboard_dismiss.dart';
 
@@ -53,13 +52,73 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _selectedLanguage = (lang == "hi") ? "hi" : "en";
   }
 
+  // Neutral historical default -- same convention as
+  // birth_detail_page.dart's own _pickDateCupertino(), so both DOB-
+  // collecting flows fail toward the same safe value when there's no
+  // usable existing DOB. Deliberately never DateTime.now(): Jyotishasha
+  // supports genuine newborn/recent birth charts, so "today" cannot be
+  // used as a stand-in for "nothing picked yet".
+  static final DateTime _neutralDefaultDob = DateTime(2000);
+
+  // Parses the pre-filled/previously-picked DOB text back into a
+  // DateTime for the picker's initialDate. Tolerant of both shapes this
+  // field can currently hold -- "YYYY-MM-DD" (as written by
+  // birth_detail_page.dart's initial profile save) and "DD-MM-YYYY" (as
+  // written by this screen's own _pickDate() below); reconciling that
+  // pre-existing format inconsistency is a separate concern, out of
+  // scope here -- this parser only needs to not crash or silently
+  // misread whichever shape is actually present. Falls back to the
+  // neutral default for anything empty/unparseable/outside the
+  // picker's own [1900, today] bounds.
+  DateTime _existingDobOrDefault() {
+    final text = _dobCtrl.text.trim();
+    if (text.isEmpty) return _neutralDefaultDob;
+
+    final iso = RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$').firstMatch(text);
+    final dmy = RegExp(r'^(\d{1,2})-(\d{1,2})-(\d{4})$').firstMatch(text);
+
+    int? year, month, day;
+    if (iso != null) {
+      year = int.tryParse(iso.group(1)!);
+      month = int.tryParse(iso.group(2)!);
+      day = int.tryParse(iso.group(3)!);
+    } else if (dmy != null) {
+      day = int.tryParse(dmy.group(1)!);
+      month = int.tryParse(dmy.group(2)!);
+      year = int.tryParse(dmy.group(3)!);
+    }
+    if (year == null || month == null || day == null) return _neutralDefaultDob;
+
+    DateTime parsed;
+    try {
+      parsed = DateTime(year, month, day);
+    } catch (_) {
+      return _neutralDefaultDob;
+    }
+    final now = DateTime.now();
+    if (parsed.isBefore(DateTime(1900)) || parsed.isAfter(now)) {
+      return _neutralDefaultDob;
+    }
+    return parsed;
+  }
+
   // -----------------------------------------------------------
   // DATE PICKER
   // -----------------------------------------------------------
+  //
+  // DATA-INTEGRITY FIX: previously always initialized to
+  // DateTime.now(), so a user who opened this picker and tapped OK
+  // without changing anything would silently overwrite a correct
+  // existing DOB with today's date. Now initializes from the existing
+  // DOB when one is present/parseable, else the same neutral
+  // historical default birth_detail_page.dart uses -- confirming
+  // without touching the wheel now always preserves what was already
+  // there (or requires an actual pick when there wasn't one).
   Future<void> _pickDate() async {
+    final initial = _existingDobOrDefault();
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: initial,
       firstDate: DateTime(1900),
       lastDate: DateTime.now(),
     );
@@ -155,7 +214,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!mounted) return;
 
     if (ok) {
-      await context.read<LanguageProvider>().setLanguage(_selectedLanguage);
       provider.notifyListeners();
 
       ScaffoldMessenger.of(

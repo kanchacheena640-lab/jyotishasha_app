@@ -28,6 +28,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
   final pobCtrl = TextEditingController();
 
   String selectedLang = 'English';
+  bool _appLanguageExplicit = false;
   bool _isSaving = false;
 
   double? latitude;
@@ -71,11 +72,67 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
     );
   }
 
+  // Neutral historical default shown when no DOB has been picked yet --
+  // deliberately NEVER DateTime.now(). Jyotishasha explicitly supports
+  // genuine newborn/recent birth charts, so a picker default of "today"
+  // would be indistinguishable from a real newborn DOB -- the default
+  // has to be a value nobody could mistake for "I actually selected
+  // this". Same convention edit_profile_page.dart's own picker uses.
+  static final DateTime _neutralDefaultDob = DateTime(2000);
+
+  // Parses this screen's own dobCtrl text (always DD-MM-YYYY once set --
+  // see _convertDob above, the only writer of this field) back into a
+  // DateTime, so re-opening the picker starts from whatever is already
+  // selected instead of always resetting to the neutral default. Falls
+  // back to the neutral default for anything empty/unparseable/outside
+  // the picker's own [1900, today] bounds -- CupertinoDatePicker
+  // requires minimumDate <= initialDateTime <= maximumDate, so an out-
+  // of-range value here would crash the picker, not just look wrong.
+  DateTime _existingDobOrDefault() {
+    final text = dobCtrl.text.trim();
+    if (text.isEmpty) return _neutralDefaultDob;
+
+    final parts = text.split("-");
+    if (parts.length != 3) return _neutralDefaultDob;
+    final day = int.tryParse(parts[0]);
+    final month = int.tryParse(parts[1]);
+    final year = int.tryParse(parts[2]);
+    if (day == null || month == null || year == null) return _neutralDefaultDob;
+
+    DateTime parsed;
+    try {
+      parsed = DateTime(year, month, day);
+    } catch (_) {
+      return _neutralDefaultDob;
+    }
+    final now = DateTime.now();
+    if (parsed.isBefore(DateTime(1900)) || parsed.isAfter(now)) {
+      return _neutralDefaultDob;
+    }
+    return parsed;
+  }
+
   // -------------------------------------------------------
   // DATE PICKER (Cupertino)
   // -------------------------------------------------------
+  //
+  // DATA-INTEGRITY FIX: the picker's VISIBLE initial date and the value
+  // actually submitted on "Done" must always be identical. The
+  // previous version showed DateTime(2000) in the wheel but tracked a
+  // SEPARATE `selected` variable seeded from DateTime.now() -- if the
+  // user tapped "Done" without scrolling, today's date was silently
+  // submitted even though the wheel visibly showed 2000. Fixed by
+  // seeding BOTH the picker's initialDateTime and the tracked
+  // `selected` value from the exact same source (the existing DOB if
+  // one is already set, else the neutral historical default) -- there
+  // is no DateTime.now() anywhere in this function any more. A
+  // deliberately recent/newborn DOB remains fully supported: the user
+  // simply has to actually pick it, exactly as they always did for any
+  // other DOB -- this only removes the silent wrong-default-on-no-
+  // interaction path.
   Future<void> _pickDateCupertino() async {
-    DateTime selected = DateTime.now();
+    final initial = _existingDobOrDefault();
+    DateTime selected = initial;
 
     await showCupertinoModalPopup(
       context: context,
@@ -104,7 +161,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                     height: 200,
                     child: CupertinoDatePicker(
                       mode: CupertinoDatePickerMode.date,
-                      initialDateTime: DateTime(2000),
+                      initialDateTime: initial,
                       minimumDate: DateTime(1900),
                       maximumDate: DateTime.now(),
                       onDateTimeChanged: (value) => selected = value,
@@ -385,7 +442,8 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
       }, SetOptions(merge: true));
 
       // ⭐ LANGUAGE SYNC
-      await context.read<LanguageProvider>().setLanguage(language);
+      if (!mounted) return;
+      if (_appLanguageExplicit) await context.read<LanguageProvider>().setLanguage(language);
 
       if (!mounted) return;
       context.go('/dashboard');
@@ -477,7 +535,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                     child: DropdownButtonFormField<String>(
                       initialValue: selectedLang,
                       decoration: const InputDecoration(
-                        labelText: "Preferred Language",
+                        labelText: "App and content language",
                         border: InputBorder.none,
                       ),
                       items: const [
@@ -487,7 +545,7 @@ class _BirthDetailPageState extends State<BirthDetailPage> {
                         ),
                         DropdownMenuItem(value: "Hindi", child: Text("Hindi")),
                       ],
-                      onChanged: (v) => setState(() => selectedLang = v!),
+                      onChanged: (v) => setState(() { selectedLang = v!; _appLanguageExplicit = true; }),
                     ),
                   ),
 
