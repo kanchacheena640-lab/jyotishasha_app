@@ -135,4 +135,73 @@ void main() {
       completes,
     );
   });
+
+  group('Campaign C Analytics Hardening -- idempotency key', () {
+    test('emit() attaches a deterministic idempotency_key derived from notification_id', () async {
+      const destination = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        route: '/reports',
+        payload: {'campaign_id': 'c1', 'notification_id': 'exec-123', 'slot': 'general'},
+      );
+      await DestinationOpenedProducer.emit(destination, client: client());
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body['idempotency_key'], 'destination_opened_exec-123');
+    });
+
+    test('re-dispatching the SAME destination produces the IDENTICAL idempotency_key '
+        '(what lets a duplicate maybeEmitForDeepLink call collapse server-side)', () async {
+      const destination = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        route: '/kundali/overview',
+        payload: {'campaign_id': 'c1', 'notification_id': 'exec-123'},
+      );
+      final c = client();
+      await DestinationOpenedProducer.emit(destination, client: c);
+      await DestinationOpenedProducer.emit(destination, client: c);
+      expect(captured, hasLength(2));
+      final key1 = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+      final key2 = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+      expect(key1, key2);
+    });
+
+    test('a DIFFERENT notification_id produces a DIFFERENT idempotency_key '
+        '(a different campaign notification remains independently countable)', () async {
+      const destinationA = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        payload: {'campaign_id': 'c1', 'notification_id': 'exec-A'},
+      );
+      const destinationB = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        payload: {'campaign_id': 'c1', 'notification_id': 'exec-B'},
+      );
+      final c = client();
+      await DestinationOpenedProducer.emit(destinationA, client: c);
+      await DestinationOpenedProducer.emit(destinationB, client: c);
+      final keyA = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+      final keyB = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+      expect(keyA, isNot(keyB));
+    });
+
+    test('no notification_id in the payload -> no idempotency_key sent (event still recorded)', () async {
+      const destination = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        payload: {'campaign_id': 'c1'},
+      );
+      await DestinationOpenedProducer.emit(destination, client: client());
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body.containsKey('idempotency_key'), isFalse);
+    });
+
+    test('the idempotency_key never contains a colon or any character outside '
+        '[A-Za-z0-9_-] (the backend\'s own idempotency_key charset contract)', () async {
+      const destination = NotificationDispatchDestination(
+        type: 'admin_campaign',
+        payload: {'campaign_id': 'c1', 'notification_id': '3f9a2b1c-aaaa-bbbb-cccc-111122223333'},
+      );
+      await DestinationOpenedProducer.emit(destination, client: client());
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      final key = body['idempotency_key'] as String;
+      expect(RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(key), isTrue);
+    });
+  });
 }

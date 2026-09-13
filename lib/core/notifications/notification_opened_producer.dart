@@ -28,6 +28,16 @@ class NotificationOpenedProducer {
   /// present in `destination.payload` (the raw FCM `data` map). Title,
   /// body, route, type, event_id, and every other payload field are
   /// deliberately left behind -- never copied.
+  ///
+  /// Campaign C Analytics Hardening (P0) -- an `idempotencyKey` is now
+  /// always attached when `payload['notification_id']` is present, so a
+  /// re-processed `getInitialMessage()`/`onMessageOpenedApp()` dispatch
+  /// for the SAME physical notification (a known cold-start double-fire
+  /// on some Android versions), or a genuine repeat tap on an
+  /// already-opened item, can never record a second `notification_opened`
+  /// for it. See [_idempotencyKey]'s own doc for the exact key shape and
+  /// why it can never collide with [DestinationOpenedProducer]'s own key
+  /// for the identical notification.
   static Future<void> emit(
     NotificationDispatchDestination destination, {
     ActivityEventClient? client,
@@ -36,7 +46,39 @@ class NotificationOpenedProducer {
     return eventClient.record(
       eventName: 'notification_opened',
       notificationContext: _extractContext(destination.payload),
+      idempotencyKey: _idempotencyKey(destination.payload),
     );
+  }
+
+  /// `notification_opened_<notification_id>` -- reuses the SAME stable
+  /// identifier already carried in `notification_context.notification_id`
+  /// (for a push tap: the per-send FCM `data.notification_id`; for a
+  /// Campaign C tap via EITHER the system tray OR the Bell,
+  /// notification_dispatcher.dart resolves this to the SAME
+  /// `execution_id` for every recipient of one campaign send -- see that
+  /// file's own `_buildCampaign()`), so both entry points produce the
+  /// IDENTICAL key for the same real-world notification, and the
+  /// backend's own existing idempotency_key -> dedupe_key -> partial
+  /// unique index infrastructure (activity_events.dedupe_key,
+  /// modules/activity_events/ingestion_service.py) collapses any retry
+  /// or duplicate tap to the one already-recorded row. The
+  /// `notification_opened_` prefix is a deliberate, explicit namespace --
+  /// even though the backend's own dedupe_key already segments by
+  /// event_name too, this keeps [NotificationOpenedProducer]'s and
+  /// [DestinationOpenedProducer]'s own keys visibly, structurally
+  /// distinct for the SAME notification_id, per this task's own explicit
+  /// "must not share the same key" requirement. Only `[A-Za-z0-9_-]+` is
+  /// ever produced here (matching the backend's own idempotency_key
+  /// charset contract) -- notification_id is always a UUID string on
+  /// every real payload shape this app produces. Returns null (no key
+  /// sent -- the event is still recorded, just without idempotency
+  /// protection) when no notification_id is present at all, which
+  /// [ActivityEventClient.record] already treats as "field absent".
+  static String? _idempotencyKey(Map<String, dynamic> payload) {
+    final id = payload['notification_id'];
+    if (id == null) return null;
+    final text = id.toString().trim();
+    return text.isEmpty ? null : 'notification_opened_$text';
   }
 
   static Map<String, Object?>? _extractContext(Map<String, dynamic> payload) {

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 import 'package:jyotishasha_app/core/identity/current_user_identity_port.dart';
+import 'package:jyotishasha_app/core/notifications/destination_opened_producer.dart';
 import 'package:jyotishasha_app/core/notifications/notification_dispatcher.dart';
 import 'package:jyotishasha_app/core/notifications/notification_opened_producer.dart';
 import 'package:jyotishasha_app/services/activity_event_client.dart';
@@ -160,5 +161,95 @@ void main() {
       final ctx = body['notification_context'] as Map<String, dynamic>?;
       expect(ctx?.containsKey(key) ?? false, isFalse);
     }
+  });
+
+  group('Campaign C Analytics Hardening (P0) -- idempotency key', () {
+    test('emit() attaches a deterministic idempotency_key derived from notification_id', () async {
+      const destination = NotificationDispatchDestination(
+        payload: {'notification_id': 'exec-123', 'campaign_id': 'c1'},
+      );
+      await NotificationOpenedProducer.emit(destination, client: client());
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body['idempotency_key'], 'notification_opened_exec-123');
+    });
+
+    test(
+      'a re-processed getInitialMessage()/onMessageOpenedApp() dispatch for the SAME '
+      'notification (identical destination) produces the IDENTICAL idempotency_key -- '
+      'system tray/cold-start duplicate dispatch is safe',
+      () async {
+        const destination = NotificationDispatchDestination(
+          payload: {'notification_id': 'exec-123'},
+        );
+        final c = client();
+        await NotificationOpenedProducer.emit(destination, client: c); // getInitialMessage()
+        await NotificationOpenedProducer.emit(destination, client: c); // onMessageOpenedApp()
+        expect(captured, hasLength(2));
+        final key1 = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+        final key2 = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+        expect(key1, key2);
+      },
+    );
+
+    test(
+      'a Bell-tap-shaped destination for the SAME Campaign C notification '
+      '(fromNotificationCenterItem\'s own execution_id) produces the SAME key a push tap '
+      'would -- Bell follows the identical Campaign C identity semantics as the system tray',
+      () async {
+        const pushDestination = NotificationDispatchDestination(
+          type: 'admin_campaign',
+          payload: {'notification_id': 'campaign-exec-999', 'campaign_id': 'c1'},
+        );
+        const bellDestination = NotificationDispatchDestination(
+          type: 'admin_campaign',
+          payload: {'notification_id': 'campaign-exec-999', 'campaign_id': 'c1'},
+        );
+        final c = client();
+        await NotificationOpenedProducer.emit(pushDestination, client: c);
+        await NotificationOpenedProducer.emit(bellDestination, client: c);
+        final pushKey = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+        final bellKey = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+        expect(pushKey, bellKey);
+      },
+    );
+
+    test('a DIFFERENT campaign notification remains independently countable '
+        '(different notification_id -> different idempotency_key)', () async {
+      const destinationA = NotificationDispatchDestination(payload: {'notification_id': 'exec-A'});
+      const destinationB = NotificationDispatchDestination(payload: {'notification_id': 'exec-B'});
+      final c = client();
+      await NotificationOpenedProducer.emit(destinationA, client: c);
+      await NotificationOpenedProducer.emit(destinationB, client: c);
+      final keyA = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+      final keyB = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+      expect(keyA, isNot(keyB));
+    });
+
+    test('no notification_id in the payload -> no idempotency_key sent (event still recorded, '
+        'never dropped just because idempotency protection is unavailable)', () async {
+      const destination = NotificationDispatchDestination(payload: {'planet': 'Mars'});
+      await NotificationOpenedProducer.emit(destination, client: client());
+      final body = jsonDecode(captured.single.body) as Map<String, dynamic>;
+      expect(body.containsKey('idempotency_key'), isFalse);
+    });
+
+    test(
+      'notification_opened and destination_opened MUST NOT share the same idempotency_key '
+      'for the identical notification_id',
+      () async {
+        const destination = NotificationDispatchDestination(
+          type: 'admin_campaign',
+          payload: {'notification_id': 'exec-same-777', 'campaign_id': 'c1'},
+        );
+        final c = client();
+        await NotificationOpenedProducer.emit(destination, client: c);
+        await DestinationOpenedProducer.emit(destination, client: c);
+        final openedKey = (jsonDecode(captured[0].body) as Map<String, dynamic>)['idempotency_key'];
+        final destKey = (jsonDecode(captured[1].body) as Map<String, dynamic>)['idempotency_key'];
+        expect(openedKey, isNot(destKey));
+        expect(openedKey, 'notification_opened_exec-same-777');
+        expect(destKey, 'destination_opened_exec-same-777');
+      },
+    );
   });
 }

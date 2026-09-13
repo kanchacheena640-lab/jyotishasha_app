@@ -27,6 +27,12 @@ class DestinationOpenedProducer {
   /// never throws, never awaited by a caller for correctness, no
   /// `properties`, only the frozen `notification_context` envelope, and
   /// only for keys actually present in `destination.payload`.
+  ///
+  /// Campaign C Analytics Hardening (P0) -- carries its own
+  /// `idempotencyKey`, independently of [NotificationOpenedProducer]'s
+  /// own (see [_idempotencyKey]), so a duplicate `maybeEmitForDeepLink`
+  /// call for the same notification can never inflate
+  /// `destination_opened_count` either.
   static Future<void> emit(
     NotificationDispatchDestination destination, {
     ActivityEventClient? client,
@@ -35,6 +41,7 @@ class DestinationOpenedProducer {
     return eventClient.record(
       eventName: 'destination_opened',
       notificationContext: _extractContext(destination.payload),
+      idempotencyKey: _idempotencyKey(destination.payload),
     );
   }
 
@@ -71,5 +78,20 @@ class DestinationOpenedProducer {
       context[key] = text;
     }
     return context.isEmpty ? null : context;
+  }
+
+  /// `destination_opened_<notification_id>` -- see
+  /// [NotificationOpenedProducer._idempotencyKey]'s own doc for the full
+  /// reasoning (identical stable identifier, identical charset
+  /// contract). The `destination_opened_` prefix is DELIBERATELY
+  /// different from that producer's `notification_opened_` prefix so the
+  /// two events can never share a key for the same notification_id, per
+  /// this task's own explicit requirement, even though the backend's own
+  /// dedupe_key already segments by event_name too.
+  static String? _idempotencyKey(Map<String, dynamic> payload) {
+    final id = payload['notification_id'];
+    if (id == null) return null;
+    final text = id.toString().trim();
+    return text.isEmpty ? null : 'destination_opened_$text';
   }
 }
