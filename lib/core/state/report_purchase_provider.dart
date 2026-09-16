@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:jyotishasha_app/core/models/love/love_contracts.dart';
 import 'package:jyotishasha_app/core/models/reports/report_contracts.dart';
+import 'package:jyotishasha_app/core/constants/report_play_products.dart';
 import 'package:jyotishasha_app/core/repositories/implementations/asset_report_repository.dart';
 import 'package:jyotishasha_app/core/repositories/report_repository.dart';
 
@@ -45,8 +46,6 @@ class ReportPurchaseProvider extends ChangeNotifier {
   ReportPurchaseProvider({ReportRepository? repository, InAppPurchase? billing})
     : _repository = repository ?? AssetReportRepository(),
       _iap = billing ?? InAppPurchase.instance;
-
-  static const String _productId = "reports51";
 
   /// Single-slot persistence key. Only one report purchase can be in
   /// flight at a time (one "Pay with Google Play" button, gated by
@@ -99,7 +98,10 @@ class ReportPurchaseProvider extends ChangeNotifier {
   /// [retryPendingReportPurchase] -- one mechanism serves both app-restart
   /// recovery and a user-triggered retry, not two separate ones.
   void initPurchaseListener() {
-    _purchaseSub ??= _iap.purchaseStream.listen(_onPurchaseUpdate, onError: (_) {});
+    _purchaseSub ??= _iap.purchaseStream.listen(
+      _onPurchaseUpdate,
+      onError: (_) {},
+    );
     // Fire-and-forget: surfaces any owned-but-unconsumed report purchase
     // through the same listener above. Never awaited here -- app startup
     // must not block on it.
@@ -144,7 +146,8 @@ class ReportPurchaseProvider extends ChangeNotifier {
       return false;
     }
 
-    final response = await _iap.queryProductDetails({_productId});
+    final productId = ReportPlayProducts.forReport(request.product ?? '');
+    final response = await _iap.queryProductDetails({productId});
     if (response.error != null || response.productDetails.isEmpty) {
       isProcessing = false;
       errorMessage = "product_not_found";
@@ -188,7 +191,7 @@ class ReportPurchaseProvider extends ChangeNotifier {
   // ---------------------------------------------------------------
   Future<void> _onPurchaseUpdate(List<PurchaseDetails> purchases) async {
     for (final p in purchases) {
-      if (p.productID != _productId) continue;
+      if (!ReportPlayProducts.isSupported(p.productID)) continue;
 
       switch (p.status) {
         case PurchaseStatus.pending:
@@ -337,7 +340,9 @@ class ReportPurchaseProvider extends ChangeNotifier {
       // order, so a failed/duplicate consume attempt has no business
       // impact -- logged only, never surfaced as a user-facing error.
       if (kDebugMode) {
-        debugPrint('ReportPurchaseProvider: consume attempt failed (non-fatal)');
+        debugPrint(
+          'ReportPurchaseProvider: consume attempt failed (non-fatal)',
+        );
       }
     }
   }

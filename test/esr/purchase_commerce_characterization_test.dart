@@ -162,9 +162,9 @@ void main() {
         'lib/core/state/report_purchase_provider.dart',
       );
 
-      expect(source, contains('static const String _productId = "reports51"'));
+      expect(source, contains('ReportPlayProducts.forReport(request.product ??'));
       expect(source, contains('if (isProcessing) return false;'));
-      expect(source, contains('if (p.productID != _productId) continue;'));
+      expect(source, contains('if (!ReportPlayProducts.isSupported(p.productID)) continue;'));
       expect(
         source,
         contains('if (_confirmingTokens.contains(token)) return;'),
